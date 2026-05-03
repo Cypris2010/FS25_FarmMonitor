@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<modDesc descVersion="108">
+    <author>FarmMonitor</author>
+    <version>1.0.0.0</version>
+    <title>
+        <en>Farm Monitor</en>
+    </title>
+    <description>
+        <en>Exports farm data (silos, productions, animal pens) to JSON for a browser dashboard.</en>
+    </description>
+    <multiplayer supported="false"/>
+    <extraSourceFiles>
+        <sourceFile filename="FarmMonitor.lua"/>
+    </extraSourceFiles>
+</modDesc>
