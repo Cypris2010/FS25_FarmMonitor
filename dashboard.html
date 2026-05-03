@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FarmMonitor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --surface2:  #232738;
+    --border:    #2e3347;
+    --text:      #e2e6f0;
+    --muted:     #7a8099;
+    --green:     #4ade80;
+    --yellow:    #facc15;
+    --red:       #f87171;
+    --blue:      #60a5fa;
+    --accent:    #6366f1;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    color: var(--accent);
+  }
+  #status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  #status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+  }
+  #status-dot.connected    { background: var(--green); }
+  #status-dot.disconnected { background: var(--red); }
+
+  /* ── Main grid ── */
+  main {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 16px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 580px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* ── Section column ── */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .card:last-child { margin-bottom: 0; }
+  .card-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .badge-gray    { background: #2e3347; color: var(--muted); }
+  .badge-green   { background: #14532d; color: var(--green); }
+  .badge-red     { background: #450a0a; color: var(--red);   }
+  .badge-yellow  { background: #422006; color: var(--yellow); }
+  .badge-blue    { background: #1e3a5f; color: var(--blue);  }
+
+  /* ── Progress bar ── */
+  .bar-row {
+    margin-bottom: 6px;
+  }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .bar-label span:first-child { color: var(--text); }
+  .bar-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+  .bar-fill.green  { background: var(--green); }
+  .bar-fill.yellow { background: var(--yellow); }
+  .bar-fill.red    { background: var(--red); }
+  .bar-fill.blue   { background: var(--blue); }
+
+  /* ── Sub-section label ── */
+  .sub-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 8px 0 4px;
+  }
+
+  /* ── Chain list ── */
+  .chain-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .chain-row:last-child { border-bottom: none; }
+  .chain-name { color: var(--text); }
+  .chain-meta { color: var(--muted); font-size: 10px; }
+
+  /* ── Animal header ── */
+  .animal-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .animal-count {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  /* ── Empty state ── */
+  .empty {
+    color: var(--muted);
+    font-size: 12px;
+    padding: 8px 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌾 FarmMonitor</h1>
+  <div id="status">
+    <div id="status-dot"></div>
+    <span id="status-text">Verbinde…</span>
+  </div>
+</header>
+
+<main>
+  <div id="col-silos">
+    <div class="section-title">Silos</div>
+    <div id="silos-content"><div class="empty">Keine Daten</div></div>
+  </div>
+  <div id="col-productions">
+    <div class="section-title">Produktionen</div>
+    <div id="productions-content"><div class="empty">Keine Daten</div></div>
+  </div>
+  <div id="col-husbandries">
+    <div class="section-title">Tiere</div>
+    <div id="husbandries-content"><div class="empty">Keine Daten</div></div>
+  </div>
+</main>
+
+<script>
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+
+function pct(level, capacity) {
+  if (!capacity || capacity === 0) return 0;
+  return Math.min(100, Math.round((level / capacity) * 100));
+}
+
+function barColor(p) {
+  if (p > 50) return 'green';
+  if (p > 20) return 'yellow';
+  return 'red';
+}
+
+function fmt(n) {
+  if (n == null) return '—';
+  return n.toLocaleString('de-DE');
+}
+
+function badge(text, cls) {
+  return `<span class="badge badge-${cls}">${text}</span>`;
+}
+
+function barRow(label, level, capacity, colorOverride) {
+  const p = pct(level, capacity);
+  const color = colorOverride || barColor(p);
+  const capStr = capacity ? ` / ${fmt(capacity)}` : '';
+  return `
+    <div class="bar-row">
+      <div class="bar-label">
+        <span>${label}</span>
+        <span>${fmt(level)}${capStr}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${color}" style="width:${p}%"></div>
+      </div>
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Renderers
+// ---------------------------------------------------------------------------
+
+function renderSilos(data) {
+  if (!data || !data.silos || data.silos.length === 0) {
+    return '<div class="empty">Keine Silos gefunden</div>';
+  }
+  return data.silos.map(silo => {
+    const typeBadge = silo.type === 'siloExtension'
+      ? badge('Extension', 'blue')
+      : badge('Silo', 'gray');
+    const bars = (silo.contents || []).map(c =>
+      barRow(c.title || c.fillType, c.level, silo.capacity)
+    ).join('');
+    return `
+      <div class="card">
+        <div class="card-title">${silo.name} ${typeBadge}</div>
+        ${bars || '<div class="empty">Leer</div>'}
+      </div>`;
+  }).join('');
+}
+
+function renderProductions(data) {
+  if (!data || !data.productions || data.productions.length === 0) {
+    return '<div class="empty">Keine Produktionen gefunden</div>';
+  }
+  return data.productions.map(pp => {
+    let html = `<div class="card"><div class="card-title">${pp.name}</div>`;
+
+    if (pp.inputs && pp.inputs.length > 0) {
+      html += '<div class="sub-label">Eingänge</div>';
+      html += pp.inputs.map(i => barRow(i.title || i.fillType, i.level, i.capacity)).join('');
+    }
+    if (pp.outputs && pp.outputs.length > 0) {
+      html += '<div class="sub-label">Ausgänge</div>';
+      html += pp.outputs.map(o => barRow(o.title || o.fillType, o.level, o.capacity)).join('');
+    }
+    if (pp.productions && pp.productions.length > 0) {
+      html += '<div class="sub-label">Ketten</div>';
+      html += pp.productions.map(c => {
+        let statusBadge;
+        if (c.status === 'running')  statusBadge = badge('Läuft', 'green');
+        else if (c.status === 'inactive') statusBadge = badge('Inaktiv', 'gray');
+        else statusBadge = badge('Gestoppt', 'red');
+        const cycles = c.cyclesPerMonth ? `<span class="chain-meta">${c.cyclesPerMonth}×/Mo</span>` : '';
+        return `
+          <div class="chain-row">
+            <span class="chain-name">${c.name || c.id}</span>
+            <span style="display:flex;align-items:center;gap:6px">${cycles}${statusBadge}</span>
+          </div>`;
+      }).join('');
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+function renderHusbandries(data) {
+  if (!data || !data.husbandries || data.husbandries.length === 0) {
+    return '<div class="empty">Keine Tiere gefunden</div>';
+  }
+  return data.husbandries.map(h => {
+    let html = `
+      <div class="card">
+        <div class="card-title">${h.name} ${badge(h.animalType, 'blue')}</div>
+        <div class="animal-meta">
+          <span class="animal-count">${h.numAnimals}</span>
+          <span>/ ${h.maxAnimals} Tiere</span>
+        </div>`;
+
+    if (h.food && h.food.length > 0) {
+      html += '<div class="sub-label">Futter</div>';
+      html += h.food.map(f => barRow(f.title || 'Futter', f.value, f.capacity)).join('');
+    }
+    if (h.water) {
+      html += '<div class="sub-label">Wasser</div>';
+      html += barRow('Wasser', h.water.value, h.water.capacity, 'blue');
+    }
+    if (h.outputs && h.outputs.length > 0) {
+      html += '<div class="sub-label">Erzeugnisse</div>';
+      html += h.outputs.map(o => barRow(o.title || o.fillType, o.level, o.capacity)).join('');
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Data loading
+// ---------------------------------------------------------------------------
+
+async function loadData() {
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+
+    document.getElementById('silos-content').innerHTML = renderSilos(d.silos);
+    document.getElementById('productions-content').innerHTML = renderProductions(d.productions);
+    document.getElementById('husbandries-content').innerHTML = renderHusbandries(d.husbandries);
+
+    const now = new Date().toLocaleTimeString('de-DE');
+    document.getElementById('status-text').textContent = `Aktualisiert: ${now}`;
+  } catch (e) {
+    console.error('Fehler beim Laden:', e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SSE
+// ---------------------------------------------------------------------------
+
+function connect() {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const es   = new EventSource('/api/events');
+
+  es.onopen = () => {
+    dot.className = 'connected';
+    text.textContent = 'Verbunden';
+    loadData();
+  };
+
+  es.onmessage = (e) => {
+    if (e.data === 'update') loadData();
+  };
+
+  es.onerror = () => {
+    dot.className = 'disconnected';
+    text.textContent = 'Verbindung getrennt — warte…';
+    es.close();
+    setTimeout(connect, 5000);
+  };
+}
+
+// Initial load + SSE
+loadData();
+connect();
+</script>
+</body>
+</html>
