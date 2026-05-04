@@ -166,12 +166,16 @@ func main() {
 	host := flag.String("host", "127.0.0.1", "Listen address (use 0.0.0.0 for LAN access)")
 	flag.Parse()
 
-	// Determine mod directory from the executable's location.
-	exe, err := os.Executable()
+	// Use current working directory as data dir (works for both go run and compiled binary).
+	// Falls back to executable directory if cwd cannot be determined.
+	dataDir, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("Cannot determine executable path: %v", err)
+		exe, err2 := os.Executable()
+		if err2 != nil {
+			log.Fatalf("Cannot determine data directory: %v", err)
+		}
+		dataDir = filepath.Dir(exe)
 	}
-	dataDir := filepath.Dir(exe)
 
 	jsonFiles := []string{
 		filepath.Join(dataDir, "silos.json"),

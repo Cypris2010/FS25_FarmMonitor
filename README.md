@@ -1,6 +1,6 @@
 # FS25 FarmMonitor
 
-A Farming Simulator 25 mod that exports live farm data to JSON files every 10 seconds. Intended as a backend data source for an external web dashboard.
+A Farming Simulator 25 mod that exports live farm data to JSON files every 10 seconds and includes a local web dashboard for monitoring silos, productions, and animals in real time.
 
 ## What it exports
 
@@ -88,6 +88,40 @@ Icon paths use two formats depending on their origin:
 - **Base game:** `dataS/menu/hud/fillTypes/...` — relative to the FS25 installation directory
 - **Mods:** absolute path to the mod folder
 
+## Dashboard
+
+A responsive web dashboard is included (`server.go` + `dashboard.html`). It shows all three data categories in a live-updating 3-column layout and requires [Go](https://go.dev/dl/) to be installed.
+
+### Start
+
+```bash
+# Navigate to the mod folder
+cd "~/Library/Application Support/FarmingSimulator2025/mods/FS25_FarmMonitor"   # macOS
+cd "%USERPROFILE%\Documents\My Games\FarmingSimulator2025\mods\FS25_FarmMonitor" # Windows
+
+# Run directly (no build step needed)
+go run .
+
+# Or build a binary first
+go build -o server        # macOS/Linux
+go build -o server.exe    # Windows
+
+./server
+```
+
+Open **http://localhost:8080** in a browser. The dashboard updates automatically whenever new data is written by the mod (every ~10 s).
+
+### Options
+
+| Flag | Default | Description |
+|---|---|---|
+| `-port` | `8080` | HTTP port |
+| `-host` | `127.0.0.1` | Listen address — use `0.0.0.0` for LAN access |
+
+```bash
+./server -host 0.0.0.0 -port 9000
+```
+
 ## Installation
 
 1. Copy the `FS25_FarmMonitor` folder into your FS25 mods directory:
@@ -95,9 +129,11 @@ Icon paths use two formats depending on their origin:
    - **Windows:** `Documents/My Games/FarmingSimulator2025/mods/`
 2. Enable the mod in the in-game mod manager.
 3. Load a savegame — the JSON files appear in the mod folder within the first few seconds.
+4. Start the dashboard server (see above).
 
 ## Notes
 
 - Singleplayer only (`multiplayer supported="false"`).
 - The JSON files are gitignored and not part of this repository — they are generated at runtime.
 - `fillTypes.json` is written once per session since fill type definitions do not change while a map is loaded.
+- The dashboard server must be started from the mod folder so it can find the JSON files.
