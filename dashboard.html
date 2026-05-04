@@ -3,241 +3,893 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FarmMonitor</title>
+<title>FS25 FarmMonitor</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:        #0f1117;
-    --surface:   #1a1d27;
-    --surface2:  #232738;
-    --border:    #2e3347;
-    --text:      #e2e6f0;
-    --muted:     #7a8099;
-    --green:     #4ade80;
-    --yellow:    #facc15;
-    --red:       #f87171;
-    --blue:      #60a5fa;
-    --accent:    #6366f1;
+    --bg:            #090b09;
+    --panel:         #111411;
+    --panel-2:       #171b17;
+    --panel-3:       #0d100d;
+    --line:          rgba(255,255,255,.12);
+    --line-soft:     rgba(255,255,255,.07);
+    --text:          #f2f4ef;
+    --muted:         #a6ada2;
+    --green:         #9be33a;
+    --green-2:       #6dbb20;
+    --red:           #ff5c4d;
+    --orange:        #ffad32;
+    --yellow:        #ffd43b;
+    --blue:          #72a8ff;
+    --purple:        #b57aff;
+    --shadow:        0 18px 50px rgba(0,0,0,.45);
+    --radius:        18px;
+    --sidebar-w:     88px;
   }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 14px;
+    margin: 0;
     min-height: 100vh;
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(142,220,48,.08), transparent 30%),
+      radial-gradient(circle at 80% 20%, rgba(142,220,48,.04), transparent 26%),
+      linear-gradient(135deg, rgba(255,255,255,.035) 0 1px, transparent 1px 24px),
+      linear-gradient(45deg,  rgba(255,255,255,.025) 0 1px, transparent 1px 28px),
+      var(--bg);
+    overflow-x: hidden;
   }
 
-  /* ── Header ── */
-  header {
+  body::before {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(circle at center, transparent 0 28%, black 80%);
+    opacity: .45;
+  }
+
+  body::after {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,.18) .7px, transparent .7px);
+    background-size: 9px 9px;
+    opacity: .08;
+    mix-blend-mode: screen;
+  }
+
+  /* ── Layout ── */
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    min-height: 100vh;
+    gap: 18px;
+    padding: 18px 22px 22px 18px;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: sticky;
+    top: 18px;
+    height: calc(100vh - 36px);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(25,29,25,.86), rgba(8,10,8,.9));
+    box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,.03);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+    z-index: 2;
+  }
+
+  .nav {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .nav-spacer { flex: 1; }
+
+  .nav-btn {
+    position: relative;
+    width: 58px; height: 58px;
+    display: grid; place-items: center;
+    border-radius: 16px;
+    color: #d7ddd2;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    transition: .2s ease;
+    flex-shrink: 0;
+  }
+
+  .nav-btn svg { width: 30px; height: 30px; filter: drop-shadow(0 5px 9px rgba(0,0,0,.6)); }
+
+  .nav-btn:hover,
+  .nav-btn.active {
+    background: linear-gradient(180deg, rgba(154,227,58,.14), rgba(154,227,58,.04));
+    border-color: rgba(154,227,58,.38);
+    color: var(--green);
+    box-shadow: inset 0 0 18px rgba(154,227,58,.08);
+  }
+
+  .nav-btn.active::before {
+    content: "";
+    position: absolute;
+    left: -11px;
+    width: 4px; height: 40px;
+    border-radius: 99px;
+    background: var(--green);
+    box-shadow: 0 0 16px rgba(154,227,58,.85);
+  }
+
+  .nav-btn::after {
+    content: attr(aria-label);
+    position: absolute;
+    left: 72px; top: 50%;
+    transform: translateY(-50%) translateX(-6px);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    background: #161a16;
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    box-shadow: var(--shadow);
+    transition: .18s ease;
+    z-index: 10;
+  }
+
+  .nav-btn:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+
+  /* ── Main column ── */
+  .main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ── Global header ── */
+  .topbar {
+    min-height: 78px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    gap: 18px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 16px 22px;
+    background: linear-gradient(180deg, rgba(21,25,21,.92), rgba(12,14,12,.86));
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.06);
   }
-  header h1 {
-    font-size: 16px;
+
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 220px; }
+
+  .brand-mark {
+    width: 48px; height: 48px;
+    border-radius: 15px;
+    display: grid; place-items: center;
+    color: var(--green);
+    border: 1px solid rgba(154,227,58,.45);
+    background: radial-gradient(circle at 30% 20%, rgba(154,227,58,.28), rgba(154,227,58,.04) 55%, transparent), #111611;
+    box-shadow: inset 0 0 18px rgba(154,227,58,.14), 0 0 20px rgba(154,227,58,.08);
+    flex-shrink: 0;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(18px, 2vw, 28px);
+    letter-spacing: -.04em;
+    line-height: 1;
+  }
+  .brand h1 span { color: var(--green); }
+
+  .top-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 7px 13px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255,255,255,.035);
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .live-dot {
+    width: 9px; height: 9px;
+    border-radius: 999px;
+    background: var(--green);
+    box-shadow: 0 0 12px rgba(154,227,58,.85);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 12px rgba(154,227,58,.85); }
+    50%       { box-shadow: 0 0 22px rgba(154,227,58,1); }
+  }
+
+  .live-dot.disconnected {
+    background: var(--red);
+    box-shadow: 0 0 12px rgba(255,92,77,.85);
+    animation: none;
+  }
+
+  /* ── Shared card / panel ── */
+  .card,
+  .panel,
+  .section-shell {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(24,28,24,.92), rgba(11,14,11,.9));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.045);
+  }
+
+  /* ── Color helpers ── */
+  .c-green  { color: var(--green); }
+  .c-red    { color: var(--red); }
+  .c-orange { color: var(--orange); }
+  .c-yellow { color: var(--yellow); }
+  .c-blue   { color: var(--blue); }
+  .c-muted  { color: var(--muted); }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 10px;
+    border: 1px solid currentColor;
+    padding: 5px 11px;
     font-weight: 700;
-    letter-spacing: .05em;
-    color: var(--accent);
+    font-size: 13px;
+    background: rgba(255,255,255,.035);
   }
-  #status {
+  .badge.red    { color: var(--red);    background: rgba(255,92,77,.08); }
+  .badge.orange { color: var(--orange); background: rgba(255,173,50,.08); }
+  .badge.green  { color: var(--green);  background: rgba(154,227,58,.08); }
+  .badge.yellow { color: var(--yellow); background: rgba(255,212,59,.08); }
+  .badge.blue   { color: var(--blue);   background: rgba(114,168,255,.08); }
+  .badge.gray   { color: var(--muted);  background: rgba(255,255,255,.06); border-color: var(--line); }
+
+  /* ── Progress bar ── */
+  .bar {
+    height: 8px;
+    background: rgba(255,255,255,.09);
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
+  }
+  .bar > i {
+    display: block; height: 100%;
+    border-radius: 999px;
+    background: var(--green);
+    box-shadow: 0 0 10px currentColor;
+    transition: width .5s ease;
+  }
+  .bar.red    > i { background: var(--red); }
+  .bar.orange > i { background: var(--orange); }
+  .bar.yellow > i { background: var(--yellow); }
+  .bar.blue   > i { background: var(--blue); }
+  .bar.purple > i { background: var(--purple); }
+
+  /* ── Metric row ── */
+  .metric {
+    display: grid;
+    grid-template-columns: 90px 1fr 60px;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text);
+    margin: 10px 0;
+  }
+  .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  /* ── Empty / loading / error states ── */
+  .state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 56px 24px;
+    color: var(--muted);
+    font-size: 15px;
+    text-align: center;
+  }
+  .state-box svg { width: 48px; height: 48px; opacity: .4; }
+  .state-box strong { color: var(--text); font-size: 17px; }
+
+  /* ── Section shell ── */
+  .section-shell { padding: 16px; }
+
+  .section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .section-title-group { display: flex; align-items: center; gap: 12px; }
+
+  .icon-box {
+    width: 44px; height: 44px;
+    color: var(--green);
+    display: grid; place-items: center;
+    border: 1px solid rgba(154,227,58,.32);
+    border-radius: 13px;
+    background: rgba(154,227,58,.06);
+    flex-shrink: 0;
+  }
+
+  .section-title-text h2 { margin: 0; font-size: 23px; letter-spacing: -.04em; }
+  .section-title-text p  { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+
+  .filters {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    border: 1px solid var(--line);
+    color: var(--text);
+    background: rgba(255,255,255,.035);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: .18s ease;
+  }
+  .filter-btn:hover { border-color: rgba(154,227,58,.4); color: var(--green); }
+  .filter-btn.active {
+    border-color: rgba(154,227,58,.7);
+    color: var(--green);
+    background: rgba(154,227,58,.07);
+    box-shadow: inset 0 0 14px rgba(154,227,58,.06);
+  }
+
+  select.filter-btn {
+    appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a6ada2' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  /* ── Warning band ── */
+  .warn-band {
+    border-radius: 14px;
+    border: 1px solid rgba(255,92,77,.35);
+    background: rgba(255,92,77,.06);
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .warn-band-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--red);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .warn-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .warn-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .warn-dot.red    { background: var(--red); }
+  .warn-dot.orange { background: var(--orange); }
+
+  .ok-band {
+    border-radius: 14px;
+    border: 1px solid rgba(154,227,58,.2);
+    background: rgba(154,227,58,.04);
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Animal grid ── */
+  .animal-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Animal card ── */
+  .animal-card {
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .animal-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--green);
+    border-radius: 99px 0 0 99px;
+    opacity: .9;
+  }
+  .animal-card.warn::before  { background: var(--orange); }
+  .animal-card.crit::before  { background: var(--red); }
+  .animal-card.watch::before { background: var(--yellow); }
+
+  .animal-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 13px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .animal-icon {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    border: 1px solid rgba(154,227,58,.4);
+    background: radial-gradient(circle at 30% 20%, rgba(154,227,58,.16), rgba(255,255,255,.04));
+    color: #edf3e8;
+    flex-shrink: 0;
+  }
+  .animal-icon svg { width: 32px; height: 32px; }
+
+  .animal-card h3 {
+    margin: 0 0 3px;
+    font-size: 16px;
+    letter-spacing: -.03em;
+  }
+
+  .animal-type-tag {
     font-size: 12px;
     color: var(--muted);
   }
-  #status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background .3s;
-  }
-  #status-dot.connected    { background: var(--green); }
-  #status-dot.disconnected { background: var(--red); }
 
-  /* ── Main grid ── */
-  main {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    padding: 16px;
-    align-items: start;
+  .animal-occupancy {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 12px;
   }
-  @media (max-width: 900px) {
-    main { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 580px) {
-    main { grid-template-columns: 1fr; }
-  }
+  .animal-occupancy strong { color: var(--green); font-size: 22px; line-height: 1; }
 
-  /* ── Section column ── */
-  .section-title {
-    font-size: 11px;
+  .animal-sections { display: flex; flex-direction: column; gap: 0; flex: 1; }
+
+  .sub-label {
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
+    margin: 10px 0 4px;
   }
+  .sub-label:first-child { margin-top: 0; }
 
-  /* ── Card ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-  }
-  .card:last-child { margin-bottom: 0; }
-  .card-title {
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 8px;
+  .card-footer {
+    margin-top: 16px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 6px;
   }
 
-  /* ── Badge ── */
-  .badge {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-  }
-  .badge-gray    { background: #2e3347; color: var(--muted); }
-  .badge-green   { background: #14532d; color: var(--green); }
-  .badge-red     { background: #450a0a; color: var(--red);   }
-  .badge-yellow  { background: #422006; color: var(--yellow); }
-  .badge-blue    { background: #1e3a5f; color: var(--blue);  }
-
-  /* ── Progress bar ── */
-  .bar-row {
-    margin-bottom: 6px;
-  }
-  .bar-label {
-    display: flex;
-    justify-content: space-between;
+  .hints { display: flex; flex-wrap: wrap; gap: 5px; }
+  .hint-chip {
     font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--line-soft);
+    background: rgba(255,255,255,.04);
     color: var(--muted);
-    margin-bottom: 3px;
   }
-  .bar-label span:first-child { color: var(--text); }
-  .bar-track {
-    height: 6px;
-    background: var(--surface2);
-    border-radius: 3px;
+
+  /* ── Home view: KPI row ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(170px, 1fr));
+    gap: 16px;
+  }
+
+  .kpi-card {
+    min-height: 118px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .kpi-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--green);
+    box-shadow: 0 0 22px rgba(154,227,58,.8);
+  }
+  .kpi-card.warning::before { background: var(--red); box-shadow: 0 0 22px rgba(255,92,77,.8); }
+
+  .kpi-icon {
+    width: 68px; height: 68px;
+    border-radius: 16px;
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    color: #e8eee3;
+    border: 1px solid var(--line-soft);
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.12), rgba(255,255,255,.03) 60%, transparent);
+  }
+  .kpi-icon svg { width: 40px; height: 40px; }
+
+  .kpi-label { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .kpi-value { font-size: 32px; line-height: 1; font-weight: 800; color: var(--green); letter-spacing: -.05em; }
+  .kpi-card.warning .kpi-value { color: var(--red); }
+  .kpi-sub { color: var(--muted); margin-top: 5px; font-size: 13px; }
+
+  /* ── Home view: warnings panel ── */
+  .alerts-panel {
+    padding: 16px 20px;
+    border-left: 4px solid var(--red);
+  }
+  .alerts-panel h2 { font-size: 19px; letter-spacing: -.03em; margin-bottom: 12px; }
+  .alert-list { display: flex; flex-direction: column; gap: 8px; }
+  .alert-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 42px;
+    border: 1px solid var(--line-soft);
+    background: rgba(0,0,0,.16);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  .alert-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .alert-dot.red    { background: var(--red);    box-shadow: 0 0 10px var(--red); }
+  .alert-dot.orange { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
+  .alert-text { flex: 1; }
+  .alert-badge { margin-left: auto; }
+
+  /* ── Generic columns for silos / productions ── */
+  .content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .content-card {
+    padding: 16px;
+    position: relative;
     overflow: hidden;
   }
-  .bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width .4s ease;
+  .content-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--green);
+    opacity: .8;
   }
-  .bar-fill.green  { background: var(--green); }
-  .bar-fill.yellow { background: var(--yellow); }
-  .bar-fill.red    { background: var(--red); }
-  .bar-fill.blue   { background: var(--blue); }
-
-  /* ── Sub-section label ── */
-  .sub-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin: 8px 0 4px;
+  .content-card h3 {
+    font-size: 15px;
+    letter-spacing: -.03em;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
-  /* ── Chain list ── */
   .chain-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 11px;
-    padding: 3px 0;
-    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 13px;
   }
   .chain-row:last-child { border-bottom: none; }
-  .chain-name { color: var(--text); }
-  .chain-meta { color: var(--muted); font-size: 10px; }
 
-  /* ── Animal header ── */
-  .animal-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    color: var(--muted);
+  /* ── Mobile bottom nav ── */
+  .mobile-tabs {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 68px;
+    border-top: 1px solid var(--line);
+    background: rgba(9,11,9,.94);
+    backdrop-filter: blur(16px);
+    z-index: 20;
+    padding: 8px 10px;
+    justify-content: space-around;
   }
-  .animal-count {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-  }
+  .mobile-tabs .nav-btn { width: 50px; height: 50px; }
+  .mobile-tabs .nav-btn::after,
+  .mobile-tabs .nav-btn.active::before { display: none; }
 
-  /* ── Empty state ── */
-  .empty {
-    color: var(--muted);
-    font-size: 12px;
-    padding: 8px 0;
-    text-align: center;
+  /* ── Responsive ── */
+  @media (max-width: 1280px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .animal-grid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+    .section-head { flex-direction: column; }
+  }
+  @media (max-width: 900px) {
+    .animal-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 860px) {
+    :root { --sidebar-w: 0px; }
+    .app { display: block; padding: 12px 12px 82px; }
+    .sidebar { display: none; }
+    .mobile-tabs { display: flex; }
+    .topbar { flex-direction: column; align-items: flex-start; }
+    .top-meta { justify-content: flex-start; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .animal-grid { grid-template-columns: 1fr; }
+    .content-grid { grid-template-columns: 1fr; }
+    .main { gap: 14px; }
+  }
+  @media (max-width: 480px) {
+    .kpi-row { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
+<div class="app">
 
-<header>
-  <h1>🌾 FarmMonitor</h1>
-  <div id="status">
-    <div id="status-dot"></div>
-    <span id="status-text">Verbinde…</span>
-  </div>
-</header>
+  <!-- ═══ Sidebar ═══ -->
+  <aside class="sidebar" aria-label="Hauptnavigation">
+    <nav class="nav">
+      <button class="nav-btn" data-view="home" aria-label="Übersicht">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.2V21h13V10.2"/><path d="M9.5 21v-6h5v6"/></svg>
+      </button>
+      <button class="nav-btn" data-view="silos" aria-label="Silos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/><path d="M9 5.5h6"/></svg>
+      </button>
+      <button class="nav-btn" data-view="productions" aria-label="Produktionen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3.5 21V10l5 3v-3l5 3V7h7v14"/><path d="M6 17h3M12 17h3M18 17h1"/><path d="M16 7V3h3v4"/></svg>
+      </button>
+      <button class="nav-btn" data-view="husbandries" aria-label="Tierställe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 11h6M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
+      </button>
+      <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+      </button>
+    </nav>
+    <div class="nav-spacer"></div>
+    <button class="nav-btn" data-view="settings" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.36a1.7 1.7 0 0 0-1 .58V20a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-.58 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-.58-1H4a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 .58-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64a1.7 1.7 0 0 0 1-.58V4a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 .58 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9c.18.36.37.7.58 1H20a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-.52 1Z"/></svg>
+    </button>
+  </aside>
 
-<main>
-  <div id="col-silos">
-    <div class="section-title">Silos</div>
-    <div id="silos-content"><div class="empty">Keine Daten</div></div>
-  </div>
-  <div id="col-productions">
-    <div class="section-title">Produktionen</div>
-    <div id="productions-content"><div class="empty">Keine Daten</div></div>
-  </div>
-  <div id="col-husbandries">
-    <div class="section-title">Tiere</div>
-    <div id="husbandries-content"><div class="empty">Keine Daten</div></div>
-  </div>
-</main>
+  <!-- ═══ Main ═══ -->
+  <main class="main">
+
+    <!-- Global header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="28" height="28"><path d="M5 21V9.5L12 4l7 5.5V21"/><path d="M8 21v-7h8v7"/><path d="M9.5 10h5"/><path d="M4 21h16"/></svg>
+        </div>
+        <h1>FS25 <span>FarmMonitor</span></h1>
+      </div>
+      <div class="top-meta">
+        <span class="pill" id="live-pill">
+          <strong class="c-green">Live</strong>
+          <i class="live-dot" id="live-dot" aria-label="Verbindungsstatus"></i>
+        </span>
+        <span class="pill">Update: <strong id="last-update">—</strong></span>
+        <span class="pill">Farm <strong id="farm-id">—</strong></span>
+        <span class="pill">Auto-Refresh: <strong class="c-green">EIN</strong></span>
+      </div>
+    </header>
+
+    <!-- View: Home -->
+    <div id="view-home" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="kpi-row" id="home-kpis" aria-label="Übersicht"></section>
+      <section class="panel alerts-panel" id="home-alerts" aria-label="Warnungen"></section>
+    </div>
+
+    <!-- View: Silos -->
+    <div id="view-silos" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Silos</h2>
+              <p>Füllstände aller Silos und Lagerkapazitäten</p>
+            </div>
+          </div>
+        </div>
+        <div class="content-grid" id="silos-content">
+          <div class="state-box"><span>Lade Silos …</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- View: Produktionen -->
+    <div id="view-productions" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M3.5 21V10l5 3v-3l5 3V7h7v14"/><path d="M6 17h3M12 17h3M18 17h1"/><path d="M16 7V3h3v4"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Produktionen</h2>
+              <p>Ein- und Ausgänge deiner Produktionsketten</p>
+            </div>
+          </div>
+        </div>
+        <div class="content-grid" id="productions-content">
+          <div class="state-box"><span>Lade Produktionen …</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- View: Tierställe -->
+    <div id="view-husbandries" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Tierställe</h2>
+              <p>Versorgung, Belegung und Outputs deiner Ställe</p>
+            </div>
+          </div>
+          <div class="filters" role="group" aria-label="Filter">
+            <button class="filter-btn active" data-filter="all">Alle</button>
+            <button class="filter-btn" data-filter="crit">Kritisch</button>
+            <button class="filter-btn" data-filter="warn">Warnungen</button>
+            <select class="filter-btn" id="animal-type-filter" aria-label="Nach Tierart filtern">
+              <option value="all">Alle Tierarten ▾</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Warning band -->
+        <div id="husbandry-alerts"></div>
+
+        <!-- Cards grid -->
+        <div class="animal-grid" id="husbandries-content">
+          <div class="state-box" style="grid-column:1/-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
+            <strong>Lade Tierställe …</strong>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- View: Warnungen -->
+    <div id="view-alerts" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Warnungen</h2>
+              <p>Alle aktiven Hinweise und kritischen Zustände</p>
+            </div>
+          </div>
+        </div>
+        <div id="alerts-content">
+          <div class="state-box"><span>Lade Warnungen …</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- View: Einstellungen -->
+    <div id="view-settings" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.36a1.7 1.7 0 0 0-1 .58V20a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-.58 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-.58-1H4a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 .58-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64a1.7 1.7 0 0 0 1-.58V4a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 .58 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9c.18.36.37.7.58 1H20a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-.52 1Z"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Einstellungen</h2>
+              <p>Konfiguration des FarmMonitor-Dashboards</p>
+            </div>
+          </div>
+        </div>
+        <div class="state-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg>
+          <strong>Einstellungen</strong>
+          <span>Noch keine konfigurierbaren Optionen verfügbar.</span>
+        </div>
+      </section>
+    </div>
+
+  </main>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="mobile-tabs" aria-label="Mobile Navigation">
+  <button class="nav-btn" data-view="home" aria-label="Übersicht">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.2V21h13V10.2"/><path d="M9.5 21v-6h5v6"/></svg>
+  </button>
+  <button class="nav-btn" data-view="silos" aria-label="Silos">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/></svg>
+  </button>
+  <button class="nav-btn" data-view="productions" aria-label="Produktionen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3.5 21V10l5 3v-3l5 3V7h7v14"/><path d="M6 17h3M12 17h3M18 17h1"/><path d="M16 7V3h3v4"/></svg>
+  </button>
+  <button class="nav-btn" data-view="husbandries" aria-label="Tierställe">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
+  </button>
+  <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+  </button>
+</nav>
 
 <script>
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+let appData      = null;
+let currentView  = 'home';
+let husFilter    = 'all';
+let husTypeFilter = 'all';
+
+// ═══════════════════════════════════════════════════════════
 // Utilities
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
 
-function pct(level, capacity) {
-  if (!capacity || capacity === 0) return 0;
-  return Math.min(100, Math.round((level / capacity) * 100));
-}
-
-function barColor(p) {
-  if (p > 50) return 'green';
-  if (p > 20) return 'yellow';
-  return 'red';
+function pct(val, cap) {
+  if (!cap || cap === 0) return 0;
+  return Math.min(100, Math.round((val / cap) * 100));
 }
 
 function fmt(n) {
@@ -245,163 +897,542 @@ function fmt(n) {
   return n.toLocaleString('de-DE');
 }
 
-function badge(text, cls) {
-  return `<span class="badge badge-${cls}">${text}</span>`;
+function barClass(p, isOutput) {
+  if (isOutput) {
+    if (p >= 90) return 'red';
+    if (p >= 80) return 'orange';
+    return 'green';
+  }
+  if (p <= 20) return 'red';
+  if (p <= 40) return 'orange';
+  return 'green';
 }
 
-function barRow(label, level, capacity, colorOverride) {
-  const p = pct(level, capacity);
-  const color = colorOverride || barColor(p);
-  const capStr = capacity ? ` / ${fmt(capacity)}` : '';
+function metricRow(label, val, cap, colorClass) {
+  const p = pct(val, cap);
+  const capStr = cap ? ` / ${fmt(cap)}` : '';
   return `
-    <div class="bar-row">
-      <div class="bar-label">
-        <span>${label}</span>
-        <span>${fmt(level)}${capStr}</span>
-      </div>
-      <div class="bar-track">
-        <div class="bar-fill ${color}" style="width:${p}%"></div>
-      </div>
+    <div class="metric">
+      <span>${label}</span>
+      <div class="bar ${colorClass}"><i style="width:${p}%"></i></div>
+      <span class="metric-val">${fmt(val)}${capStr ? '' : ''} <small>${p}%</small></span>
     </div>`;
 }
 
-// ---------------------------------------------------------------------------
+const ANIMAL_NAMES = {
+  COW:     'Kühe',
+  PIG:     'Schweine',
+  CHICKEN: 'Hühner',
+  SHEEP:   'Schafe',
+  HORSE:   'Pferde',
+  GOAT:    'Ziegen',
+  BUFFALO: 'Büffel',
+};
+
+function animalName(type) {
+  return ANIMAL_NAMES[type] || type;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Husbandry status logic
+// ═══════════════════════════════════════════════════════════
+
+function husStatus(h) {
+  const hints = [];
+  let level = 'ok'; // ok | watch | warn | crit
+
+  function escalate(l) {
+    const order = ['ok','watch','warn','crit'];
+    if (order.indexOf(l) > order.indexOf(level)) level = l;
+  }
+
+  // Water
+  if (h.water && h.water.capacity > 0) {
+    const p = pct(h.water.value, h.water.capacity);
+    if (p < 20) { escalate('crit'); hints.push('Wasser kritisch'); }
+    else if (p < 40) { escalate('warn'); hints.push('Wasser niedrig'); }
+  }
+
+  // Food
+  (h.food || []).forEach(f => {
+    if (!f.capacity) return;
+    const p = pct(f.value, f.capacity);
+    if (p < 20) { escalate('crit'); hints.push('Futter kritisch'); }
+    else if (p < 40) { escalate('warn'); hints.push('Futter niedrig'); }
+  });
+
+  // Outputs
+  (h.outputs || []).forEach(o => {
+    if (!o.capacity) return;
+    const p = pct(o.level, o.capacity);
+    const name = o.title || o.fillType;
+    if (p >= 90) { escalate('crit'); hints.push(`${name} voll`); }
+    else if (p >= 80) { escalate('warn'); hints.push(`${name} fast voll`); }
+  });
+
+  // Occupancy
+  if (h.maxAnimals > 0) {
+    const p = pct(h.numAnimals, h.maxAnimals);
+    if (p >= 100) { escalate('warn'); hints.push('Stall voll'); }
+    else if (p >= 95) { escalate('watch'); hints.push('Stall fast voll'); }
+  }
+
+  const unique = [...new Set(hints)];
+  return { level, hints: unique };
+}
+
+function statusBadge(level) {
+  const map = {
+    ok:    { cls: 'green',  label: '✓ OK' },
+    watch: { cls: 'yellow', label: '◉ Beobachten' },
+    warn:  { cls: 'orange', label: '⚠ Warnung' },
+    crit:  { cls: 'red',    label: '⚠ Kritisch' },
+  };
+  const { cls, label } = map[level] || map.ok;
+  return `<span class="badge ${cls}" role="status">${label}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════
 // Renderers
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
+
+function renderHusbandryCard(h) {
+  const { level, hints } = husStatus(h);
+  const occPct = h.maxAnimals > 0 ? pct(h.numAnimals, h.maxAnimals) : null;
+  const occColor = occPct != null ? (occPct >= 95 ? 'orange' : 'green') : 'green';
+
+  let food = '';
+  if (h.food && h.food.length > 0) {
+    food = '<div class="sub-label">Futter</div>' +
+      h.food.map(f => {
+        const p = pct(f.value, f.capacity);
+        return metricRow(f.title || 'Futter', f.value, f.capacity, barClass(p, false));
+      }).join('');
+  } else {
+    food = '<div class="sub-label">Futter</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Futterdaten</p>';
+  }
+
+  let water = '';
+  if (h.water) {
+    const wp = pct(h.water.value, h.water.capacity);
+    water = '<div class="sub-label">Wasser</div>' +
+      metricRow('Wasser', h.water.value, h.water.capacity, wp < 20 ? 'red' : wp < 40 ? 'orange' : 'blue');
+  } else {
+    water = '<div class="sub-label">Wasser</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Wasserdaten</p>';
+  }
+
+  let outputs = '';
+  if (h.outputs && h.outputs.length > 0) {
+    outputs = '<div class="sub-label">Erzeugnisse</div>' +
+      h.outputs.map(o => {
+        const p = pct(o.level, o.capacity);
+        const cls = p >= 90 ? 'red' : p >= 80 ? 'orange' : 'purple';
+        return metricRow(o.title || o.fillType, o.level, o.capacity, cls);
+      }).join('');
+  } else {
+    outputs = '<div class="sub-label">Erzeugnisse</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Outputs</p>';
+  }
+
+  const hintsHtml = hints.length > 0
+    ? `<div class="hints">${hints.map(h => `<span class="hint-chip">${h}</span>`).join('')}</div>`
+    : '';
+
+  const occHtml = occPct != null
+    ? `<div class="metric" style="margin-bottom:14px">
+         <span>Belegung</span>
+         <div class="bar ${occColor}"><i style="width:${occPct}%"></i></div>
+         <span class="metric-val">${h.numAnimals}/${h.maxAnimals} <small>${occPct}%</small></span>
+       </div>`
+    : `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">${h.numAnimals} Tiere</p>`;
+
+  return `
+    <article class="card animal-card ${level}" data-status="${level}" data-type="${h.animalType}" aria-label="${h.name}">
+      <div class="animal-head">
+        <div class="animal-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
+        </div>
+        <div>
+          <h3>${h.name}</h3>
+          <span class="animal-type-tag">${animalName(h.animalType)}</span>
+        </div>
+      </div>
+      ${occHtml}
+      <div class="animal-sections">
+        ${food}
+        ${water}
+        ${outputs}
+      </div>
+      <div class="card-footer">
+        ${statusBadge(level)}
+        ${hintsHtml}
+      </div>
+    </article>`;
+}
+
+function renderHusbandries(data) {
+  const grid = document.getElementById('husbandries-content');
+  const alertBox = document.getElementById('husbandry-alerts');
+
+  if (!data || !data.husbandries) {
+    grid.innerHTML = `<div class="state-box" style="grid-column:1/-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+      <strong>Tierstall-Daten konnten nicht geladen werden</strong>
+      <span>Bitte prüfe, ob der FarmMonitor läuft.</span>
+    </div>`;
+    alertBox.innerHTML = '';
+    return;
+  }
+
+  const all = data.husbandries;
+
+  if (all.length === 0) {
+    grid.innerHTML = `<div class="state-box" style="grid-column:1/-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
+      <strong>Keine Tierställe gefunden</strong>
+      <span>Es sind keine Tierställe auf dieser Farm vorhanden.</span>
+    </div>`;
+    alertBox.innerHTML = '';
+    return;
+  }
+
+  // Update type filter options
+  const typeSelect = document.getElementById('animal-type-filter');
+  const existingTypes = new Set([...typeSelect.options].map(o => o.value));
+  const types = [...new Set(all.map(h => h.animalType))];
+  types.forEach(t => {
+    if (!existingTypes.has(t)) {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = animalName(t);
+      typeSelect.appendChild(opt);
+    }
+  });
+
+  // Filter
+  let filtered = all;
+  if (husTypeFilter !== 'all') {
+    filtered = filtered.filter(h => h.animalType === husTypeFilter);
+  }
+  if (husFilter === 'crit') {
+    filtered = filtered.filter(h => husStatus(h).level === 'crit');
+  } else if (husFilter === 'warn') {
+    filtered = filtered.filter(h => ['warn','crit'].includes(husStatus(h).level));
+  }
+
+  grid.innerHTML = filtered.length === 0
+    ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Tierställe entsprechen dem Filter.</span></div>`
+    : filtered.map(renderHusbandryCard).join('');
+
+  // Warning band — based on ALL husbandries, not filtered
+  const warnings = [];
+  all.forEach(h => {
+    const { level, hints } = husStatus(h);
+    if (level === 'crit' || level === 'warn') {
+      hints.forEach(hint => {
+        const dot = level === 'crit' ? 'red' : 'orange';
+        warnings.push({ text: `${h.name}: ${hint}`, dot });
+      });
+    }
+  });
+
+  if (warnings.length > 0) {
+    alertBox.innerHTML = `
+      <div class="warn-band" style="margin-bottom:16px" role="alert">
+        <div class="warn-band-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+          Aktive Hinweise
+        </div>
+        ${warnings.map(w => `
+          <div class="warn-item">
+            <span class="warn-dot ${w.dot}" aria-hidden="true"></span>
+            <span>${w.text}</span>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    alertBox.innerHTML = `
+      <div class="ok-band" style="margin-bottom:16px" role="status">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        Alle Tierställe sind im grünen Bereich.
+      </div>`;
+  }
+}
 
 function renderSilos(data) {
+  const el = document.getElementById('silos-content');
   if (!data || !data.silos || data.silos.length === 0) {
-    return '<div class="empty">Keine Silos gefunden</div>';
+    el.innerHTML = '<div class="state-box"><span>Keine Silos gefunden</span></div>';
+    return;
   }
-  return data.silos.map(silo => {
-    const typeBadge = silo.type === 'siloExtension'
-      ? badge('Extension', 'blue')
-      : badge('Silo', 'gray');
-    const bars = (silo.contents || []).map(c =>
-      barRow(c.title || c.fillType, c.level, silo.capacity)
-    ).join('');
+  el.innerHTML = data.silos.map(s => {
+    const typeBadge = s.type === 'siloExtension'
+      ? '<span class="badge blue">Extension</span>'
+      : '<span class="badge gray">Silo</span>';
+    const contents = (s.contents || []).map(c => {
+      const p = pct(c.level, s.capacity);
+      return metricRow(c.title || c.fillType, c.level, s.capacity, barClass(p, false));
+    }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
     return `
-      <div class="card">
-        <div class="card-title">${silo.name} ${typeBadge}</div>
-        ${bars || '<div class="empty">Leer</div>'}
-      </div>`;
+      <article class="card content-card">
+        <h3>${s.name} ${typeBadge}</h3>
+        ${contents}
+      </article>`;
   }).join('');
 }
 
 function renderProductions(data) {
+  const el = document.getElementById('productions-content');
   if (!data || !data.productions || data.productions.length === 0) {
-    return '<div class="empty">Keine Produktionen gefunden</div>';
+    el.innerHTML = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
+    return;
   }
-  return data.productions.map(pp => {
-    let html = `<div class="card"><div class="card-title">${pp.name}</div>`;
-
-    if (pp.inputs && pp.inputs.length > 0) {
+  el.innerHTML = data.productions.map(pp => {
+    let html = `<article class="card content-card"><h3>${pp.name}</h3>`;
+    if (pp.inputs && pp.inputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
-      html += pp.inputs.map(i => barRow(i.title || i.fillType, i.level, i.capacity)).join('');
-    }
-    if (pp.outputs && pp.outputs.length > 0) {
-      html += '<div class="sub-label">Ausgänge</div>';
-      html += pp.outputs.map(o => barRow(o.title || o.fillType, o.level, o.capacity)).join('');
-    }
-    if (pp.productions && pp.productions.length > 0) {
-      html += '<div class="sub-label">Ketten</div>';
-      html += pp.productions.map(c => {
-        let statusBadge;
-        if (c.status === 'running')  statusBadge = badge('Läuft', 'green');
-        else if (c.status === 'inactive') statusBadge = badge('Inaktiv', 'gray');
-        else statusBadge = badge('Gestoppt', 'red');
-        const cycles = c.cyclesPerMonth ? `<span class="chain-meta">${c.cyclesPerMonth}×/Mo</span>` : '';
-        return `
-          <div class="chain-row">
-            <span class="chain-name">${c.name || c.id}</span>
-            <span style="display:flex;align-items:center;gap:6px">${cycles}${statusBadge}</span>
-          </div>`;
+      html += pp.inputs.map(i => {
+        const p = pct(i.level, i.capacity);
+        return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false));
       }).join('');
     }
-    html += '</div>';
+    if (pp.outputs && pp.outputs.length) {
+      html += '<div class="sub-label">Ausgänge</div>';
+      html += pp.outputs.map(o => {
+        const p = pct(o.level, o.capacity);
+        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true));
+      }).join('');
+    }
+    if (pp.productions && pp.productions.length) {
+      html += '<div class="sub-label">Ketten</div>';
+      html += pp.productions.map(c => {
+        let b;
+        if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
+        else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
+        else                              b = '<span class="badge red">Gestoppt</span>';
+        const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
+        return `<div class="chain-row"><span>${c.name || c.id}</span><span style="display:flex;gap:6px;align-items:center">${cy}${b}</span></div>`;
+      }).join('');
+    }
+    html += '</article>';
     return html;
   }).join('');
 }
 
-function renderHusbandries(data) {
-  if (!data || !data.husbandries || data.husbandries.length === 0) {
-    return '<div class="empty">Keine Tiere gefunden</div>';
+function collectAllAlerts(data) {
+  const alerts = [];
+  if (!data) return alerts;
+
+  // Husbandries
+  (data.husbandries?.husbandries || []).forEach(h => {
+    const { level, hints } = husStatus(h);
+    if (level === 'crit' || level === 'warn') {
+      hints.forEach(hint => alerts.push({ src: h.name, text: hint, level }));
+    }
+  });
+
+  // Silos
+  (data.silos?.silos || []).forEach(s => {
+    (s.contents || []).forEach(c => {
+      const p = pct(c.level, s.capacity);
+      if (p >= 90) alerts.push({ src: s.name, text: `${c.title || c.fillType} fast voll (${p}%)`, level: 'warn' });
+    });
+  });
+
+  // Productions
+  (data.productions?.productions || []).forEach(pp => {
+    (pp.inputs || []).forEach(i => {
+      const p = pct(i.level, i.capacity);
+      if (p < 20) alerts.push({ src: pp.name, text: `${i.title || i.fillType} kritisch niedrig (${p}%)`, level: 'crit' });
+      else if (p < 40) alerts.push({ src: pp.name, text: `${i.title || i.fillType} niedrig (${p}%)`, level: 'warn' });
+    });
+  });
+
+  return alerts;
+}
+
+function renderAlerts(data) {
+  const el = document.getElementById('alerts-content');
+  const alerts = collectAllAlerts(data);
+  if (alerts.length === 0) {
+    el.innerHTML = `
+      <div class="ok-band" role="status">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        Keine aktiven Warnungen — alles im grünen Bereich!
+      </div>`;
+    return;
   }
-  return data.husbandries.map(h => {
-    let html = `
-      <div class="card">
-        <div class="card-title">${h.name} ${badge(h.animalType, 'blue')}</div>
-        <div class="animal-meta">
-          <span class="animal-count">${h.numAnimals}</span>
-          <span>/ ${h.maxAnimals} Tiere</span>
-        </div>`;
-
-    if (h.food && h.food.length > 0) {
-      html += '<div class="sub-label">Futter</div>';
-      html += h.food.map(f => barRow(f.title || 'Futter', f.value, f.capacity)).join('');
-    }
-    if (h.water) {
-      html += '<div class="sub-label">Wasser</div>';
-      html += barRow('Wasser', h.water.value, h.water.capacity, 'blue');
-    }
-    if (h.outputs && h.outputs.length > 0) {
-      html += '<div class="sub-label">Erzeugnisse</div>';
-      html += h.outputs.map(o => barRow(o.title || o.fillType, o.level, o.capacity)).join('');
-    }
-    html += '</div>';
-    return html;
+  const rows = alerts.map(a => {
+    const dot = a.level === 'crit' ? 'red' : 'orange';
+    const badge = a.level === 'crit'
+      ? '<span class="badge red alert-badge">Kritisch</span>'
+      : '<span class="badge orange alert-badge">Warnung</span>';
+    return `
+      <div class="alert-row">
+        <span class="alert-dot ${dot}" aria-hidden="true"></span>
+        <span class="alert-text"><strong>${a.src}:</strong> ${a.text}</span>
+        ${badge}
+      </div>`;
   }).join('');
+  el.innerHTML = `<div class="alert-list" role="list">${rows}</div>`;
 }
 
-// ---------------------------------------------------------------------------
+function renderHome(data) {
+  const kpiEl = document.getElementById('home-kpis');
+  const alertEl = document.getElementById('home-alerts');
+
+  const siloCount   = data?.silos?.silos?.length ?? 0;
+  const prodCount   = data?.productions?.productions?.length ?? 0;
+  const husCount    = data?.husbandries?.husbandries?.length ?? 0;
+  const animals     = (data?.husbandries?.husbandries || []).reduce((s, h) => s + (h.numAnimals || 0), 0);
+  const allAlerts   = collectAllAlerts(data);
+  const critCount   = allAlerts.filter(a => a.level === 'crit').length;
+  const alertCount  = allAlerts.length;
+
+  kpiEl.innerHTML = `
+    <article class="card kpi-card">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/></svg></div>
+      <div><div class="kpi-label">Silos</div><div class="kpi-value">${siloCount}</div><div class="kpi-sub">Lagergebäude</div></div>
+    </article>
+    <article class="card kpi-card">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 21V10l5 3v-3l5 3V7h7v14"/><path d="M6 17h3M12 17h3M18 17h1"/><path d="M16 7V3h3v4"/></svg></div>
+      <div><div class="kpi-label">Produktionen</div><div class="kpi-value">${prodCount}</div><div class="kpi-sub">Ketten aktiv</div></div>
+    </article>
+    <article class="card kpi-card">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg></div>
+      <div><div class="kpi-label">Tierställe</div><div class="kpi-value">${husCount}</div><div class="kpi-sub">${animals} Tiere</div></div>
+    </article>
+    <article class="card kpi-card ${alertCount > 0 ? 'warning' : ''}">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg></div>
+      <div><div class="kpi-label">Warnungen</div><div class="kpi-value">${alertCount}</div><div class="kpi-sub">${critCount} kritisch</div></div>
+    </article>`;
+
+  if (allAlerts.length > 0) {
+    alertEl.style.display = '';
+    alertEl.innerHTML = `
+      <h2>Aktive Warnungen</h2>
+      <div class="alert-list" role="list">
+        ${allAlerts.slice(0, 6).map(a => {
+          const dot = a.level === 'crit' ? 'red' : 'orange';
+          const badge = a.level === 'crit'
+            ? '<span class="badge red alert-badge">Kritisch</span>'
+            : '<span class="badge orange alert-badge">Warnung</span>';
+          return `
+            <div class="alert-row">
+              <span class="alert-dot ${dot}" aria-hidden="true"></span>
+              <span class="alert-text"><strong>${a.src}:</strong> ${a.text}</span>
+              ${badge}
+            </div>`;
+        }).join('')}
+      </div>`;
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// View routing
+// ═══════════════════════════════════════════════════════════
+
+function showView(name) {
+  currentView = name;
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  const el = document.getElementById(`view-${name}`);
+  if (el) el.style.display = 'flex';
+
+  document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === name);
+  });
+
+  if (appData) rerenderCurrentView();
+}
+
+function rerenderCurrentView() {
+  if (!appData) return;
+  if (currentView === 'home')        renderHome(appData);
+  if (currentView === 'silos')       renderSilos(appData.silos);
+  if (currentView === 'productions') renderProductions(appData.productions);
+  if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
+  if (currentView === 'alerts')      renderAlerts(appData);
+}
+
+// ═══════════════════════════════════════════════════════════
 // Data loading
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
 
 async function loadData() {
   try {
     const res = await fetch('/api/data');
     if (!res.ok) throw new Error(res.status);
     const d = await res.json();
+    appData = d;
 
-    document.getElementById('silos-content').innerHTML = renderSilos(d.silos);
-    document.getElementById('productions-content').innerHTML = renderProductions(d.productions);
-    document.getElementById('husbandries-content').innerHTML = renderHusbandries(d.husbandries);
+    // Update header meta
+    const ts = d.husbandries?.timestamp || d.silos?.timestamp || d.productions?.timestamp;
+    if (ts) {
+      const dt = new Date(ts);
+      document.getElementById('last-update').textContent =
+        dt.toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    const farmId = d.husbandries?.farmId ?? d.silos?.farmId ?? '—';
+    document.getElementById('farm-id').textContent = farmId;
 
-    const now = new Date().toLocaleTimeString('de-DE');
-    document.getElementById('status-text').textContent = `Aktualisiert: ${now}`;
+    rerenderCurrentView();
   } catch (e) {
     console.error('Fehler beim Laden:', e);
   }
 }
 
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
 // SSE
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
 
 function connect() {
-  const dot  = document.getElementById('status-dot');
-  const text = document.getElementById('status-text');
-  const es   = new EventSource('/api/events');
+  const dot = document.getElementById('live-dot');
+  const es  = new EventSource('/api/events');
 
   es.onopen = () => {
-    dot.className = 'connected';
-    text.textContent = 'Verbunden';
+    dot.className = 'live-dot';
     loadData();
   };
-
-  es.onmessage = (e) => {
+  es.onmessage = e => {
     if (e.data === 'update') loadData();
   };
-
   es.onerror = () => {
-    dot.className = 'disconnected';
-    text.textContent = 'Verbindung getrennt — warte…';
+    dot.className = 'live-dot disconnected';
     es.close();
     setTimeout(connect, 5000);
   };
 }
 
-// Initial load + SSE
+// ═══════════════════════════════════════════════════════════
+// Filter wiring
+// ═══════════════════════════════════════════════════════════
+
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    husFilter = btn.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderHusbandries(appData?.husbandries);
+  });
+});
+
+document.getElementById('animal-type-filter').addEventListener('change', e => {
+  husTypeFilter = e.target.value;
+  renderHusbandries(appData?.husbandries);
+});
+
+// ═══════════════════════════════════════════════════════════
+// Nav wiring
+// ═══════════════════════════════════════════════════════════
+
+document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => showView(btn.dataset.view));
+});
+
+// ═══════════════════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════════════════
+
+showView('home');
 loadData();
 connect();
 </script>
