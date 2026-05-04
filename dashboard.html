@@ -946,20 +946,21 @@ function husStatus(h) {
     if (order.indexOf(l) > order.indexOf(level)) level = l;
   }
 
-  // Water
-  if (h.water && h.water.capacity > 0) {
-    const p = pct(h.water.value, h.water.capacity);
-    if (p < 20) { escalate('crit'); hints.push('Wasser kritisch'); }
-    else if (p < 40) { escalate('warn'); hints.push('Wasser niedrig'); }
-  }
+  // Water + Food nur warnen wenn Tiere im Stall sind
+  if (h.numAnimals > 0) {
+    if (h.water && h.water.capacity > 0) {
+      const p = pct(h.water.value, h.water.capacity);
+      if (p < 20) { escalate('crit'); hints.push('Wasser kritisch'); }
+      else if (p < 40) { escalate('warn'); hints.push('Wasser niedrig'); }
+    }
 
-  // Food
-  (Array.isArray(h.food) ? h.food : []).forEach(f => {
-    if (!f.capacity) return;
-    const p = pct(f.value, f.capacity);
-    if (p < 20) { escalate('crit'); hints.push('Futter kritisch'); }
-    else if (p < 40) { escalate('warn'); hints.push('Futter niedrig'); }
-  });
+    (Array.isArray(h.food) ? h.food : []).forEach(f => {
+      if (!f.capacity) return;
+      const p = pct(f.value, f.capacity);
+      if (p < 20) { escalate('crit'); hints.push('Futter kritisch'); }
+      else if (p < 40) { escalate('warn'); hints.push('Futter niedrig'); }
+    });
+  }
 
   // Outputs
   (Array.isArray(h.outputs) ? h.outputs : []).forEach(o => {
