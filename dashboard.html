@@ -954,7 +954,7 @@ function husStatus(h) {
   }
 
   // Food
-  (h.food || []).forEach(f => {
+  (Array.isArray(h.food) ? h.food : []).forEach(f => {
     if (!f.capacity) return;
     const p = pct(f.value, f.capacity);
     if (p < 20) { escalate('crit'); hints.push('Futter kritisch'); }
@@ -962,7 +962,7 @@ function husStatus(h) {
   });
 
   // Outputs
-  (h.outputs || []).forEach(o => {
+  (Array.isArray(h.outputs) ? h.outputs : []).forEach(o => {
     if (!o.capacity) return;
     const p = pct(o.level, o.capacity);
     const name = o.title || o.fillType;
@@ -1002,7 +1002,7 @@ function renderHusbandryCard(h) {
   const occColor = occPct != null ? (occPct >= 95 ? 'orange' : 'green') : 'green';
 
   let food = '';
-  if (h.food && h.food.length > 0) {
+  if (Array.isArray(h.food) && h.food.length > 0) {
     food = '<div class="sub-label">Futter</div>' +
       h.food.map(f => {
         const p = pct(f.value, f.capacity);
@@ -1022,7 +1022,7 @@ function renderHusbandryCard(h) {
   }
 
   let outputs = '';
-  if (h.outputs && h.outputs.length > 0) {
+  if (Array.isArray(h.outputs) && h.outputs.length > 0) {
     outputs = '<div class="sub-label">Erzeugnisse</div>' +
       h.outputs.map(o => {
         const p = pct(o.level, o.capacity);
@@ -1166,7 +1166,7 @@ function renderSilos(data) {
     const typeBadge = s.type === 'siloExtension'
       ? '<span class="badge blue">Extension</span>'
       : '<span class="badge gray">Silo</span>';
-    const contents = (s.contents || []).map(c => {
+    const contents = (Array.isArray(s.contents) ? s.contents : []).map(c => {
       const p = pct(c.level, s.capacity);
       return metricRow(c.title || c.fillType, c.level, s.capacity, barClass(p, false));
     }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
@@ -1186,21 +1186,21 @@ function renderProductions(data) {
   }
   el.innerHTML = data.productions.map(pp => {
     let html = `<article class="card content-card"><h3>${pp.name}</h3>`;
-    if (pp.inputs && pp.inputs.length) {
+    if (Array.isArray(pp.inputs) && pp.inputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
       html += pp.inputs.map(i => {
         const p = pct(i.level, i.capacity);
         return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false));
       }).join('');
     }
-    if (pp.outputs && pp.outputs.length) {
+    if (Array.isArray(pp.outputs) && pp.outputs.length) {
       html += '<div class="sub-label">Ausgänge</div>';
       html += pp.outputs.map(o => {
         const p = pct(o.level, o.capacity);
         return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true));
       }).join('');
     }
-    if (pp.productions && pp.productions.length) {
+    if (Array.isArray(pp.productions) && pp.productions.length) {
       html += '<div class="sub-label">Ketten</div>';
       html += pp.productions.map(c => {
         let b;
@@ -1221,7 +1221,7 @@ function collectAllAlerts(data) {
   if (!data) return alerts;
 
   // Husbandries
-  (data.husbandries?.husbandries || []).forEach(h => {
+  (Array.isArray(data.husbandries?.husbandries) ? data.husbandries.husbandries : []).forEach(h => {
     const { level, hints } = husStatus(h);
     if (level === 'crit' || level === 'warn') {
       hints.forEach(hint => alerts.push({ src: h.name, text: hint, level }));
@@ -1229,16 +1229,16 @@ function collectAllAlerts(data) {
   });
 
   // Silos
-  (data.silos?.silos || []).forEach(s => {
-    (s.contents || []).forEach(c => {
+  (Array.isArray(data.silos?.silos) ? data.silos.silos : []).forEach(s => {
+    (Array.isArray(s.contents) ? s.contents : []).forEach(c => {
       const p = pct(c.level, s.capacity);
       if (p >= 90) alerts.push({ src: s.name, text: `${c.title || c.fillType} fast voll (${p}%)`, level: 'warn' });
     });
   });
 
   // Productions
-  (data.productions?.productions || []).forEach(pp => {
-    (pp.inputs || []).forEach(i => {
+  (Array.isArray(data.productions?.productions) ? data.productions.productions : []).forEach(pp => {
+    (Array.isArray(pp.inputs) ? pp.inputs : []).forEach(i => {
       const p = pct(i.level, i.capacity);
       if (p < 20) alerts.push({ src: pp.name, text: `${i.title || i.fillType} kritisch niedrig (${p}%)`, level: 'crit' });
       else if (p < 40) alerts.push({ src: pp.name, text: `${i.title || i.fillType} niedrig (${p}%)`, level: 'warn' });
@@ -1281,7 +1281,7 @@ function renderHome(data) {
   const siloCount   = data?.silos?.silos?.length ?? 0;
   const prodCount   = data?.productions?.productions?.length ?? 0;
   const husCount    = data?.husbandries?.husbandries?.length ?? 0;
-  const animals     = (data?.husbandries?.husbandries || []).reduce((s, h) => s + (h.numAnimals || 0), 0);
+  const animals     = (Array.isArray(data?.husbandries?.husbandries) ? data.husbandries.husbandries : []).reduce((s, h) => s + (h.numAnimals || 0), 0);
   const allAlerts   = collectAllAlerts(data);
   const critCount   = allAlerts.filter(a => a.level === 'crit').length;
   const alertCount  = allAlerts.length;
