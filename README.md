@@ -15,7 +15,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 |---|---|---|
 | `silos.json` | All silo and silo extension fill levels | every 10 s |
 | `productions.json` | Production point inputs, outputs and chain status | every 10 s |
-| `husbandries.json` | Animal counts, food/water levels and outputs (milk, eggs, …) | every 10 s |
+| `husbandries.json` | Animal counts, food/water/straw levels, health and outputs (milk, manure, …) | every 10 s |
 | `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
 
 All files are written to the mod directory:
@@ -127,11 +127,30 @@ Open **http://localhost:8080** in a browser.
       "maxAnimals": 30,
       "food":    [ { "title": "Mischration", "value": 800, "capacity": 1000 } ],
       "water":   { "value": 600, "capacity": 1000 },
-      "outputs": [ { "fillType": "MILK", "title": "Milch", "level": 4200, "capacity": 10000 } ]
+      "straw":   { "value": 400, "capacity": 1000 },
+      "health":  92,
+      "outputs": [
+        { "fillType": "MILK",   "title": "Milch", "level": 4200, "capacity": 10000 },
+        { "fillType": "MANURE", "title": "Mist",  "level":  800, "capacity":  5000 }
+      ]
     }
   ]
 }
 ```
+
+Field reference:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Stall name |
+| `animalType` | string | Animal type identifier (e.g. `COW`, `PIG`) or `"unknown"` |
+| `numAnimals` | number | Current animal count |
+| `maxAnimals` | number | Maximum capacity |
+| `food` | array | Food trough entries with `title`, `value` and `capacity` |
+| `water` | object\|null | Water level `{ value, capacity }` — `null` if stall has no water trough |
+| `straw` | object\|null | Straw bedding level `{ value, capacity }` — `null` if stall uses no straw |
+| `health` | number\|null | Average animal health 0–100 — `null` if no animals are present |
+| `outputs` | array | Output storage entries with `fillType`, `title`, `level` and `capacity` (milk, manure, liquid manure, eggs, wool, …) |
 
 ### fillTypes.json
 ```json

@@ -266,24 +266,30 @@ function FarmMonitor:collectHusbandries()
                 maxAnimals  = FarmMonitor:maxAnimals(placeable),
                 food        = FarmMonitor:getFoodInfo(placeable),
                 water       = FarmMonitor:getWaterInfo(placeable),
+                straw       = FarmMonitor:getStrawInfo(placeable),
+                health      = FarmMonitor:getHealthInfo(placeable),
                 outputs     = {},
             }
 
-            -- Husbandry output storage (milk, eggs, wool, …)
-            if placeable.spec_husbandry.storage ~= nil then
-                local storage = placeable.spec_husbandry.storage
-                for fillTypeId, level in pairs(storage.fillLevels or {}) do
-                    if level > 0 then
-                        local capacity = 0
-                        if storage.capacities ~= nil then
-                            capacity = storage.capacities[fillTypeId] or 0
+            -- Husbandry output storage (milk, eggs, wool, manure, …)
+            -- Iterate all fill types via official API to catch outputs with level=0.
+            -- Exclude STRAW (bedding input) and WATER (drinking input).
+            if placeable.getHusbandryCapacity ~= nil then
+                for _, ft in ipairs(g_fillTypeManager.fillTypes or {}) do
+                    if ft ~= nil and ft.index ~= nil then
+                        local ftName = ft.name or "UNKNOWN"
+                        if ftName ~= "STRAW" and ftName ~= "WATER" then
+                            local capacity = placeable:getHusbandryCapacity(ft.index)
+                            if capacity > 0 then
+                                local level = placeable:getHusbandryFillLevel(ft.index)
+                                table.insert(entry.outputs, {
+                                    fillType = ftName,
+                                    title    = ft.title or ftName,
+                                    level    = MathUtil.round(level),
+                                    capacity = MathUtil.round(capacity),
+                                })
+                            end
                         end
-                        table.insert(entry.outputs, {
-                            fillType = g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
-                            title    = FarmMonitor:fillTypeTitle(fillTypeId),
-                            level    = MathUtil.round(level),
-                            capacity = MathUtil.round(capacity),
-                        })
                     end
                 end
             end
@@ -377,6 +383,31 @@ function FarmMonitor:getWaterInfo(placeable)
         value    = MathUtil.round(level),
         capacity = MathUtil.round(capacity),
     }
+end
+
+function FarmMonitor:getStrawInfo(placeable)
+    if placeable.getHusbandryCapacity == nil then return nil end
+    local strawFt = g_fillTypeManager:getFillTypeByName("STRAW")
+    if strawFt == nil then return nil end
+    local capacity = placeable:getHusbandryCapacity(strawFt.index)
+    if capacity <= 0 then return nil end
+    return {
+        value    = MathUtil.round(placeable:getHusbandryFillLevel(strawFt.index)),
+        capacity = MathUtil.round(capacity),
+    }
+end
+
+function FarmMonitor:getHealthInfo(placeable)
+    local spec = placeable.spec_husbandryAnimals
+    if spec == nil or spec.clusterSystem == nil then return nil end
+    local clusters = spec.clusterSystem:getClusters()
+    local numClusters = #clusters
+    if numClusters == 0 then return nil end
+    local health = 0
+    for _, cluster in ipairs(clusters) do
+        health = health + (cluster.health or 0)
+    end
+    return MathUtil.round(health / numClusters)
 end
 
 -- ---------------------------------------------------------------------------
