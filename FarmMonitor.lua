@@ -8,7 +8,8 @@ FarmMonitor = {}
 FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
 FarmMonitor.paths             = {}
-FarmMonitor.fillTypesExported = false
+FarmMonitor.fillTypesExported  = false
+FarmMonitor.animalFoodExported = false
 
 addModEventListener(FarmMonitor)
 
@@ -21,6 +22,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.productions = modDirectory .. "productions.json"
     FarmMonitor.paths.husbandries = modDirectory .. "husbandries.json"
     FarmMonitor.paths.fillTypes   = modDirectory .. "fillTypes.json"
+    FarmMonitor.paths.animalFood  = modDirectory .. "animalFood.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. modDirectory)
 end
 
@@ -35,6 +37,11 @@ function FarmMonitor:update(dt)
     if not FarmMonitor.fillTypesExported then
         FarmMonitor:exportFillTypes()
         FarmMonitor.fillTypesExported = true
+    end
+
+    if not FarmMonitor.animalFoodExported then
+        FarmMonitor:exportAnimalFood()
+        FarmMonitor.animalFoodExported = true
     end
 
     FarmMonitor.timer = FarmMonitor.timer + dt
@@ -114,6 +121,50 @@ function FarmMonitor:exportFillTypes()
 
     if not ok then
         print("[FarmMonitor] ERROR writing fillTypes.json: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Animal food registry  (written once on first update)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportAnimalFood()
+    local ok, err = pcall(function()
+        local animalFoodSystem = g_currentMission and g_currentMission.animalFoodSystem
+        if animalFoodSystem == nil then return end
+
+        local result = {}
+
+        for _, animalType in ipairs(g_currentMission.animalSystem.types or {}) do
+            if animalType ~= nil and animalType.name ~= nil then
+                local animalFood = animalFoodSystem:getAnimalFood(animalType.typeIndex)
+                if animalFood ~= nil and animalFood.groups ~= nil then
+                    local groups = {}
+                    for _, group in ipairs(animalFood.groups) do
+                        local fillTypeNames = {}
+                        for _, ftIndex in ipairs(group.fillTypes or {}) do
+                            local name = g_fillTypeManager:getFillTypeNameByIndex(ftIndex)
+                            if name ~= nil then
+                                table.insert(fillTypeNames, name)
+                            end
+                        end
+                        table.insert(groups, FarmMonitor.obj(
+                            "title",      group.title or "",
+                            "percentage", MathUtil.round((group.productionWeight or 0) * 100),
+                            "fillTypes",  fillTypeNames
+                        ))
+                    end
+                    result[animalType.name] = groups
+                end
+            end
+        end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.animalFood, result)
+        print("[FarmMonitor] animalFood.json written")
+    end)
+
+    if not ok then
+        print("[FarmMonitor] ERROR writing animalFood.json: " .. tostring(err))
     end
 end
 
@@ -265,6 +316,7 @@ function FarmMonitor:collectHusbandries()
                 numAnimals  = FarmMonitor:countAnimals(placeable),
                 maxAnimals  = FarmMonitor:maxAnimals(placeable),
                 food        = FarmMonitor:getFoodInfo(placeable),
+                foodTotal   = FarmMonitor:getFoodTotal(placeable),
                 water       = FarmMonitor:getWaterInfo(placeable),
                 straw       = FarmMonitor:getStrawInfo(placeable),
                 health      = FarmMonitor:getHealthInfo(placeable),
@@ -333,10 +385,20 @@ function FarmMonitor:maxAnimals(placeable)
 end
 
 function FarmMonitor:getAnimalType(placeable)
-    local spec = placeable.spec_husbandryFood
-    if spec ~= nil and spec.animalTypeIndex ~= nil and g_animalTypeManager ~= nil then
-        local t = g_animalTypeManager:getTypeByIndex(spec.animalTypeIndex)
-        if t ~= nil then return t.name or t.typeName or "unknown" end
+    local spec = placeable.spec_husbandryAnimals
+    if spec ~= nil then
+        -- spec.animalType is the full type object loaded from XML
+        if spec.animalType ~= nil and spec.animalType.name ~= nil then
+            return spec.animalType.name
+        end
+        -- fallback: look up via animalSystem
+        if spec.animalTypeIndex ~= nil then
+            local animalSystem = g_currentMission and g_currentMission.animalSystem
+            if animalSystem ~= nil and animalSystem.types ~= nil then
+                local t = animalSystem.types[spec.animalTypeIndex]
+                if t ~= nil then return t.name or "unknown" end
+            end
+        end
     end
     return "unknown"
 end
@@ -373,14 +435,27 @@ function FarmMonitor:getFoodInfo(placeable)
     return {}
 end
 
-function FarmMonitor:getWaterInfo(placeable)
-    local spec = placeable.spec_husbandryWater
-    if spec == nil then return nil end
-
-    local level    = spec.fillLevel or 0
-    local capacity = spec.capacity  or 0
+function FarmMonitor:getFoodTotal(placeable)
+    if placeable.getTotalFood == nil or placeable.getFoodCapacity == nil then return nil end
+    local capacity = placeable:getFoodCapacity()
+    if capacity <= 0 then return nil end
+    local value = placeable:getTotalFood()
     return {
-        value    = MathUtil.round(level),
+        value    = MathUtil.round(value),
+        capacity = MathUtil.round(capacity),
+        ratio    = MathUtil.round(value / capacity * 100) / 100,
+    }
+end
+
+function FarmMonitor:getWaterInfo(placeable)
+    if placeable.spec_husbandryWater == nil then return nil end
+    if placeable.getHusbandryCapacity == nil then return nil end
+    local waterFt = g_fillTypeManager:getFillTypeByName("WATER")
+    if waterFt == nil then return nil end
+    local capacity = placeable:getHusbandryCapacity(waterFt.index)
+    if capacity <= 0 then return nil end
+    return {
+        value    = MathUtil.round(placeable:getHusbandryFillLevel(waterFt.index)),
         capacity = MathUtil.round(capacity),
     }
 end
