@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -161,20 +162,33 @@ func handleEvents(b *broker) http.HandlerFunc {
 // Main
 // ---------------------------------------------------------------------------
 
+func defaultDataDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join(home, "Library", "Application Support", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
+	case "windows":
+		return filepath.Join(home, "Documents", "My Games", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
+	default:
+		return filepath.Join(home, ".local", "share", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
+	}
+}
+
 func main() {
 	port := flag.Int("port", 8080, "HTTP port")
 	host := flag.String("host", "127.0.0.1", "Listen address (use 0.0.0.0 for LAN access)")
+	data := flag.String("data", "", "Path to the directory containing the JSON data files (default: auto-detect from modSettings)")
 	flag.Parse()
 
-	// Use current working directory as data dir (works for both go run and compiled binary).
-	// Falls back to executable directory if cwd cannot be determined.
-	dataDir, err := os.Getwd()
-	if err != nil {
-		exe, err2 := os.Executable()
-		if err2 != nil {
-			log.Fatalf("Cannot determine data directory: %v", err)
-		}
-		dataDir = filepath.Dir(exe)
+	dataDir := *data
+	if dataDir == "" {
+		dataDir = defaultDataDir()
+	}
+	if dataDir == "" {
+		log.Fatal("Cannot determine data directory. Use -data to specify it manually.")
 	}
 
 	jsonFiles := []string{
