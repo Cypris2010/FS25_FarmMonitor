@@ -84,6 +84,7 @@ Open **http://localhost:8080** in a browser.
 {
   "timestamp": "2026-05-03T22:49:23",
   "farmId": 1,
+  "savegame": "Mein Hof",
   "silos": [
     {
       "name": "Grosses Silo",
@@ -102,6 +103,7 @@ Open **http://localhost:8080** in a browser.
 {
   "timestamp": "2026-05-03T22:49:23",
   "farmId": 1,
+  "savegame": "Mein Hof",
   "productions": [
     {
       "name": "Bäckerei",
@@ -120,6 +122,7 @@ Open **http://localhost:8080** in a browser.
 {
   "timestamp": "2026-05-03T22:49:23",
   "farmId": 1,
+  "savegame": "Mein Hof",
   "husbandries": [
     {
       "name": "Kuhstall",
@@ -192,5 +195,6 @@ One entry per animal type. The `percentage` field is the share of this food grou
 - Singleplayer only (`multiplayer supported="false"`).
 - The JSON files are gitignored and not part of this repository — they are generated at runtime.
 - `fillTypes.json` and `animalFood.json` are written once per session since their definitions do not change while a map is loaded.
+- The `savegame` field in each JSON file contains the savegame name from `careerSavegame.xml` — useful for identifying which save is currently active when multiple saves exist.
 - The dashboard server must be started from the mod folder so it can locate the JSON files.
 - Lua serialises empty arrays as `{}` (empty object) rather than `[]`. The dashboard handles this transparently.
