@@ -1,8 +1,8 @@
 -- FarmMonitor.lua
 -- Collects data from silos, productions and animal husbandries,
--- then writes each category to its own JSON file in the mod directory.
+-- then writes each category to its own JSON file in the modSettings directory.
 
-local modDirectory = g_currentModDirectory  -- capture before it gets reset
+local modName = g_currentModName  -- capture before it gets reset
 
 FarmMonitor = {}
 FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
@@ -19,12 +19,15 @@ addModEventListener(FarmMonitor)
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:loadMap(name)
-    FarmMonitor.paths.silos       = modDirectory .. "silos.json"
-    FarmMonitor.paths.productions = modDirectory .. "productions.json"
-    FarmMonitor.paths.husbandries = modDirectory .. "husbandries.json"
-    FarmMonitor.paths.fillTypes   = modDirectory .. "fillTypes.json"
-    FarmMonitor.paths.animalFood  = modDirectory .. "animalFood.json"
-    print("[FarmMonitor] Mod loaded. Output directory: " .. modDirectory)
+    local outputDir = getUserProfileAppPath() .. "modSettings/" .. modName .. "/"
+    createFolder(outputDir)
+
+    FarmMonitor.paths.silos       = outputDir .. "silos.json"
+    FarmMonitor.paths.productions = outputDir .. "productions.json"
+    FarmMonitor.paths.husbandries = outputDir .. "husbandries.json"
+    FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
+    FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
+    print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
 function FarmMonitor:deleteMap()
