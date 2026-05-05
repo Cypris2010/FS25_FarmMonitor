@@ -9,6 +9,8 @@ fillTypes.json
 # Compiled binaries
 Server/farmmonitor
 Server/farmmonitor.exe
+farmmonitor
+farmmonitor.exe
 
 # macOS
 .DS_Store
