@@ -25,25 +25,43 @@ All files are written to the modSettings directory:
 
 ## Dashboard
 
-The dashboard is a single-page app served by a small Go binary (`farmmonitor`). It connects to the server via Server-Sent Events and re-renders automatically whenever the mod writes new data (~every 10 s). [Go](https://go.dev/dl/) must be installed to build or run it.
-
-### Start
-
-```bash
-# Navigate to the Server folder
-cd path/to/FS25_FarmMonitor/Server
-
-# Option A — run directly without a build step
-go run .
-
-# Option B — build the binary once, then run it from anywhere
-go build -o farmmonitor      # macOS / Linux
-go build -o farmmonitor.exe  # Windows
-
-./farmmonitor
-```
+The dashboard is a single-page app served by a small Go binary (`farmmonitor`). It connects to the server via Server-Sent Events and re-renders automatically whenever the mod writes new data (~every 10 s).
 
 The server automatically detects the JSON data directory from the FS25 modSettings folder — no need to run it from a specific location.
+
+### Start — Download (empfohlen)
+
+Download the latest binary for your OS from the [Releases page](https://github.com/Cypris2010/FS25_FarmMonitor/releases):
+
+| OS | File |
+|---|---|
+| macOS (Apple Silicon) | `farmmonitor-macos-apple` |
+| macOS (Intel) | `farmmonitor-macos-intel` |
+| Windows | `farmmonitor-windows.exe` |
+
+**macOS:** Make the file executable before running:
+```bash
+chmod +x farmmonitor-macos-apple
+./farmmonitor-macos-apple
+```
+
+> **Note:** macOS may block the binary on first launch. Go to **System Settings → Privacy & Security** and click **Allow Anyway**, or run:
+> ```bash
+> xattr -d com.apple.quarantine farmmonitor-macos-apple
+> ```
+
+**Windows:** Double-click `farmmonitor-windows.exe` or run it from the terminal.
+
+### Start — Build from source (optional)
+
+Requires [Go](https://go.dev/dl/) to be installed.
+
+```bash
+cd path/to/FS25_FarmMonitor/Server
+go build -o farmmonitor      # macOS / Linux
+go build -o farmmonitor.exe  # Windows
+./farmmonitor
+```
 
 Open **http://localhost:8080** in a browser.
 
