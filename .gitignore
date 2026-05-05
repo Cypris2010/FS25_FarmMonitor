@@ -4,6 +4,10 @@ productions.json
 husbandries.json
 fillTypes.json
 
+# Compiled binaries
+Server/farmmonitor
+Server/farmmonitor.exe
+
 # macOS
 .DS_Store
 
