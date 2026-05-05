@@ -4,7 +4,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 
 ## Features
 
-- **Live JSON export** — silos, productions, animal husbandries, fill types and animal food recipes written to the mod folder
+- **Live JSON export** — silos, productions, animal husbandries, fill types and animal food recipes written to the modSettings folder
 - **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
 - **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Alerts, Settings
 - **Tierställe detail page** — per-stall cards with occupancy, food, water and output progress bars, computed status (OK / Watch / Warning / Critical) and a warning band for urgent issues
@@ -19,10 +19,9 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 | `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
 | `animalFood.json` | Food group recipes per animal type (fill types, percentages) | once on map load |
 
-All files are written to the mod directory:
-```
-<FS25 user data>/mods/FS25_FarmMonitor/
-```
+All files are written to the modSettings directory:
+- **macOS:** `~/Library/Application Support/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
+- **Windows:** `Documents/My Games/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
 
 ## Dashboard
 
@@ -31,19 +30,20 @@ The dashboard is a single-page app served by a small Go binary (`farmmonitor`). 
 ### Start
 
 ```bash
-# Navigate to the mod folder
-cd "~/Library/Application Support/FarmingSimulator2025/mods/FS25_FarmMonitor"    # macOS
-cd "%USERPROFILE%\Documents\My Games\FarmingSimulator2025\mods\FS25_FarmMonitor"  # Windows
+# Navigate to the Server folder
+cd path/to/FS25_FarmMonitor/Server
 
 # Option A — run directly without a build step
 go run .
 
-# Option B — build the binary once, then run it
+# Option B — build the binary once, then run it from anywhere
 go build -o farmmonitor      # macOS / Linux
 go build -o farmmonitor.exe  # Windows
 
 ./farmmonitor
 ```
+
+The server automatically detects the JSON data directory from the FS25 modSettings folder — no need to run it from a specific location.
 
 Open **http://localhost:8080** in a browser.
 
@@ -53,9 +53,11 @@ Open **http://localhost:8080** in a browser.
 |---|---|---|
 | `-port` | `8080` | HTTP listen port |
 | `-host` | `127.0.0.1` | Listen address — use `0.0.0.0` for LAN / tablet access |
+| `-data` | auto-detected | Path to the directory containing the JSON data files |
 
 ```bash
 ./farmmonitor -host 0.0.0.0 -port 9000
+./farmmonitor -data /custom/path/to/json/files
 ```
 
 ### Navigation
@@ -74,8 +76,8 @@ Open **http://localhost:8080** in a browser.
    - **macOS:** `~/Library/Application Support/FarmingSimulator2025/mods/`
    - **Windows:** `Documents/My Games/FarmingSimulator2025/mods/`
 2. Enable the mod in the in-game mod manager.
-3. Load a savegame — the JSON files appear in the mod folder within the first few seconds.
-4. Start the dashboard server from the mod folder (see above).
+3. Load a savegame — the JSON files appear in the modSettings folder within the first few seconds.
+4. Build and start the dashboard server from the `Server` folder (see above).
 
 ## JSON structure
 
@@ -196,5 +198,5 @@ One entry per animal type. The `percentage` field is the share of this food grou
 - The JSON files are gitignored and not part of this repository — they are generated at runtime.
 - `fillTypes.json` and `animalFood.json` are written once per session since their definitions do not change while a map is loaded.
 - The `savegame` field in each JSON file contains the savegame name from `careerSavegame.xml` — useful for identifying which save is currently active when multiple saves exist.
-- The dashboard server must be started from the mod folder so it can locate the JSON files.
+- The dashboard server can be started from any directory — it automatically locates the JSON files in the modSettings folder. Use `-data` to override the path manually.
 - Lua serialises empty arrays as `{}` (empty object) rather than `[]`. The dashboard handles this transparently.
