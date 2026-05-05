@@ -4,7 +4,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 
 ## Features
 
-- **Live JSON export** — silos, productions, animal husbandries and fill types written to the mod folder every 10 s
+- **Live JSON export** — silos, productions, animal husbandries, fill types and animal food recipes written to the mod folder
 - **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
 - **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Alerts, Settings
 - **Tierställe detail page** — per-stall cards with occupancy, food, water and output progress bars, computed status (OK / Watch / Warning / Critical) and a warning band for urgent issues
@@ -17,6 +17,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 | `productions.json` | Production point inputs, outputs and chain status | every 10 s |
 | `husbandries.json` | Animal counts, food/water/straw levels, health and outputs (milk, manure, …) | every 10 s |
 | `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
+| `animalFood.json` | Food group recipes per animal type (fill types, percentages) | once on map load |
 
 All files are written to the mod directory:
 ```
@@ -125,8 +126,9 @@ Open **http://localhost:8080** in a browser.
       "animalType": "COW",
       "numAnimals": 24,
       "maxAnimals": 30,
-      "food":    [ { "title": "Mischration", "value": 800, "capacity": 1000 } ],
-      "water":   { "value": 600, "capacity": 1000 },
+      "food":      [ { "title": "Mischration", "value": 800, "capacity": 1000 } ],
+      "foodTotal": { "value": 800, "capacity": 1000, "ratio": 0.8 },
+      "water":     { "value": 600, "capacity": 1000 },
       "straw":   { "value": 400, "capacity": 1000 },
       "health":  92,
       "outputs": [
@@ -146,7 +148,8 @@ Field reference:
 | `animalType` | string | Animal type identifier (e.g. `COW`, `PIG`) or `"unknown"` |
 | `numAnimals` | number | Current animal count |
 | `maxAnimals` | number | Maximum capacity |
-| `food` | array | Food trough entries with `title`, `value` and `capacity` |
+| `food` | array | Food trough entries with `title`, `value` and `capacity` per group |
+| `foodTotal` | object\|null | Combined food level `{ value, capacity, ratio }` — `null` if stall has no food trough |
 | `water` | object\|null | Water level `{ value, capacity }` — `null` if stall has no water trough |
 | `straw` | object\|null | Straw bedding level `{ value, capacity }` — `null` if stall uses no straw |
 | `health` | number\|null | Average animal health 0–100 — `null` if no animals are present |
@@ -167,10 +170,27 @@ Icon paths use two formats depending on their origin:
 - **Base game:** `dataS/menu/hud/fillTypes/...` — relative to the FS25 installation directory
 - **Mods:** absolute path to the mod folder
 
+### animalFood.json
+```json
+{
+  "PIG": [
+    { "title": "Mais Sorghum",                 "percentage": 50, "fillTypes": ["CORN", "SORGHUM"] },
+    { "title": "Weizen Gerste Hafer",          "percentage": 25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
+    { "title": "Sojabohnen Raps Sonnenblumen", "percentage": 20, "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
+    { "title": "Kartoffeln Zuckerrüben …",     "percentage":  5, "fillTypes": ["POTATO", "SUGARBEET"] }
+  ],
+  "COW": [
+    { "title": "Futter", "percentage": 100, "fillTypes": ["FORAGE_MIXING"] }
+  ]
+}
+```
+
+One entry per animal type. The `percentage` field is the share of this food group in the total recipe (sum of all groups = 100). Use this together with `foodTotal` from `husbandries.json` to calculate how much of each fill type a stall needs.
+
 ## Notes
 
 - Singleplayer only (`multiplayer supported="false"`).
 - The JSON files are gitignored and not part of this repository — they are generated at runtime.
-- `fillTypes.json` is written once per session since fill type definitions do not change while a map is loaded.
+- `fillTypes.json` and `animalFood.json` are written once per session since their definitions do not change while a map is loaded.
 - The dashboard server must be started from the mod folder so it can locate the JSON files.
 - Lua serialises empty arrays as `{}` (empty object) rather than `[]`. The dashboard handles this transparently.
