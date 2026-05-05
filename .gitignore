@@ -1,3 +1,5 @@
+deploy.sh
+
 # Generated data files (written by the mod at runtime)
 silos.json
 productions.json
