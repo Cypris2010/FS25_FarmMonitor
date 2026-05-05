@@ -10,6 +10,7 @@ FarmMonitor.timer             = 0
 FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported  = false
 FarmMonitor.animalFoodExported = false
+FarmMonitor.savegameName       = nil
 
 addModEventListener(FarmMonitor)
 
@@ -32,6 +33,10 @@ end
 function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
+    end
+
+    if FarmMonitor.savegameName == nil then
+        FarmMonitor.savegameName = FarmMonitor:readSavegameName()
     end
 
     if not FarmMonitor.fillTypesExported then
@@ -71,19 +76,20 @@ end
 
 function FarmMonitor:collectAndSave()
     local ok, err = pcall(function()
-        local ts     = getDate("%Y-%m-%dT%H:%M:%S")
-        local farmId = g_currentMission:getFarmId()
+        local ts           = getDate("%Y-%m-%dT%H:%M:%S")
+        local farmId       = g_currentMission:getFarmId()
+        local savegameName = FarmMonitor.savegameName
 
         FarmMonitor:writeJSON(FarmMonitor.paths.silos, FarmMonitor.obj(
-            "timestamp", ts, "farmId", farmId,
+            "timestamp", ts, "farmId", farmId, "savegame", savegameName,
             "silos",     FarmMonitor:collectSilos()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.productions, FarmMonitor.obj(
-            "timestamp",   ts, "farmId", farmId,
+            "timestamp",   ts, "farmId", farmId, "savegame", savegameName,
             "productions", FarmMonitor:collectProductions()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.husbandries, FarmMonitor.obj(
-            "timestamp",   ts, "farmId", farmId,
+            "timestamp",   ts, "farmId", farmId, "savegame", savegameName,
             "husbandries", FarmMonitor:collectHusbandries()
         ))
     end)
@@ -166,6 +172,28 @@ function FarmMonitor:exportAnimalFood()
     if not ok then
         print("[FarmMonitor] ERROR writing animalFood.json: " .. tostring(err))
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Savegame name  (read once, cached in FarmMonitor.savegameName)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:readSavegameName()
+    local missionInfo = g_currentMission and g_currentMission.missionInfo
+    if missionInfo == nil or missionInfo.savegameDirectory == nil then return nil end
+    local xmlPath = missionInfo.savegameDirectory .. "/careerSavegame.xml"
+    local name = nil
+    local ok, err = pcall(function()
+        local xmlFile = XMLFile.load("FarmMonitor_savegame", xmlPath)
+        if xmlFile ~= nil then
+            name = xmlFile:getString("careerSavegame.settings.savegameName")
+            xmlFile:delete()
+        end
+    end)
+    if not ok then
+        print("[FarmMonitor] WARNING: Could not read savegame name: " .. tostring(err))
+    end
+    return name
 end
 
 -- ---------------------------------------------------------------------------
