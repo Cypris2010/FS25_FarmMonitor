@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sync"
 	"time"
@@ -125,6 +126,59 @@ func handleSettings() http.HandlerFunc {
 			}
 			if err := os.WriteFile(path, raw, 0644); err != nil {
 				http.Error(w, "cannot write settings", http.StatusInternalServerError)
+				return
+			}
+			w.Write(raw)
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+var safeSavegameID = regexp.MustCompile(`^[A-Za-z0-9_\-]{1,128}$`)
+
+func savegamePath(savegameID string) string {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(configDir, "FS25_FarmMonitor", "savegames", savegameID+".json")
+}
+
+func handleSavegame() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		savegameID := r.PathValue("savegameId")
+		if !safeSavegameID.MatchString(savegameID) {
+			http.Error(w, "invalid savegameId", http.StatusBadRequest)
+			return
+		}
+
+		path := savegamePath(savegameID)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		switch r.Method {
+		case http.MethodGet:
+			data, err := os.ReadFile(path)
+			if err != nil {
+				w.Write([]byte("{}"))
+				return
+			}
+			w.Write(data)
+
+		case http.MethodPut:
+			var raw json.RawMessage
+			if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				http.Error(w, "cannot create savegames dir", http.StatusInternalServerError)
+				return
+			}
+			if err := os.WriteFile(path, raw, 0644); err != nil {
+				http.Error(w, "cannot write savegame settings", http.StatusInternalServerError)
 				return
 			}
 			w.Write(raw)
@@ -256,6 +310,7 @@ func main() {
 	mux.HandleFunc("/api/data", handleData(dataDir))
 	mux.HandleFunc("/api/events", handleEvents(b))
 	mux.HandleFunc("/api/settings", handleSettings())
+	mux.HandleFunc("/api/savegame/{savegameId}", handleSavegame())
 
 	log.Printf("Settings: %s", settingsPath())
 
