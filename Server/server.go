@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	_ "embed"
 	"flag"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sync"
 	"time"
@@ -136,20 +136,20 @@ func handleSettings() http.HandlerFunc {
 	}
 }
 
-var safeSavegameID = regexp.MustCompile(`^[A-Za-z0-9_\-]{1,128}$`)
-
 func savegamePath(savegameID string) string {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(configDir, "FS25_FarmMonitor", "savegames", savegameID+".json")
+	sum := sha256.Sum256([]byte(savegameID))
+	filename := fmt.Sprintf("%x.json", sum[:16])
+	return filepath.Join(configDir, "FS25_FarmMonitor", "savegames", filename)
 }
 
 func handleSavegame() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		savegameID := r.PathValue("savegameId")
-		if !safeSavegameID.MatchString(savegameID) {
+		if savegameID == "" || len(savegameID) > 512 {
 			http.Error(w, "invalid savegameId", http.StatusBadRequest)
 			return
 		}
