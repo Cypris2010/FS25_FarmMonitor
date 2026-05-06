@@ -1119,6 +1119,12 @@ function husStatus(h) {
       if (p < 20) { escalate('crit'); hints.push('Futter kritisch'); }
       else if (p < 40) { escalate('warn'); hints.push('Futter niedrig'); }
     });
+
+    if (h.straw && h.straw.capacity > 0) {
+      const p = pct(h.straw.value, h.straw.capacity);
+      if (p < 20) { escalate('crit'); hints.push('Stroh kritisch'); }
+      else if (p < 40) { escalate('warn'); hints.push('Stroh niedrig'); }
+    }
   }
 
   // Outputs
@@ -1181,6 +1187,13 @@ function renderHusbandryCard(h) {
     water = '<div class="sub-label">Wasser</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Wasserdaten</p>';
   }
 
+  let straw = '';
+  if (h.straw) {
+    const sp = pct(h.straw.value, h.straw.capacity);
+    straw = '<div class="sub-label">Stroh</div>' +
+      metricRow('Stroh', h.straw.value, h.straw.capacity, sp < 20 ? 'red' : sp < 40 ? 'orange' : 'green');
+  }
+
   let outputs = '';
   if (Array.isArray(h.outputs) && h.outputs.length > 0) {
     outputs = '<div class="sub-label">Erzeugnisse</div>' +
@@ -1231,6 +1244,7 @@ function renderHusbandryCard(h) {
       <div class="animal-sections">
         ${food}
         ${water}
+        ${straw}
         ${outputs}
       </div>
       <div class="card-footer">
