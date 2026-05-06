@@ -263,6 +263,30 @@ func handleEvents(b *broker) http.HandlerFunc {
 }
 
 // ---------------------------------------------------------------------------
+// Startup settings
+// ---------------------------------------------------------------------------
+
+type serverConfig struct {
+	Port *int    `json:"port,omitempty"`
+	Host *string `json:"host,omitempty"`
+	Data *string `json:"data,omitempty"`
+}
+
+type settingsFile struct {
+	Server *serverConfig `json:"server,omitempty"`
+}
+
+func loadStartupSettings() settingsFile {
+	data, err := os.ReadFile(settingsPath())
+	if err != nil {
+		return settingsFile{}
+	}
+	var s settingsFile
+	json.Unmarshal(data, &s)
+	return s
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -286,6 +310,21 @@ func main() {
 	host := flag.String("host", "127.0.0.1", "Listen address (use 0.0.0.0 for LAN access)")
 	data := flag.String("data", "", "Path to the directory containing the JSON data files (default: auto-detect from modSettings)")
 	flag.Parse()
+
+	// Apply saved settings for any flag not explicitly set via CLI.
+	explicit := map[string]bool{}
+	flag.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
+	if s := loadStartupSettings(); s.Server != nil {
+		if !explicit["port"] && s.Server.Port != nil {
+			*port = *s.Server.Port
+		}
+		if !explicit["host"] && s.Server.Host != nil {
+			*host = *s.Server.Host
+		}
+		if !explicit["data"] && s.Server.Data != nil && *s.Server.Data != "" {
+			*data = *s.Server.Data
+		}
+	}
 
 	dataDir := *data
 	if dataDir == "" {

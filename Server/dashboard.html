@@ -985,6 +985,7 @@ let husFilter        = 'all';
 let husTypeFilter    = 'all';
 let savegameId       = null;
 let savegameSettings = { placeables: {} };
+let globalSettings   = {};
 let editMode         = false;
 
 // ═══════════════════════════════════════════════════════════
@@ -1073,6 +1074,23 @@ async function saveSavegameSettings() {
       body: JSON.stringify(savegameSettings),
     });
   } catch (e) { console.warn('Konnte Savegame-Settings nicht speichern:', e); }
+}
+
+async function loadGlobalSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) globalSettings = await res.json();
+  } catch (e) { console.warn('Konnte globale Settings nicht laden:', e); }
+}
+
+async function saveGlobalSettings() {
+  try {
+    await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(globalSettings),
+    });
+  } catch (e) { console.warn('Konnte globale Settings nicht speichern:', e); }
 }
 
 function toggleEditMode() {
@@ -1561,15 +1579,57 @@ function renderSettings() {
     return `<div class="settings-section-title">${title}</div><div class="placeable-list">${rows}</div>`;
   }
 
+  const srv = globalSettings.server || {};
+  const serverBlock = `
+    <div class="settings-section-title">Server</div>
+    <div class="placeable-list" style="gap:14px;padding:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
+          Port
+          <input id="cfg-port" type="number" min="1" max="65535" value="${srv.port ?? 8080}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
+          Host
+          <input id="cfg-host" type="text" value="${srv.host ?? '127.0.0.1'}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
+        </label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
+        Datenpfad <span style="font-size:11px">(leer = automatisch erkennen)</span>
+        <input id="cfg-data" type="text" value="${srv.data ?? ''}" placeholder="Automatisch"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
+      </label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <span style="font-size:12px;color:var(--muted)">⚠ Port und Host erfordern einen Serverneustart.</span>
+        <button onclick="saveServerSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
+      </div>
+      <div id="cfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
+    </div>`;
+
   const sgInfo = savegameId
     ? `<div class="pill" style="margin-bottom:16px;display:inline-flex">Spielstand: <strong style="margin-left:6px">${savegameId}</strong></div>`
     : '';
 
-  el.innerHTML = sgInfo
+  el.innerHTML = serverBlock
+    + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
+    + sgInfo
     + section('Silos', silos)
     + section('Produktionen', productions)
     + section('Tierställe', husbandries)
     || '<div class="state-box"><span>Keine Daten verfügbar.</span></div>';
+}
+
+async function saveServerSettings() {
+  const port = parseInt(document.getElementById('cfg-port').value, 10);
+  const host = document.getElementById('cfg-host').value.trim();
+  const data = document.getElementById('cfg-data').value.trim();
+  if (!port || port < 1 || port > 65535) return;
+  if (!host) return;
+  globalSettings = { ...globalSettings, server: { port, host, ...(data ? { data } : {}) } };
+  await saveGlobalSettings();
+  const msg = document.getElementById('cfg-saved');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
 }
 
 function rerenderCurrentView() {
@@ -1669,6 +1729,7 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
 // ═══════════════════════════════════════════════════════════
 
 showView('home');
+loadGlobalSettings();
 loadData();
 connect();
 </script>
