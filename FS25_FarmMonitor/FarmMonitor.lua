@@ -11,6 +11,7 @@ FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported  = false
 FarmMonitor.animalFoodExported = false
 FarmMonitor.savegameName       = nil
+FarmMonitor.savegameId         = nil
 
 addModEventListener(FarmMonitor)
 
@@ -39,7 +40,7 @@ function FarmMonitor:update(dt)
     end
 
     if FarmMonitor.savegameName == nil then
-        FarmMonitor.savegameName = FarmMonitor:readSavegameName()
+        FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
     end
 
     if not FarmMonitor.fillTypesExported then
@@ -82,17 +83,18 @@ function FarmMonitor:collectAndSave()
         local ts           = getDate("%Y-%m-%dT%H:%M:%S")
         local farmId       = g_currentMission:getFarmId()
         local savegameName = FarmMonitor.savegameName
+        local savegameId   = FarmMonitor.savegameId
 
         FarmMonitor:writeJSON(FarmMonitor.paths.silos, FarmMonitor.obj(
-            "timestamp", ts, "farmId", farmId, "savegame", savegameName,
+            "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "silos",     FarmMonitor:collectSilos()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.productions, FarmMonitor.obj(
-            "timestamp",   ts, "farmId", farmId, "savegame", savegameName,
+            "timestamp",   ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "productions", FarmMonitor:collectProductions()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.husbandries, FarmMonitor.obj(
-            "timestamp",   ts, "farmId", farmId, "savegame", savegameName,
+            "timestamp",   ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "husbandries", FarmMonitor:collectHusbandries()
         ))
     end)
@@ -124,7 +126,10 @@ function FarmMonitor:exportFillTypes()
 
         table.sort(entries, function(a, b) return a.name < b.name end)
 
-        FarmMonitor:writeJSON(FarmMonitor.paths.fillTypes, entries)
+        FarmMonitor:writeJSON(FarmMonitor.paths.fillTypes, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "fillTypes",  entries
+        ))
         print("[FarmMonitor] fillTypes.json written (" .. #entries .. " entries)")
     end)
 
@@ -168,7 +173,10 @@ function FarmMonitor:exportAnimalFood()
             end
         end
 
-        FarmMonitor:writeJSON(FarmMonitor.paths.animalFood, result)
+        FarmMonitor:writeJSON(FarmMonitor.paths.animalFood, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "animalFood", result
+        ))
         print("[FarmMonitor] animalFood.json written")
     end)
 
@@ -181,22 +189,25 @@ end
 -- Savegame name  (read once, cached in FarmMonitor.savegameName)
 -- ---------------------------------------------------------------------------
 
-function FarmMonitor:readSavegameName()
+function FarmMonitor:readSavegameInfo()
     local missionInfo = g_currentMission and g_currentMission.missionInfo
-    if missionInfo == nil or missionInfo.savegameDirectory == nil then return nil end
+    if missionInfo == nil or missionInfo.savegameDirectory == nil then return nil, nil end
     local xmlPath = missionInfo.savegameDirectory .. "/careerSavegame.xml"
-    local name = nil
+    local name, savegameId = nil, nil
     local ok, err = pcall(function()
         local xmlFile = XMLFile.load("FarmMonitor_savegame", xmlPath)
         if xmlFile ~= nil then
             name = xmlFile:getString("careerSavegame.settings.savegameName")
+            local mapId       = missionInfo.mapId or xmlFile:getString("careerSavegame.settings.mapId") or "unknown"
+            local creationDate = xmlFile:getString("careerSavegame.settings.creationDate") or "unknown"
+            savegameId = mapId .. "_" .. creationDate
             xmlFile:delete()
         end
     end)
     if not ok then
-        print("[FarmMonitor] WARNING: Could not read savegame name: " .. tostring(err))
+        print("[FarmMonitor] WARNING: Could not read savegame info: " .. tostring(err))
     end
-    return name
+    return name, savegameId
 end
 
 -- ---------------------------------------------------------------------------
@@ -219,6 +230,7 @@ function FarmMonitor:collectSilos()
                         local contents = FarmMonitor:readFillLevels(storage)
                         if #contents > 0 then
                             table.insert(result, {
+                                uniqueId = placeable:getUniqueId() or "",
                                 name     = FarmMonitor:placeableName(placeable),
                                 type     = "silo",
                                 capacity = storage.capacity or 0,
@@ -237,6 +249,7 @@ function FarmMonitor:collectSilos()
                 local contents = FarmMonitor:readFillLevels(storage)
                 if #contents > 0 then
                     table.insert(result, {
+                        uniqueId = placeable:getUniqueId() or "",
                         name     = FarmMonitor:placeableName(placeable),
                         type     = "siloExtension",
                         capacity = storage.capacity or 0,
@@ -258,10 +271,12 @@ function FarmMonitor:collectProductions()
     local result = {}
     local farmId = g_currentMission:getFarmId()
 
-    if g_currentMission.productionChainManager == nil then return result end
+    if g_currentMission.placeableSystem == nil then return result end
 
-    for _, pp in ipairs(g_currentMission.productionChainManager.productionPoints) do
-        if pp:getOwnerFarmId() == farmId then
+    for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
+        local spec = placeable.spec_productionPoint
+        if spec ~= nil and spec.productionPoint ~= nil and placeable.ownerFarmId == farmId then
+            local pp = spec.productionPoint
             -- Inputs: all fill types stored as input for this production point
             local inputs = {}
             if pp.inputFillTypeIds ~= nil then
@@ -318,6 +333,7 @@ function FarmMonitor:collectProductions()
             end
 
             table.insert(result, FarmMonitor.obj(
+                "uniqueId",    placeable:getUniqueId() or "",
                 "name",        pp:getName() or "",
                 "inputs",      inputs,
                 "outputs",     outputs,
@@ -342,6 +358,7 @@ function FarmMonitor:collectHusbandries()
     for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
         if placeable.spec_husbandry ~= nil and placeable.ownerFarmId == farmId then
             local entry = {
+                uniqueId    = placeable:getUniqueId() or "",
                 name        = FarmMonitor:placeableName(placeable),
                 animalType  = FarmMonitor:getAnimalType(placeable),
                 numAnimals  = FarmMonitor:countAnimals(placeable),
