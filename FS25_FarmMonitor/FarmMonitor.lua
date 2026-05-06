@@ -219,6 +219,7 @@ function FarmMonitor:collectSilos()
                         local contents = FarmMonitor:readFillLevels(storage)
                         if #contents > 0 then
                             table.insert(result, {
+                                uniqueId = placeable:getUniqueId() or "",
                                 name     = FarmMonitor:placeableName(placeable),
                                 type     = "silo",
                                 capacity = storage.capacity or 0,
@@ -237,6 +238,7 @@ function FarmMonitor:collectSilos()
                 local contents = FarmMonitor:readFillLevels(storage)
                 if #contents > 0 then
                     table.insert(result, {
+                        uniqueId = placeable:getUniqueId() or "",
                         name     = FarmMonitor:placeableName(placeable),
                         type     = "siloExtension",
                         capacity = storage.capacity or 0,
@@ -317,7 +319,13 @@ function FarmMonitor:collectProductions()
                 ))
             end
 
+            local ppUniqueId = ""
+            if pp.placeable ~= nil and pp.placeable.getUniqueId ~= nil then
+                ppUniqueId = pp.placeable:getUniqueId() or ""
+            end
+
             table.insert(result, FarmMonitor.obj(
+                "uniqueId",    ppUniqueId,
                 "name",        pp:getName() or "",
                 "inputs",      inputs,
                 "outputs",     outputs,
@@ -342,6 +350,7 @@ function FarmMonitor:collectHusbandries()
     for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
         if placeable.spec_husbandry ~= nil and placeable.ownerFarmId == farmId then
             local entry = {
+                uniqueId    = placeable:getUniqueId() or "",
                 name        = FarmMonitor:placeableName(placeable),
                 animalType  = FarmMonitor:getAnimalType(placeable),
                 numAnimals  = FarmMonitor:countAnimals(placeable),
