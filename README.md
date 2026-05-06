@@ -5,9 +5,11 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 ## Features
 
 - **Live JSON export** — silos, productions, animal husbandries, fill types and animal food recipes written to the modSettings folder
+- **Unique placeable IDs** — every silo, production point and husbandry carries a persistent `uniqueId` (from the savegame) and a `savegameId` (`mapId + creationDate`) for reliable cross-session identification
 - **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
 - **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Alerts, Settings
 - **Tierställe detail page** — per-stall cards with occupancy, food, water and output progress bars, computed status (OK / Watch / Warning / Critical) and a warning band for urgent issues
+- **Per-savegame visibility settings** — hide individual placeables from the dashboard via the edit mode button; settings are persisted per savegame on the server
 
 ## What it exports
 
@@ -54,7 +56,7 @@ chmod +x farmmonitor-macos-apple
 
 ### Start — Build from source (optional)
 
-Requires [Go](https://go.dev/dl/) to be installed.
+Requires [Go 1.22+](https://go.dev/dl/) to be installed.
 
 ```bash
 cd path/to/FS25_FarmMonitor/Server
@@ -87,6 +89,31 @@ Open **http://localhost:8080** in a browser.
 | Productions | Input/output bars and chain status (running / inactive / stopped) per production point |
 | Tierställe | Per-stall cards with occupancy, food, water, outputs and computed status |
 | Alerts | Consolidated list of all active warnings across all categories |
+| Settings | Toggle visibility of individual placeables per savegame |
+
+### Editing the dashboard view
+
+Each section (Silos, Productions, Tierställe) has an **„Ansicht bearbeiten"** button in the top-right corner of the section header.
+
+- **Normal mode** — hidden placeables are not shown
+- **Edit mode** — all placeables are shown; a green eye means visible, a grey crossed-out eye means hidden; hidden cards are dimmed
+- Clicking the eye icon on any card toggles its visibility immediately and saves the setting to the server
+
+Settings are stored per savegame (identified by `savegameId`) so hiding a silo on one map does not affect other savegames.
+
+## Server settings storage
+
+The server persists two kinds of settings using the platform config directory:
+
+| Kind | API | File location |
+|---|---|---|
+| Global dashboard settings | `GET/PUT /api/settings` | `<configDir>/FS25_FarmMonitor/settings.json` |
+| Per-savegame placeable visibility | `GET/PUT /api/savegame/{savegameId}` | `<configDir>/FS25_FarmMonitor/savegames/<hash>.json` |
+
+Platform config directories:
+- **macOS:** `~/Library/Application Support/`
+- **Windows:** `%APPDATA%\`
+- **Linux:** `~/.config/`
 
 ## Installation
 
@@ -105,8 +132,10 @@ Open **http://localhost:8080** in a browser.
   "timestamp": "2026-05-03T22:49:23",
   "farmId": 1,
   "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
   "silos": [
     {
+      "uniqueId": "abc-123",
       "name": "Grosses Silo",
       "type": "silo",
       "capacity": 200000,
@@ -124,8 +153,10 @@ Open **http://localhost:8080** in a browser.
   "timestamp": "2026-05-03T22:49:23",
   "farmId": 1,
   "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
   "productions": [
     {
+      "uniqueId": "def-456",
       "name": "Bäckerei",
       "inputs":  [ { "fillType": "WHEAT", "title": "Weizen", "level": 1200, "capacity": 5000 } ],
       "outputs": [ { "fillType": "BREAD", "title": "Brot",   "level":  300, "capacity": 1000 } ],
@@ -143,8 +174,10 @@ Open **http://localhost:8080** in a browser.
   "timestamp": "2026-05-03T22:49:23",
   "farmId": 1,
   "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
   "husbandries": [
     {
+      "uniqueId": "ghi-789",
       "name": "Kuhstall",
       "animalType": "COW",
       "numAnimals": 24,
@@ -152,8 +185,8 @@ Open **http://localhost:8080** in a browser.
       "food":      [ { "title": "Mischration", "value": 800, "capacity": 1000 } ],
       "foodTotal": { "value": 800, "capacity": 1000, "ratio": 0.8 },
       "water":     { "value": 600, "capacity": 1000 },
-      "straw":   { "value": 400, "capacity": 1000 },
-      "health":  92,
+      "straw":     { "value": 400, "capacity": 1000 },
+      "health":    92,
       "outputs": [
         { "fillType": "MILK",   "title": "Milch", "level": 4200, "capacity": 10000 },
         { "fillType": "MANURE", "title": "Mist",  "level":  800, "capacity":  5000 }
@@ -167,7 +200,8 @@ Field reference:
 
 | Field | Type | Description |
 |---|---|---|
-| `name` | string | Stall name |
+| `uniqueId` | string | Persistent placeable ID from the savegame |
+| `name` | string | Placeable name set by the player |
 | `animalType` | string | Animal type identifier (e.g. `COW`, `PIG`) or `"unknown"` |
 | `numAnimals` | number | Current animal count |
 | `maxAnimals` | number | Maximum capacity |
@@ -176,17 +210,20 @@ Field reference:
 | `water` | object\|null | Water level `{ value, capacity }` — `null` if stall has no water trough |
 | `straw` | object\|null | Straw bedding level `{ value, capacity }` — `null` if stall uses no straw |
 | `health` | number\|null | Average animal health 0–100 — `null` if no animals are present |
-| `outputs` | array | Output storage entries with `fillType`, `title`, `level` and `capacity` (milk, manure, liquid manure, eggs, wool, …) |
+| `outputs` | array | Output storage entries with `fillType`, `title`, `level` and `capacity` |
 
 ### fillTypes.json
 ```json
-[
-  {
-    "name": "WHEAT",
-    "title": "Weizen",
-    "hudOverlayFilename": "dataS/menu/hud/fillTypes/hud_fill_wheat.png"
-  }
-]
+{
+  "savegameId": "MapUS_2026-02-15",
+  "fillTypes": [
+    {
+      "name": "WHEAT",
+      "title": "Weizen",
+      "hudOverlayFilename": "dataS/menu/hud/fillTypes/hud_fill_wheat.png"
+    }
+  ]
+}
 ```
 
 Icon paths use two formats depending on their origin:
@@ -196,25 +233,31 @@ Icon paths use two formats depending on their origin:
 ### animalFood.json
 ```json
 {
-  "PIG": [
-    { "title": "Mais Sorghum",                 "percentage": 50, "fillTypes": ["CORN", "SORGHUM"] },
-    { "title": "Weizen Gerste Hafer",          "percentage": 25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
-    { "title": "Sojabohnen Raps Sonnenblumen", "percentage": 20, "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
-    { "title": "Kartoffeln Zuckerrüben …",     "percentage":  5, "fillTypes": ["POTATO", "SUGARBEET"] }
-  ],
-  "COW": [
-    { "title": "Futter", "percentage": 100, "fillTypes": ["FORAGE_MIXING"] }
-  ]
+  "savegameId": "MapUS_2026-02-15",
+  "animalFood": {
+    "PIG": [
+      { "title": "Mais Sorghum",                 "percentage": 50, "fillTypes": ["CORN", "SORGHUM"] },
+      { "title": "Weizen Gerste Hafer",          "percentage": 25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
+      { "title": "Sojabohnen Raps Sonnenblumen", "percentage": 20, "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
+      { "title": "Kartoffeln Zuckerrüben …",     "percentage":  5, "fillTypes": ["POTATO", "SUGARBEET"] }
+    ],
+    "COW": [
+      { "title": "Futter", "percentage": 100, "fillTypes": ["FORAGE_MIXING"] }
+    ]
+  }
 }
 ```
 
-One entry per animal type. The `percentage` field is the share of this food group in the total recipe (sum of all groups = 100). Use this together with `foodTotal` from `husbandries.json` to calculate how much of each fill type a stall needs.
+One entry per animal type. The `percentage` field is the share of this food group in the total recipe (sum of all groups = 100).
+
+### savegameId
+
+All five JSON files include a `savegameId` field composed of `mapId + "_" + creationDate` (e.g. `MapUS_2026-02-15`). This uniquely identifies the active savegame and is used by the dashboard server to scope visibility settings per save.
 
 ## Notes
 
 - Singleplayer only (`multiplayer supported="false"`).
 - The JSON files are gitignored and not part of this repository — they are generated at runtime.
 - `fillTypes.json` and `animalFood.json` are written once per session since their definitions do not change while a map is loaded.
-- The `savegame` field in each JSON file contains the savegame name from `careerSavegame.xml` — useful for identifying which save is currently active when multiple saves exist.
-- The dashboard server can be started from any directory — it automatically locates the JSON files in the modSettings folder. Use `-data` to override the path manually.
 - Lua serialises empty arrays as `{}` (empty object) rather than `[]`. The dashboard handles this transparently.
+- The dashboard server can be started from any directory — it automatically locates the JSON files in the modSettings folder. Use `-data` to override the path manually.
