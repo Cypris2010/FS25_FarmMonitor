@@ -1046,6 +1046,14 @@ function renderHusbandryCard(h) {
        </div>`
     : `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">${h.numAnimals} Tiere</p>`;
 
+  const healthHtml = h.health != null
+    ? `<div class="metric" style="margin-bottom:14px">
+         <span>Gesundheit</span>
+         <div class="bar ${h.health >= 80 ? 'green' : h.health >= 50 ? 'orange' : 'red'}"><i style="width:${h.health}%"></i></div>
+         <span class="metric-val">${h.health}%</span>
+       </div>`
+    : '';
+
   return `
     <article class="card animal-card ${level}" data-status="${level}" data-type="${h.animalType}" aria-label="${h.name}">
       <div class="animal-head">
@@ -1057,6 +1065,7 @@ function renderHusbandryCard(h) {
           <span class="animal-type-tag">${animalName(h.animalType)}</span>
         </div>
       </div>
+      ${healthHtml}
       ${occHtml}
       <div class="animal-sections">
         ${food}
@@ -1185,25 +1194,25 @@ function renderProductions(data) {
     el.innerHTML = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
     return;
   }
-  el.innerHTML = data.productions.map(pp => {
+  el.innerHTML = [...data.productions].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de')).map(pp => {
     let html = `<article class="card content-card"><h3>${pp.name}</h3>`;
     if (Array.isArray(pp.inputs) && pp.inputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
-      html += pp.inputs.map(i => {
+      html += [...pp.inputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
         const p = pct(i.level, i.capacity);
         return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false));
       }).join('');
     }
     if (Array.isArray(pp.outputs) && pp.outputs.length) {
       html += '<div class="sub-label">Ausgänge</div>';
-      html += pp.outputs.map(o => {
+      html += [...pp.outputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
         const p = pct(o.level, o.capacity);
         return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true));
       }).join('');
     }
     if (Array.isArray(pp.productions) && pp.productions.length) {
       html += '<div class="sub-label">Ketten</div>';
-      html += pp.productions.map(c => {
+      html += [...pp.productions].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c => {
         let b;
         if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
         else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
