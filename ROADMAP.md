@@ -78,4 +78,7 @@
 
 ## v0.8.0 — Polish & QoL
 - Mehrsprachigkeit (DE/EN)
-- Multiplayer-Unterstützung
+- **Multiplayer-Unterstützung** — Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal. Einzige Ausnahme: Dedicated Server (kein lokaler Spieler → `getFarmId()` gibt `SPECTATOR_FARM_ID` zurück → leere Listen). Benötigte Änderungen:
+  - `isServer`-Guard für Dedicated-Server-Fall
+  - `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
+  - MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
