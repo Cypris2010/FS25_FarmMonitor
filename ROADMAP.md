@@ -1,15 +1,30 @@
 # FarmMonitor Roadmap
 
 ## v0.3.0 — Object Storages (Paletten & Ballenlager)
-- **Lua:** Object Storages exportieren — Typ, Inhalt, Kapazität, Standort
-- **Lua:** Unterscheidung Paletten vs. Ballen
-- **Dashboard:** Neuer View "Lager" mit Karten + Kapazitätsbalken
+- **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
+  - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
+  - Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
+  - Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
+  - Mistlager (`spec_manureHeap`)
+  - Bienenstock-Paletten (`spec_beehivePalletSpawner`)
+- **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
+- **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
+- **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
+- **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
 
 ## v0.4.0 — Warenübersicht
-- **Lua:** Verkaufspreise exportieren (aktueller Preis + Maximalpreis pro Ware)
-- **Lua:** Alle Lagermengen aggregiert nach Fülltyp (Silos + Object Storages)
-- **Dashboard:** Neuer View "Waren" — Tabelle mit Menge, Akt. Preis, Max. Preis, % vom Maximum
-- **Dashboard:** Farbliche Hervorhebung bei Verkaufsempfehlung
+- **Lua:** Alle Lagermengen aggregiert nach Fülltyp aus allen Quellen (Silos + Object Storages + Husbandry + Produktionen + Paletten + Ballen)
+- **Lua:** Verkaufspreise via `g_currentMission.storageSystem:getUnloadingStations()`:
+  - Aktueller Preis pro Station: `station:getEffectiveFillTypePrice(fillType)`
+  - Bester aktueller Preis & beste Station
+  - Preistrend: FALLING / CLIMBING / GREAT_DEMAND (`station:getCurrentPricingTrend`)
+  - Nachfrage-Highlight: `station.greatDemandFillType`
+- **Lua:** Maximalpreis über alle 12 Jahresperioden: `fillType.economy.factors[period]`
+- **Lua:** Bester Verkaufsmonat pro Ware
+- **Dashboard:** Neuer View "Waren" — Tabelle mit:
+  - Ware, Gesamtmenge, Aktueller Preis, Aktueller Wert, Maximalpreis, Maximaler Wert, Bester Monat
+  - Farbliche Hervorhebung: Blau ≥100%, Dunkelgrün ≥95%, Gelb ≥90%, Weiß <90%
+  - Preistrend-Indikator (Pfeil hoch/runter/Sondernachfrage)
 
 ## v0.5.0 — Feldübersicht
 - **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + `field:getFieldState()`
