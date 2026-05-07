@@ -1,5 +1,11 @@
 # FarmMonitor Roadmap
 
+## v0.2.1 — Bugfix: Produktionen mit Silo-Extension
+- **Bug:** Warenbestände von Produktionen werden nicht angezeigt wenn eine Silo-Extension angeschlossen ist
+- **Ursache:** `pp.storage:getCapacity(fillTypeId)` gibt 0 zurück wenn der Speicher durch eine Silo-Extension ersetzt wird — der `if capacity > 0` Check filtert dann alle Einträge heraus
+- **Fix Lua:** Kapazität aus der verknüpften Silo-Extension lesen wenn `pp.storage` sie nicht kennt; Einträge mit `level > 0` auch bei `capacity == 0` exportieren
+- **Fix Dashboard:** Füllstandsanzeige ohne Kapazität graceful behandeln
+
 ## v0.3.0 — Object Storages (Paletten & Ballenlager)
 - **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
   - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
