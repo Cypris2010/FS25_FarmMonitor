@@ -28,7 +28,11 @@
 
 ## v0.4.0 — Warenübersicht
 - **Server:** DDS-Icons der Fülltypen server-seitig zu PNG konvertieren — Go-Server liest `fillTypes.json`, konvertiert alle `hudOverlayFilename`-Pfade (`.dds`) zu PNG und serviert sie unter `/icons/<filltype>.png`
-- **Dashboard:** Fülltyp-Icons aus `/icons/<filltype>.png` laden und in der Warenübersicht anzeigen
+- **Dashboard:** Fülltyp-Icons aus `/icons/<filltype>.png` laden und in folgenden Views anzeigen:
+  - Warenübersicht (v0.4.0)
+  - Produktionen (Inputs & Outputs)
+  - Silos
+  - Tierhaltung (optional, wo sinnvoll)
 - **Lua:** Alle Lagermengen aggregiert nach Fülltyp aus allen Quellen (Silos + Object Storages + Husbandry + Produktionen + Paletten + Ballen)
 - **Lua:** Verkaufspreise via `g_currentMission.storageSystem:getUnloadingStations()`:
   - Aktueller Preis pro Station: `station:getEffectiveFillTypePrice(fillType)`
