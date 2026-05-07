@@ -27,6 +27,8 @@
 - **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
 
 ## v0.4.0 — Warenübersicht
+- **Server:** DDS-Icons der Fülltypen server-seitig zu PNG konvertieren — Go-Server liest `fillTypes.json`, konvertiert alle `hudOverlayFilename`-Pfade (`.dds`) zu PNG und serviert sie unter `/icons/<filltype>.png`
+- **Dashboard:** Fülltyp-Icons aus `/icons/<filltype>.png` laden und in der Warenübersicht anzeigen
 - **Lua:** Alle Lagermengen aggregiert nach Fülltyp aus allen Quellen (Silos + Object Storages + Husbandry + Produktionen + Paletten + Ballen)
 - **Lua:** Verkaufspreise via `g_currentMission.storageSystem:getUnloadingStations()`:
   - Aktueller Preis pro Station: `station:getEffectiveFillTypePrice(fillType)`
