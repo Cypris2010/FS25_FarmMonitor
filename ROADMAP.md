@@ -14,7 +14,13 @@
 - **QoL Server:** Beim Start vorhandene JSON-Dateien sofort laden statt auf ersten Schreibvorgang warten
 - **QoL Dashboard:** Alert-Schwellwerte (z.B. Futter unter X%) konfigurierbar in Settings statt hardcoded
 
-## v0.3.0 — Object Storages (Paletten & Ballenlager)
+## v0.3.0 — Multiplayer-Unterstützung
+- **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
+- **Lua:** `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
+- **Test:** MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
+- **Hintergrund:** Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal
+
+## v0.4.0 — Object Storages (Paletten & Ballenlager)
 - **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
   - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
   - Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
@@ -26,10 +32,10 @@
 - **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
 - **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
 
-## v0.4.0 — Warenübersicht
+## v0.5.0 — Warenübersicht
 - **Server:** DDS-Icons der Fülltypen server-seitig zu PNG konvertieren — Go-Server liest `fillTypes.json`, konvertiert alle `hudOverlayFilename`-Pfade (`.dds`) zu PNG und serviert sie unter `/icons/<filltype>.png`
 - **Dashboard:** Fülltyp-Icons aus `/icons/<filltype>.png` laden und in folgenden Views anzeigen:
-  - Warenübersicht (v0.4.0)
+  - Warenübersicht (v0.5.0)
   - Produktionen (Inputs & Outputs)
   - Silos
   - Tierhaltung (optional, wo sinnvoll)
@@ -46,7 +52,7 @@
   - Farbliche Hervorhebung: Blau ≥100%, Dunkelgrün ≥95%, Gelb ≥90%, Weiß <90%
   - Preistrend-Indikator (Pfeil hoch/runter/Sondernachfrage)
 
-## v0.5.0 — Feldübersicht
+## v0.6.0 — Feldübersicht
 - **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + `field:getFieldState()`
 - **Lua:** Basis-Felddaten (immer verfügbar):
   - Fläche (`farmland.field.areaHa`)
@@ -65,20 +71,16 @@
   - N/P/K Werte (Stickstoff, Phosphor, Kalium)
 - **Dashboard:** Neuer View "Felder" — Grid mit Feldzustand + Alerts für erntereife/ungepflegte Felder
 
-## v0.6.0 — Mobile Web & Netzwerk
+## v0.7.0 — Mobile Web & Netzwerk
 - **Server:** mDNS/Bonjour — meldet sich als `farmmonitor.local` im LAN
 - **Server:** API-Versionierung (`/api/v1/...`)
 - **Dashboard:** Responsive Layout für Smartphone/Tablet
 - **Dashboard:** PWA-Manifest + Offline-Fähigkeit (als App auf Homescreen speicherbar)
 
-## v0.7.0 — Historische Daten
+## v0.8.0 — Historische Daten
 - Zeitreihen für Silo-Füllstände, Preise, Produktionsleistung
 - Charts im Dashboard
 - Datenpersistenz auf dem Server (SQLite oder CSV)
 
-## v0.8.0 — Polish & QoL
+## v0.9.0 — Polish & QoL
 - Mehrsprachigkeit (DE/EN)
-- **Multiplayer-Unterstützung** — Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal. Einzige Ausnahme: Dedicated Server (kein lokaler Spieler → `getFarmId()` gibt `SPECTATOR_FARM_ID` zurück → leere Listen). Benötigte Änderungen:
-  - `isServer`-Guard für Dedicated-Server-Fall
-  - `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
-  - MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
