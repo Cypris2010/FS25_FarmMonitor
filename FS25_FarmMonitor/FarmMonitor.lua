@@ -12,6 +12,7 @@ FarmMonitor.fillTypesExported  = false
 FarmMonitor.animalFoodExported = false
 FarmMonitor.savegameName       = nil
 FarmMonitor.savegameId         = nil
+FarmMonitor.savegameDirectory  = nil
 
 addModEventListener(FarmMonitor)
 
@@ -37,6 +38,17 @@ end
 function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
+    end
+
+    -- Detect savegame change: reset state so files are re-exported for the new savegame
+    local currentDir = g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory
+    if currentDir ~= FarmMonitor.savegameDirectory then
+        FarmMonitor.savegameDirectory  = currentDir
+        FarmMonitor.savegameName       = nil
+        FarmMonitor.savegameId         = nil
+        FarmMonitor.fillTypesExported  = false
+        FarmMonitor.animalFoodExported = false
+        FarmMonitor.timer              = 0
     end
 
     if FarmMonitor.savegameName == nil then
