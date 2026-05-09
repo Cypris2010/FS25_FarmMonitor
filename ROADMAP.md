@@ -3,9 +3,9 @@
 ## v0.2.2 — Bugfix: Produktionen mit Silo-Extension
 - **Bug:** Warenbestände von Produktionen werden nicht angezeigt wenn eine Silo-Extension angeschlossen ist
 - **Ursache:** `pp.storage:getCapacity(fillTypeId)` gibt 0 zurück wenn der Speicher durch eine Silo-Extension ersetzt wird — der `if capacity > 0` Check filtert dann alle Einträge heraus
-- **Fix Lua:** Kapazität aus der verknüpften Silo-Extension lesen wenn `pp.storage` sie nicht kennt; Einträge mit `level > 0` auch bei `capacity == 0` exportieren
-- **Fix Lua:** Produktions-Inputs aus globalem Siloverbund korrekt lesen — wenn Inputs über Siloverbund fließen zeigt `pp.storage:getFillLevel()` 0 obwohl Material vorhanden ist
-- **Fix Dashboard:** Füllstandsanzeige ohne Kapazität graceful behandeln
+- ✅ **Fix Lua:** `pp:getFillLevel/getCapacity` direkt auf ProductionPoint statt `pp.storage:`; Einträge mit `level > 0` auch bei `capacity == 0` exportieren
+- ⏳ **Fix Lua:** Produktions-Inputs aus globalem Siloverbund korrekt lesen — offen, braucht In-Game-Test um korrekte API zu bestätigen
+- ✅ **Fix Dashboard:** Alert-Guard — Füllstand-Alerts nur wenn `capacity > 0` bekannt
 
 ## v0.2.3 — Bugfixes & QoL
 - **Bug Lua:** Leere Arrays serialisieren als `{}` statt `[]` — kann im Dashboard zu Fehlern führen wenn z.B. eine Produktion keine Inputs hat
