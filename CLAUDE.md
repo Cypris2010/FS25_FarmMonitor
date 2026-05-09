@@ -4,6 +4,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON and serves a loca
 
 ## AI context references
 
+@ROADMAP.md
 @ai/api_ts_stockcheck.md
 @ai/api_field_states.md
 @ai/multiplayer_analysis.md
