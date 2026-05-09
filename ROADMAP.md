@@ -1,13 +1,13 @@
 # FarmMonitor Roadmap
 
-## v0.2.1 — Bugfix: Produktionen mit Silo-Extension
+## v0.2.2 — Bugfix: Produktionen mit Silo-Extension
 - **Bug:** Warenbestände von Produktionen werden nicht angezeigt wenn eine Silo-Extension angeschlossen ist
 - **Ursache:** `pp.storage:getCapacity(fillTypeId)` gibt 0 zurück wenn der Speicher durch eine Silo-Extension ersetzt wird — der `if capacity > 0` Check filtert dann alle Einträge heraus
 - **Fix Lua:** Kapazität aus der verknüpften Silo-Extension lesen wenn `pp.storage` sie nicht kennt; Einträge mit `level > 0` auch bei `capacity == 0` exportieren
 - **Fix Lua:** Produktions-Inputs aus globalem Siloverbund korrekt lesen — wenn Inputs über Siloverbund fließen zeigt `pp.storage:getFillLevel()` 0 obwohl Material vorhanden ist
 - **Fix Dashboard:** Füllstandsanzeige ohne Kapazität graceful behandeln
 
-## v0.2.2 — Bugfixes & QoL
+## v0.2.3 — Bugfixes & QoL
 - **Bug Lua:** Leere Arrays serialisieren als `{}` statt `[]` — kann im Dashboard zu Fehlern führen wenn z.B. eine Produktion keine Inputs hat
 - **Bug Lua:** Savegame-Wechsel ohne Server-Neustart — `savegameName` und `savegameId` werden einmalig gecacht; bei neuem Savegame stimmen die Daten nicht mehr
 - **Bug Lua:** Silo-Extension Kapazität im Silos-View — `storage.capacity` kann 0 sein bei Extensions
