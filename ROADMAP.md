@@ -8,11 +8,9 @@
 - ✅ **Fix Dashboard:** Alert-Guard — Füllstand-Alerts nur wenn `capacity > 0` bekannt
 
 ## v0.2.3 — Bugfixes & QoL
-- **Bug Lua:** Leere Arrays serialisieren als `{}` statt `[]` — kann im Dashboard zu Fehlern führen wenn z.B. eine Produktion keine Inputs hat
-- **Bug Lua:** Savegame-Wechsel ohne Server-Neustart — `savegameName` und `savegameId` werden einmalig gecacht; bei neuem Savegame stimmen die Daten nicht mehr
-- **Bug Lua:** Silo-Extension Kapazität im Silos-View — `storage.capacity` kann 0 sein bei Extensions
-- **QoL Server:** Beim Start vorhandene JSON-Dateien sofort laden statt auf ersten Schreibvorgang warten
-- **QoL Dashboard:** Alert-Schwellwerte (z.B. Futter unter X%) konfigurierbar in Settings statt hardcoded
+- ✅ **Bug Lua:** Leere Arrays serialisieren als `{}` statt `[]`
+- ✅ **Bug Lua:** Savegame-Wechsel ohne Server-Neustart — savegameDirectory-Vergleich in `update()` erkennt neues Savegame und setzt Cache zurück
+- ✅ **Bug Lua:** Silo-Extension Kapazität im Silos-View — nicht reproduzierbar, `storage.capacity` korrekt in allen getesteten Extensions
 
 ## v0.3.0 — Multiplayer-Unterstützung
 - **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
@@ -84,3 +82,4 @@
 
 ## v0.9.0 — Polish & QoL
 - Mehrsprachigkeit (DE/EN)
+- **QoL Dashboard:** Alert-Schwellwerte (z.B. Futter unter X%) konfigurierbar in Settings statt hardcoded
