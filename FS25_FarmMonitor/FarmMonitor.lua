@@ -281,9 +281,9 @@ function FarmMonitor:collectProductions()
             local inputs = {}
             if pp.inputFillTypeIds ~= nil then
                 for fillTypeId, _ in pairs(pp.inputFillTypeIds) do
-                    local level    = pp.storage:getFillLevel(fillTypeId)
-                    local capacity = pp.storage:getCapacity(fillTypeId)
-                    if capacity > 0 then
+                    local level    = pp:getFillLevel(fillTypeId)
+                    local capacity = pp:getCapacity(fillTypeId)
+                    if level > 0 or capacity > 0 then
                         table.insert(inputs, FarmMonitor.obj(
                             "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
                             "title",    FarmMonitor:fillTypeTitle(fillTypeId),
@@ -298,9 +298,9 @@ function FarmMonitor:collectProductions()
             local outputs = {}
             if pp.outputFillTypeIdsArray ~= nil then
                 for _, fillTypeId in ipairs(pp.outputFillTypeIdsArray) do
-                    local level    = pp.storage:getFillLevel(fillTypeId)
-                    local capacity = pp.storage:getCapacity(fillTypeId)
-                    if capacity > 0 then
+                    local level    = pp:getFillLevel(fillTypeId)
+                    local capacity = pp:getCapacity(fillTypeId)
+                    if level > 0 or capacity > 0 then
                         table.insert(outputs, FarmMonitor.obj(
                             "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
                             "title",    FarmMonitor:fillTypeTitle(fillTypeId),
