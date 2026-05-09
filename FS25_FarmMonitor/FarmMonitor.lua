@@ -12,6 +12,7 @@ FarmMonitor.fillTypesExported  = false
 FarmMonitor.animalFoodExported = false
 FarmMonitor.savegameName       = nil
 FarmMonitor.savegameId         = nil
+FarmMonitor.savegameDirectory  = nil
 
 addModEventListener(FarmMonitor)
 
@@ -37,6 +38,17 @@ end
 function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
+    end
+
+    -- Detect savegame change: reset state so files are re-exported for the new savegame
+    local currentDir = g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory
+    if currentDir ~= FarmMonitor.savegameDirectory then
+        FarmMonitor.savegameDirectory  = currentDir
+        FarmMonitor.savegameName       = nil
+        FarmMonitor.savegameId         = nil
+        FarmMonitor.fillTypesExported  = false
+        FarmMonitor.animalFoodExported = false
+        FarmMonitor.timer              = 0
     end
 
     if FarmMonitor.savegameName == nil then
@@ -215,7 +227,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:collectSilos()
-    local result = {}
+    local result = FarmMonitor.arr()
     local farmId = g_currentMission:getFarmId()
 
     if g_currentMission.placeableSystem == nil then return result end
@@ -268,7 +280,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:collectProductions()
-    local result = {}
+    local result = FarmMonitor.arr()
     local farmId = g_currentMission:getFarmId()
 
     if g_currentMission.placeableSystem == nil then return result end
@@ -278,12 +290,12 @@ function FarmMonitor:collectProductions()
         if spec ~= nil and spec.productionPoint ~= nil and placeable.ownerFarmId == farmId then
             local pp = spec.productionPoint
             -- Inputs: all fill types stored as input for this production point
-            local inputs = {}
+            local inputs = FarmMonitor.arr()
             if pp.inputFillTypeIds ~= nil then
                 for fillTypeId, _ in pairs(pp.inputFillTypeIds) do
-                    local level    = pp.storage:getFillLevel(fillTypeId)
-                    local capacity = pp.storage:getCapacity(fillTypeId)
-                    if capacity > 0 then
+                    local level    = pp:getFillLevel(fillTypeId)
+                    local capacity = pp:getCapacity(fillTypeId)
+                    if level > 0 or capacity > 0 then
                         table.insert(inputs, FarmMonitor.obj(
                             "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
                             "title",    FarmMonitor:fillTypeTitle(fillTypeId),
@@ -295,12 +307,12 @@ function FarmMonitor:collectProductions()
             end
 
             -- Outputs: all fill types stored as output for this production point
-            local outputs = {}
+            local outputs = FarmMonitor.arr()
             if pp.outputFillTypeIdsArray ~= nil then
                 for _, fillTypeId in ipairs(pp.outputFillTypeIdsArray) do
-                    local level    = pp.storage:getFillLevel(fillTypeId)
-                    local capacity = pp.storage:getCapacity(fillTypeId)
-                    if capacity > 0 then
+                    local level    = pp:getFillLevel(fillTypeId)
+                    local capacity = pp:getCapacity(fillTypeId)
+                    if level > 0 or capacity > 0 then
                         table.insert(outputs, FarmMonitor.obj(
                             "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
                             "title",    FarmMonitor:fillTypeTitle(fillTypeId),
@@ -312,7 +324,7 @@ function FarmMonitor:collectProductions()
             end
 
             -- Production chains: only status info, no recipe details
-            local chains = {}
+            local chains = FarmMonitor.arr()
             for _, prod in ipairs(pp.productions) do
                 local status = "unknown"
                 if prod.status ~= nil then
@@ -350,7 +362,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:collectHusbandries()
-    local result = {}
+    local result = FarmMonitor.arr()
     local farmId = g_currentMission:getFarmId()
 
     if g_currentMission.placeableSystem == nil then return result end
@@ -368,7 +380,7 @@ function FarmMonitor:collectHusbandries()
                 water       = FarmMonitor:getWaterInfo(placeable),
                 straw       = FarmMonitor:getStrawInfo(placeable),
                 health      = FarmMonitor:getHealthInfo(placeable),
-                outputs     = {},
+                outputs     = FarmMonitor.arr(),
             }
 
             -- Husbandry output storage (milk, eggs, wool, manure, …)
@@ -456,7 +468,7 @@ function FarmMonitor:getFoodInfo(placeable)
     if placeable.getFoodInfos ~= nil then
         local ok, infos = pcall(function() return placeable:getFoodInfos() end)
         if ok and type(infos) == "table" then
-            local entries = {}
+            local entries = FarmMonitor.arr()
             for _, info in ipairs(infos) do
                 if not info.ignoreCapacity then
                     table.insert(entries, {
@@ -480,7 +492,7 @@ function FarmMonitor:getFoodInfo(placeable)
         end
     end
 
-    return {}
+    return FarmMonitor.arr()
 end
 
 function FarmMonitor:getFoodTotal(placeable)
@@ -538,7 +550,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:readFillLevels(storage)
-    local contents = {}
+    local contents = FarmMonitor.arr()
     if storage.fillLevels == nil then return contents end
     for fillTypeId, level in pairs(storage.fillLevels) do
         if level > 0 then
@@ -568,6 +580,13 @@ end
 -- ---------------------------------------------------------------------------
 -- JSON encoder  (pretty-printed, ordered objects via __order)
 -- ---------------------------------------------------------------------------
+
+-- Use arr() to create a table that always serialises as a JSON array (even when empty).
+function FarmMonitor.arr(t)
+    t = t or {}
+    t.__isArray = true
+    return t
+end
 
 -- Use obj() to build an object with guaranteed key order:
 --   obj("name","Foo", "level",100, "capacity",200)
@@ -618,9 +637,9 @@ function FarmMonitor:encodeJSON(value, indent)
             return "{\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "}"
         end
 
-        -- Plain array
-        local isArray = (#value > 0)
-        if isArray then
+        -- Plain array (explicit marker or non-empty numeric table)
+        local isArray = (value.__isArray == true) or (#value > 0)
+        if isArray and value.__isArray == nil then
             for k, _ in pairs(value) do
                 if type(k) ~= "number" then isArray = false break end
             end

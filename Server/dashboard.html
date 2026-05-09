@@ -149,7 +149,9 @@
     z-index: 10;
   }
 
-  .nav-btn:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+  @media (hover: hover) {
+    .nav-btn:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }
 
   /* ── Main column ── */
   .main {
@@ -1446,6 +1448,7 @@ function collectAllAlerts(data) {
   // Productions
   (Array.isArray(data.productions?.productions) ? data.productions.productions : []).forEach(pp => {
     (Array.isArray(pp.inputs) ? pp.inputs : []).forEach(i => {
+      if (!i.capacity) return;
       const p = pct(i.level, i.capacity);
       if (p < 20) alerts.push({ src: pp.name, text: `${i.title || i.fillType} kritisch niedrig (${p}%)`, level: 'crit' });
       else if (p < 40) alerts.push({ src: pp.name, text: `${i.title || i.fillType} niedrig (${p}%)`, level: 'warn' });

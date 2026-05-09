@@ -3,16 +3,14 @@
 ## v0.2.2 — Bugfix: Produktionen mit Silo-Extension
 - **Bug:** Warenbestände von Produktionen werden nicht angezeigt wenn eine Silo-Extension angeschlossen ist
 - **Ursache:** `pp.storage:getCapacity(fillTypeId)` gibt 0 zurück wenn der Speicher durch eine Silo-Extension ersetzt wird — der `if capacity > 0` Check filtert dann alle Einträge heraus
-- **Fix Lua:** Kapazität aus der verknüpften Silo-Extension lesen wenn `pp.storage` sie nicht kennt; Einträge mit `level > 0` auch bei `capacity == 0` exportieren
-- **Fix Lua:** Produktions-Inputs aus globalem Siloverbund korrekt lesen — wenn Inputs über Siloverbund fließen zeigt `pp.storage:getFillLevel()` 0 obwohl Material vorhanden ist
-- **Fix Dashboard:** Füllstandsanzeige ohne Kapazität graceful behandeln
+- ✅ **Fix Lua:** `pp:getFillLevel/getCapacity` direkt auf ProductionPoint statt `pp.storage:`; Einträge mit `level > 0` auch bei `capacity == 0` exportieren
+- ✅ **Fix Lua:** Produktions-Inputs aus globalem Siloverbund korrekt lesen — durch `pp:getFillLevel()` direkt auf ProductionPoint bereits korrekt gelöst (In-Game bestätigt)
+- ✅ **Fix Dashboard:** Alert-Guard — Füllstand-Alerts nur wenn `capacity > 0` bekannt
 
 ## v0.2.3 — Bugfixes & QoL
-- **Bug Lua:** Leere Arrays serialisieren als `{}` statt `[]` — kann im Dashboard zu Fehlern führen wenn z.B. eine Produktion keine Inputs hat
-- **Bug Lua:** Savegame-Wechsel ohne Server-Neustart — `savegameName` und `savegameId` werden einmalig gecacht; bei neuem Savegame stimmen die Daten nicht mehr
-- **Bug Lua:** Silo-Extension Kapazität im Silos-View — `storage.capacity` kann 0 sein bei Extensions
-- **QoL Server:** Beim Start vorhandene JSON-Dateien sofort laden statt auf ersten Schreibvorgang warten
-- **QoL Dashboard:** Alert-Schwellwerte (z.B. Futter unter X%) konfigurierbar in Settings statt hardcoded
+- ✅ **Bug Lua:** Leere Arrays serialisieren als `{}` statt `[]`
+- ✅ **Bug Lua:** Savegame-Wechsel ohne Server-Neustart — savegameDirectory-Vergleich in `update()` erkennt neues Savegame und setzt Cache zurück
+- ✅ **Bug Lua:** Silo-Extension Kapazität im Silos-View — nicht reproduzierbar, `storage.capacity` korrekt in allen getesteten Extensions
 
 ## v0.3.0 — Multiplayer-Unterstützung
 - **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
@@ -84,3 +82,4 @@
 
 ## v0.9.0 — Polish & QoL
 - Mehrsprachigkeit (DE/EN)
+- **QoL Dashboard:** Alert-Schwellwerte (z.B. Futter unter X%) konfigurierbar in Settings statt hardcoded
