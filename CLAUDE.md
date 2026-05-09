@@ -32,14 +32,14 @@ The Go binary embeds `dashboard.html` at compile time (`//go:embed dashboard.htm
 - `FS25_FarmMonitor/modDesc.xml` — mod metadata, version string
 - `Server/server.go` — Go HTTP server (SSE broker, file watcher, `/api/data`, `/api/events`)
 - `Server/dashboard.html` — single-file SPA (embedded into the binary)
-- `test_deploy.sh` — build + local deploy script (macOS only)
+- `scripts/test_deploy.sh` — build + local deploy script (macOS only)
 
 ## Development
 
 ### Build & deploy locally (macOS)
 
 ```bash
-./test_deploy.sh
+./scripts/test_deploy.sh
 ```
 
 This builds the Go binary, moves it to the project root as `farmmonitor`, and zips the mod folder into the FS25 mods directory.
