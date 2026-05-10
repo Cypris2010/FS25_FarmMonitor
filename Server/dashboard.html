@@ -988,6 +988,11 @@ let husTypeFilter    = 'all';
 let savegameId       = null;
 let savegameSettings = { placeables: {} };
 let globalSettings   = {};
+
+function alertThresholds() {
+  const a = globalSettings.alerts || {};
+  return { warn: a.warn ?? 40, crit: a.crit ?? 20 };
+}
 let editMode         = false;
 
 // ═══════════════════════════════════════════════════════════
@@ -1010,8 +1015,9 @@ function barClass(p, isOutput, w = 1) {
     if (p >= 80) return 'orange';
     return 'green';
   }
-  if (p <= 20 * w) return 'red';
-  if (p <= 40 * w) return 'orange';
+  const { warn, crit } = alertThresholds();
+  if (p <= crit * w) return 'red';
+  if (p <= warn * w) return 'orange';
   return 'green';
 }
 
@@ -1127,10 +1133,12 @@ function husStatus(h) {
 
   // Water + Food nur warnen wenn Tiere im Stall sind
   if (h.numAnimals > 0) {
+    const { warn, crit } = alertThresholds();
+
     if (h.water && h.water.capacity > 0) {
       const p = pct(h.water.value, h.water.capacity);
-      if (p < 20) { escalate('crit'); hints.push('Wasser kritisch'); }
-      else if (p < 40) { escalate('warn'); hints.push('Wasser niedrig'); }
+      if (p < crit) { escalate('crit'); hints.push('Wasser kritisch'); }
+      else if (p < warn) { escalate('warn'); hints.push('Wasser niedrig'); }
     }
 
     const animalFoodDef = appData.animalFood?.animalFood?.[h.animalType];
@@ -1138,17 +1146,15 @@ function husStatus(h) {
     (Array.isArray(h.food) ? h.food : []).forEach((f, i) => {
       if (!f.capacity) return;
       const p = pct(f.value, f.capacity);
-      // PARALLEL (e.g. pigs): scale thresholds by eatWeight — a group worth 5% only alerts near empty
-      // SERIAL (e.g. cows): groups are alternatives, use original thresholds
       const w = (isParallel && animalFoodDef?.groups?.[i]?.eatWeight) || 1;
-      if (p < 20 * w) { escalate('crit'); hints.push('Futter kritisch'); }
-      else if (p < 40 * w) { escalate('warn'); hints.push('Futter niedrig'); }
+      if (p < crit * w) { escalate('crit'); hints.push('Futter kritisch'); }
+      else if (p < warn * w) { escalate('warn'); hints.push('Futter niedrig'); }
     });
 
     if (h.straw && h.straw.capacity > 0) {
       const p = pct(h.straw.value, h.straw.capacity);
-      if (p < 20) { escalate('crit'); hints.push('Stroh kritisch'); }
-      else if (p < 40) { escalate('warn'); hints.push('Stroh niedrig'); }
+      if (p < crit) { escalate('crit'); hints.push('Stroh kritisch'); }
+      else if (p < warn) { escalate('warn'); hints.push('Stroh niedrig'); }
     }
   }
 
@@ -1622,13 +1628,47 @@ function renderSettings() {
     ? `<div class="pill" style="margin-bottom:16px;display:inline-flex">Spielstand: <strong style="margin-left:6px">${savegameId}</strong></div>`
     : '';
 
-  el.innerHTML = serverBlock
+  const al = globalSettings.alerts || {};
+  const alertBlock = `
+    <div class="settings-section-title" style="margin-top:24px">Warnstufen</div>
+    <div class="placeable-list" style="gap:14px;padding:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
+          Warnung ab (%)
+          <input id="cfg-warn" type="number" min="1" max="99" value="${al.warn ?? 40}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
+          Kritisch ab (%)
+          <input id="cfg-crit" type="number" min="1" max="99" value="${al.crit ?? 20}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <span style="font-size:12px;color:var(--muted)">Gilt für Futter, Wasser und Stroh.</span>
+        <button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
+      </div>
+      <div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
+    </div>`;
+
+  el.innerHTML = serverBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
     + sgInfo
     + section('Silos', silos)
     + section('Produktionen', productions)
     + section('Tierställe', husbandries)
     || '<div class="state-box"><span>Keine Daten verfügbar.</span></div>';
+}
+
+async function saveAlertSettings() {
+  const warn = parseInt(document.getElementById('cfg-warn').value, 10);
+  const crit = parseInt(document.getElementById('cfg-crit').value, 10);
+  if (!warn || !crit || crit >= warn) return;
+  globalSettings = { ...globalSettings, alerts: { warn, crit } };
+  await saveGlobalSettings();
+  rerenderCurrentView();
+  const msg = document.getElementById('cfg-alert-saved');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
 }
 
 async function saveServerSettings() {
