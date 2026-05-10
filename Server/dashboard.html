@@ -1138,12 +1138,11 @@ function husStatus(h) {
     (Array.isArray(h.food) ? h.food : []).forEach((f, i) => {
       if (!f.capacity) return;
       const p = pct(f.value, f.capacity);
-      const group = animalFoodDef?.groups?.[i];
-      // PARALLEL (e.g. pigs): skip alert if this group's share of consumption is negligible (<10%)
-      // SERIAL (e.g. cows): groups are alternatives, alert on any group that is low
-      if (isParallel && group && group.eatWeight < 0.1) return;
-      if (p < 20) { escalate('crit'); hints.push('Futter kritisch'); }
-      else if (p < 40) { escalate('warn'); hints.push('Futter niedrig'); }
+      // PARALLEL (e.g. pigs): scale thresholds by eatWeight — a group worth 5% only alerts near empty
+      // SERIAL (e.g. cows): groups are alternatives, use original thresholds
+      const w = (isParallel && animalFoodDef?.groups?.[i]?.eatWeight) || 1;
+      if (p < 20 * w) { escalate('crit'); hints.push('Futter kritisch'); }
+      else if (p < 40 * w) { escalate('warn'); hints.push('Futter niedrig'); }
     });
 
     if (h.straw && h.straw.capacity > 0) {
