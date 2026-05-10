@@ -9,6 +9,8 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 - **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
 - **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Alerts, Settings
 - **Tierställe detail page** — per-stall cards with occupancy, food, water and output progress bars, computed status (OK / Watch / Warning / Critical) and a warning band for urgent issues
+- **Smart husbandry alerts** — food group alerts are weighted by consumption share (`eatWeight`): a pig's minor food component (e.g. root vegetables at 5%) only triggers a warning when nearly empty, avoiding false alarms
+- **Configurable alert thresholds** — warn and critical levels for inputs (food/water/straw), outputs and occupancy are adjustable in the Settings view and stored globally
 - **Per-savegame visibility settings** — hide individual placeables from the dashboard via the edit mode button; settings are persisted per savegame on the server
 
 ## What it exports
@@ -19,7 +21,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON files every 10 se
 | `productions.json` | Production point inputs, outputs and chain status | every 10 s |
 | `husbandries.json` | Animal counts, food/water/straw levels, health and outputs (milk, manure, …) | every 10 s |
 | `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
-| `animalFood.json` | Food group recipes per animal type (fill types, percentages) | once on map load |
+| `animalFood.json` | Food group recipes per animal type (consumption type, fill types, production and eat weights) | once on map load |
 
 All files are written to the modSettings directory:
 - **macOS:** `~/Library/Application Support/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
@@ -89,7 +91,7 @@ Open **http://localhost:8080** in a browser.
 | Productions | Input/output bars and chain status (running / inactive / stopped) per production point |
 | Tierställe | Per-stall cards with occupancy, food, water, outputs and computed status |
 | Alerts | Consolidated list of all active warnings across all categories |
-| Settings | Toggle visibility of individual placeables per savegame |
+| Settings | Toggle visibility of individual placeables per savegame; configure alert thresholds for inputs, outputs and occupancy |
 
 ### Editing the dashboard view
 
@@ -235,20 +237,35 @@ Icon paths use two formats depending on their origin:
 {
   "savegameId": "MapUS_2026-02-15",
   "animalFood": {
-    "PIG": [
-      { "title": "Mais Sorghum",                 "percentage": 50, "fillTypes": ["CORN", "SORGHUM"] },
-      { "title": "Weizen Gerste Hafer",          "percentage": 25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
-      { "title": "Sojabohnen Raps Sonnenblumen", "percentage": 20, "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
-      { "title": "Kartoffeln Zuckerrüben …",     "percentage":  5, "fillTypes": ["POTATO", "SUGARBEET"] }
-    ],
-    "COW": [
-      { "title": "Futter", "percentage": 100, "fillTypes": ["FORAGE_MIXING"] }
-    ]
+    "PIG": {
+      "consumptionType": "PARALLEL",
+      "groups": [
+        { "title": "Mais Sorghum",                 "productionWeight": 0.5,  "eatWeight": 0.5,  "fillTypes": ["CORN", "SORGHUM"] },
+        { "title": "Weizen Gerste Hafer",          "productionWeight": 0.25, "eatWeight": 0.25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
+        { "title": "Sojabohnen Raps Sonnenblumen", "productionWeight": 0.2,  "eatWeight": 0.2,  "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
+        { "title": "Kartoffeln Zuckerrüben …",     "productionWeight": 0.05, "eatWeight": 0.05, "fillTypes": ["POTATO", "SUGARBEET"] }
+      ]
+    },
+    "COW": {
+      "consumptionType": "SERIAL",
+      "groups": [
+        { "title": "TMR",  "productionWeight": 1.0, "eatWeight": 1.0, "fillTypes": ["FORAGE_MIXING"] },
+        { "title": "Heu",  "productionWeight": 0.8, "eatWeight": 1.0, "fillTypes": ["DRYGRASS_WINDROW"] },
+        { "title": "Gras", "productionWeight": 0.4, "eatWeight": 1.0, "fillTypes": ["GRASS_WINDROW"] }
+      ]
+    }
   }
 }
 ```
 
-One entry per animal type. The `percentage` field is the share of this food group in the total recipe (sum of all groups = 100).
+One entry per animal type.
+
+| Field | Description |
+|---|---|
+| `consumptionType` | `PARALLEL` — all groups consumed simultaneously (e.g. pigs); `SERIAL` — groups are alternatives, best available is used (e.g. cows) |
+| `productionWeight` | Productivity factor this group provides (0–1). For `PARALLEL`: also the share of total consumption |
+| `eatWeight` | Consumption share for `PARALLEL` animals (0–1, all groups sum to 1). Used to scale alert thresholds so minor components don't trigger false alarms |
+| `fillTypes` | Fill type identifiers accepted by this group |
 
 ### savegameId
 
