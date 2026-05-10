@@ -1004,14 +1004,14 @@ function fmt(n) {
   return n.toLocaleString('de-DE');
 }
 
-function barClass(p, isOutput) {
+function barClass(p, isOutput, w = 1) {
   if (isOutput) {
     if (p >= 90) return 'red';
     if (p >= 80) return 'orange';
     return 'green';
   }
-  if (p <= 20) return 'red';
-  if (p <= 40) return 'orange';
+  if (p <= 20 * w) return 'red';
+  if (p <= 40 * w) return 'orange';
   return 'green';
 }
 
@@ -1194,10 +1194,13 @@ function renderHusbandryCard(h) {
 
   let food = '';
   if (Array.isArray(h.food) && h.food.length > 0) {
+    const animalFoodDef = appData.animalFood?.animalFood?.[h.animalType];
+    const isParallel = animalFoodDef?.consumptionType === 'PARALLEL';
     food = '<div class="sub-label">Futter</div>' +
-      h.food.map(f => {
+      h.food.map((f, i) => {
         const p = pct(f.value, f.capacity);
-        return metricRow(f.title || 'Futter', f.value, f.capacity, barClass(p, false));
+        const w = (isParallel && animalFoodDef?.groups?.[i]?.eatWeight) || 1;
+        return metricRow(f.title || 'Futter', f.value, f.capacity, barClass(p, false, w));
       }).join('');
   } else {
     food = '<div class="sub-label">Futter</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Futterdaten</p>';
