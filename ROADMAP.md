@@ -12,6 +12,12 @@
 - ✅ **Bug Lua:** Savegame-Wechsel ohne Server-Neustart — savegameDirectory-Vergleich in `update()` erkennt neues Savegame und setzt Cache zurück
 - ✅ **Bug Lua:** Silo-Extension Kapazität im Silos-View — nicht reproduzierbar, `storage.capacity` korrekt in allen getesteten Extensions
 
+## v0.2.4 — Smart Husbandry Alerts & konfigurierbare Warnstufen
+- ✅ **Lua:** `animalFood.json` exportiert `consumptionType` (SERIAL/PARALLEL) und `eatWeight` pro Futtergruppe
+- ✅ **Dashboard:** Alert-Schwellwerte für PARALLEL-Tiere (z.B. Schweine) werden mit `eatWeight` skaliert — eine Gruppe mit 5% Anteil löst erst bei `crit × 0.05` einen Alert aus
+- ✅ **Dashboard:** Balkenfarben (grün/gelb/rot) folgen demselben gewichteten Schema
+- ✅ **Dashboard:** Alle Alert-Schwellwerte (Eingänge, Ausgänge, Belegung) in den Settings konfigurierbar und persistent gespeichert
+
 ## v0.3.0 — Multiplayer-Unterstützung
 - **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
 - **Lua:** `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
