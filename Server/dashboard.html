@@ -991,7 +991,14 @@ let globalSettings   = {};
 
 function alertThresholds() {
   const a = globalSettings.alerts || {};
-  return { warn: a.warn ?? 40, crit: a.crit ?? 20 };
+  return {
+    warn:       a.warn       ?? 40,
+    crit:       a.crit       ?? 20,
+    outWarn:    a.outWarn    ?? 80,
+    outCrit:    a.outCrit    ?? 90,
+    occWatch:   a.occWatch   ?? 95,
+    occWarn:    a.occWarn    ?? 100,
+  };
 }
 let editMode         = false;
 
@@ -1010,12 +1017,12 @@ function fmt(n) {
 }
 
 function barClass(p, isOutput, w = 1) {
+  const { warn, crit, outWarn, outCrit } = alertThresholds();
   if (isOutput) {
-    if (p >= 90) return 'red';
-    if (p >= 80) return 'orange';
+    if (p >= outCrit) return 'red';
+    if (p >= outWarn) return 'orange';
     return 'green';
   }
-  const { warn, crit } = alertThresholds();
   if (p <= crit * w) return 'red';
   if (p <= warn * w) return 'orange';
   return 'green';
@@ -1159,19 +1166,21 @@ function husStatus(h) {
   }
 
   // Outputs
+  const { outWarn, outCrit, occWatch, occWarn } = alertThresholds();
+
   (Array.isArray(h.outputs) ? h.outputs : []).forEach(o => {
     if (!o.capacity) return;
     const p = pct(o.level, o.capacity);
     const name = o.title || o.fillType;
-    if (p >= 90) { escalate('crit'); hints.push(`${name} voll`); }
-    else if (p >= 80) { escalate('warn'); hints.push(`${name} fast voll`); }
+    if (p >= outCrit) { escalate('crit'); hints.push(`${name} voll`); }
+    else if (p >= outWarn) { escalate('warn'); hints.push(`${name} fast voll`); }
   });
 
   // Occupancy
   if (h.maxAnimals > 0) {
     const p = pct(h.numAnimals, h.maxAnimals);
-    if (p >= 100) { escalate('warn'); hints.push('Stall voll'); }
-    else if (p >= 95) { escalate('watch'); hints.push('Stall fast voll'); }
+    if (p >= occWarn) { escalate('warn'); hints.push('Stall voll'); }
+    else if (p >= occWatch) { escalate('watch'); hints.push('Stall fast voll'); }
   }
 
   const unique = [...new Set(hints)];
@@ -1196,7 +1205,8 @@ function statusBadge(level) {
 function renderHusbandryCard(h) {
   const { level, hints } = husStatus(h);
   const occPct = h.maxAnimals > 0 ? pct(h.numAnimals, h.maxAnimals) : null;
-  const occColor = occPct != null ? (occPct >= 95 ? 'orange' : 'green') : 'green';
+  const { warn, crit, outWarn, outCrit, occWatch, occWarn } = alertThresholds();
+  const occColor = occPct != null ? (occPct >= occWarn ? 'orange' : occPct >= occWatch ? 'yellow' : 'green') : 'green';
 
   let food = '';
   if (Array.isArray(h.food) && h.food.length > 0) {
@@ -1216,7 +1226,7 @@ function renderHusbandryCard(h) {
   if (h.water) {
     const wp = pct(h.water.value, h.water.capacity);
     water = '<div class="sub-label">Wasser</div>' +
-      metricRow('Wasser', h.water.value, h.water.capacity, wp < 20 ? 'red' : wp < 40 ? 'orange' : 'blue');
+      metricRow('Wasser', h.water.value, h.water.capacity, wp < crit ? 'red' : wp < warn ? 'orange' : 'blue');
   } else {
     water = '<div class="sub-label">Wasser</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Wasserdaten</p>';
   }
@@ -1225,7 +1235,7 @@ function renderHusbandryCard(h) {
   if (h.straw) {
     const sp = pct(h.straw.value, h.straw.capacity);
     straw = '<div class="sub-label">Stroh</div>' +
-      metricRow('Stroh', h.straw.value, h.straw.capacity, sp < 20 ? 'red' : sp < 40 ? 'orange' : 'green');
+      metricRow('Stroh', h.straw.value, h.straw.capacity, sp < crit ? 'red' : sp < warn ? 'orange' : 'green');
   }
 
   let outputs = '';
@@ -1233,7 +1243,7 @@ function renderHusbandryCard(h) {
     outputs = '<div class="sub-label">Erzeugnisse</div>' +
       h.outputs.map(o => {
         const p = pct(o.level, o.capacity);
-        const cls = p >= 90 ? 'red' : p >= 80 ? 'orange' : 'purple';
+        const cls = p >= outCrit ? 'red' : p >= outWarn ? 'orange' : 'purple';
         return metricRow(o.title || o.fillType, o.level, o.capacity, cls);
       }).join('');
   } else {
@@ -1629,27 +1639,35 @@ function renderSettings() {
     : '';
 
   const al = globalSettings.alerts || {};
-  const alertBlock = `
-    <div class="settings-section-title" style="margin-top:24px">Warnstufen</div>
-    <div class="placeable-list" style="gap:14px;padding:16px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-          Warnung ab (%)
-          <input id="cfg-warn" type="number" min="1" max="99" value="${al.warn ?? 40}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
-        </label>
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-          Kritisch ab (%)
-          <input id="cfg-crit" type="number" min="1" max="99" value="${al.crit ?? 20}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
-        </label>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-        <span style="font-size:12px;color:var(--muted)">Gilt für Futter, Wasser und Stroh.</span>
-        <button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
-      </div>
-      <div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
-    </div>`;
+
+  function inputPair(label, hint, id1, val1, id2, val2) {
+    const inp = (id, val) => '<input id="' + id + '" type="number" min="1" max="100" value="' + val + '"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
+    return '<div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + ' — <span style="opacity:.7">' + hint + '</span></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Warnung ab (%) ' + inp(id1, val1) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Kritisch ab (%) ' + inp(id2, val2) + '</label>'
+      + '</div></div>';
+  }
+
+  const al2 = globalSettings.alerts || {};
+  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
+    + '<div class="placeable-list" style="gap:18px;padding:16px">'
+    + inputPair('Eingänge', 'Futter, Wasser, Stroh', 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
+    + inputPair('Ausgänge', 'Milch, Eier, Mist …', 'cfg-out-warn', al2.outWarn ?? 80, 'cfg-out-crit', al2.outCrit ?? 90)
+    + '<div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belegung</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Beobachten ab (%)'
+    + '<input id="cfg-occ-watch" type="number" min="1" max="100" value="' + (al2.occWatch ?? 95) + '" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%"></label>'
+    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Warnung ab (%)'
+    + '<input id="cfg-occ-warn" type="number" min="1" max="100" value="' + (al2.occWarn ?? 100) + '" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%"></label>'
+    + '</div></div>'
+    + '<div style="display:flex;align-items:center;justify-content:flex-end">'
+    + '<button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
+    + '<div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '</div>';
 
   el.innerHTML = serverBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
@@ -1661,10 +1679,16 @@ function renderSettings() {
 }
 
 async function saveAlertSettings() {
-  const warn = parseInt(document.getElementById('cfg-warn').value, 10);
-  const crit = parseInt(document.getElementById('cfg-crit').value, 10);
+  const warn     = parseInt(document.getElementById('cfg-warn').value, 10);
+  const crit     = parseInt(document.getElementById('cfg-crit').value, 10);
+  const outWarn  = parseInt(document.getElementById('cfg-out-warn').value, 10);
+  const outCrit  = parseInt(document.getElementById('cfg-out-crit').value, 10);
+  const occWatch = parseInt(document.getElementById('cfg-occ-watch').value, 10);
+  const occWarn  = parseInt(document.getElementById('cfg-occ-warn').value, 10);
   if (!warn || !crit || crit >= warn) return;
-  globalSettings = { ...globalSettings, alerts: { warn, crit } };
+  if (!outWarn || !outCrit || outWarn >= outCrit) return;
+  if (!occWatch || !occWarn || occWatch >= occWarn) return;
+  globalSettings = { ...globalSettings, alerts: { warn, crit, outWarn, outCrit, occWatch, occWarn } };
   await saveGlobalSettings();
   rerenderCurrentView();
   const msg = document.getElementById('cfg-alert-saved');
