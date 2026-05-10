@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MOD_SOURCE="$SCRIPT_DIR/FS25_FarmMonitor"
 SERVER_DIR="$SCRIPT_DIR/Server"
 MODS_DIR="$HOME/Library/Application Support/FarmingSimulator2025/mods"
