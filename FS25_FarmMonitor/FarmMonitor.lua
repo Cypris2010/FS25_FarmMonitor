@@ -165,6 +165,10 @@ function FarmMonitor:exportAnimalFood()
             if animalType ~= nil and animalType.name ~= nil then
                 local animalFood = animalFoodSystem:getAnimalFood(animalType.typeIndex)
                 if animalFood ~= nil and animalFood.groups ~= nil then
+                    local consumptionType = "SERIAL"
+                    if animalFood.consumptionType == AnimalFoodSystem.FOOD_CONSUME_TYPE_PARALLEL then
+                        consumptionType = "PARALLEL"
+                    end
                     local groups = {}
                     for _, group in ipairs(animalFood.groups) do
                         local fillTypeNames = {}
@@ -175,12 +179,16 @@ function FarmMonitor:exportAnimalFood()
                             end
                         end
                         table.insert(groups, FarmMonitor.obj(
-                            "title",      group.title or "",
-                            "percentage", MathUtil.round((group.productionWeight or 0) * 100),
-                            "fillTypes",  fillTypeNames
+                            "title",           group.title or "",
+                            "productionWeight", group.productionWeight or 0,
+                            "eatWeight",        group.eatWeight or 0,
+                            "fillTypes",        fillTypeNames
                         ))
                     end
-                    result[animalType.name] = groups
+                    result[animalType.name] = FarmMonitor.obj(
+                        "consumptionType", consumptionType,
+                        "groups",          groups
+                    )
                 end
             end
         end
