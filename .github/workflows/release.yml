@@ -28,49 +28,9 @@ jobs:
       - name: Package mod files
         run: zip -j FS25_FarmMonitor.zip FS25_FarmMonitor/*
 
-      - name: Generate release notes
-        id: release_notes
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          TAG="${{ github.ref_name }}"
-          PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p')
-          if [ -z "$PREV_TAG" ]; then
-            COMMITS="(erste Veröffentlichung / first release)"
-          else
-            COMMITS=$(git log "$PREV_TAG..HEAD" --pretty=format:"- %s" | head -60)
-          fi
-
-          PAYLOAD=$(jq -n \
-            --arg tag "$TAG" \
-            --arg commits "$COMMITS" \
-            '{
-              model: "claude-haiku-4-5",
-              max_tokens: 1024,
-              messages: [{
-                role: "user",
-                content: ("Du bist Release-Notes-Autor für ein Farming Simulator 25 Mod.\n\nErstelle Release Notes für Version " + $tag + " auf Basis dieser Commits:\n\n" + $commits + "\n\nAusgabeformat (genau so):\n## DE\n<deutsche Release Notes als Bullet Points>\n\n## EN\n<englische Release Notes als Bullet Points>\n\nPrägnant, nutzerfreundlich, keine technischen Commit-IDs.")
-              }]
-            }')
-
-          RESPONSE=$(curl -sf https://api.anthropic.com/v1/messages \
-            -H "x-api-key: $ANTHROPIC_API_KEY" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d "$PAYLOAD")
-
-          NOTES=$(echo "$RESPONSE" | jq -r '.content[0].text // "Release notes generation failed."')
-
-          {
-            echo "notes<<EOF"
-            echo "$NOTES"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ steps.release_notes.outputs.notes }}
           files: |
             Server/farmmonitor-windows.exe
             Server/farmmonitor-macos-intel
