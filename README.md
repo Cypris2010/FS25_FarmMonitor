@@ -5,6 +5,9 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 ![FS25 FarmMonitor Dashboard — Productions View](assets/screenshot_dashboard.png)
 *Productions view — inputs, outputs and chain status per production point*
 
+![FS25 FarmMonitor Dashboard — Husbandries View](assets/screenshot_husbandries.png)
+*Husbandries view — per-stall cards with occupancy, food groups, health and active alerts*
+
 ## Features
 
 - **Live JSON export** — silos, productions, animal husbandries, fill types and animal food recipes written to the modSettings folder
