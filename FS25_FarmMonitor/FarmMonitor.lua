@@ -29,6 +29,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.husbandries = outputDir .. "husbandries.json"
     FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
     FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
+    FarmMonitor.paths.goods       = outputDir .. "goods.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -108,6 +109,10 @@ function FarmMonitor:collectAndSave()
         FarmMonitor:writeJSON(FarmMonitor.paths.husbandries, FarmMonitor.obj(
             "timestamp",   ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "husbandries", FarmMonitor:collectHusbandries()
+        ))
+        FarmMonitor:writeJSON(FarmMonitor.paths.goods, FarmMonitor.obj(
+            "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
+            "goods",     FarmMonitor:collectGoods()
         ))
     end)
 
@@ -418,6 +423,252 @@ function FarmMonitor:collectHusbandries()
         end
     end
 
+    return result
+end
+
+-- ---------------------------------------------------------------------------
+-- Goods (aggregated fill levels + prices across all storage sources)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectGoods()
+    local farmId = g_currentMission:getFarmId()
+    local totals    = {}   -- fillTypeIndex -> total liters
+    local locations = {}   -- fillTypeIndex -> { locationName -> liters }
+    local seenBaleIds = {}
+
+    local function addAmount(fillTypeIndex, amount, locationName)
+        if fillTypeIndex == nil or amount == nil or amount <= 0 then return end
+        totals[fillTypeIndex] = (totals[fillTypeIndex] or 0) + amount
+        if locationName ~= nil then
+            if locations[fillTypeIndex] == nil then locations[fillTypeIndex] = {} end
+            locations[fillTypeIndex][locationName] = (locations[fillTypeIndex][locationName] or 0) + amount
+        end
+    end
+
+    if g_currentMission.placeableSystem then
+        for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
+            local ownedByFarm = (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0)
+            local locName = FarmMonitor:placeableName(placeable)
+
+            -- Silos
+            if placeable.spec_silo ~= nil and ownedByFarm then
+                for _, storage in ipairs(placeable.spec_silo.storages or {}) do
+                    if storage.ownerFarmId == farmId or storage.ownerFarmId == 0 then
+                        for ftIdx, level in pairs(storage.fillLevels or {}) do
+                            addAmount(ftIdx, level, locName)
+                        end
+                    end
+                end
+            end
+
+            -- Silo extensions
+            if placeable.spec_siloExtension ~= nil then
+                local storage = placeable.spec_siloExtension.storage
+                if storage ~= nil and (storage.ownerFarmId == farmId or storage.ownerFarmId == 0) then
+                    for ftIdx, level in pairs(storage.fillLevels or {}) do
+                        addAmount(ftIdx, level, locName)
+                    end
+                end
+            end
+
+            -- Husbandry output storage (only accepted output fill types)
+            if placeable.spec_husbandry ~= nil and ownedByFarm then
+                local spec    = placeable.spec_husbandry
+                local storage = spec.storage
+                if storage ~= nil and storage.fillLevels ~= nil then
+                    for ftIdx, level in pairs(storage.fillLevels) do
+                        local supported = spec.loadingStation == nil
+                            or spec.loadingStation.supportedFillTypes == nil
+                            or spec.loadingStation.supportedFillTypes[ftIdx]
+                        if supported then addAmount(ftIdx, level, locName) end
+                    end
+                end
+            end
+
+            -- Productions (inputs + outputs)
+            if placeable.spec_productionPoint ~= nil and placeable.ownerFarmId == farmId then
+                local pp = placeable.spec_productionPoint.productionPoint
+                if pp ~= nil then
+                    for ftIdx, _ in pairs(pp.inputFillTypeIds or {}) do
+                        addAmount(ftIdx, pp:getFillLevel(ftIdx), locName)
+                    end
+                    for _, ftIdx in ipairs(pp.outputFillTypeIdsArray or {}) do
+                        addAmount(ftIdx, pp:getFillLevel(ftIdx), locName)
+                    end
+                end
+            end
+
+            -- Bunker silos
+            if placeable.spec_bunkerSilo ~= nil and ownedByFarm then
+                local bs = placeable.spec_bunkerSilo.bunkerSilo
+                if bs ~= nil and bs.fillLevel ~= nil and bs.fillLevel > 0 then
+                    local ftIdx = bs.inputFillType
+                    if bs.state == BunkerSilo.STATE_DRAIN or bs.state == BunkerSilo.STATE_FERMENTED then
+                        ftIdx = bs.outputFillType
+                    end
+                    addAmount(ftIdx, bs.fillLevel, locName)
+                end
+            end
+
+            -- Giants Object Storage (vanilla pallets/bale storage)
+            if placeable.spec_objectStorage ~= nil and ownedByFarm then
+                for _, objInfo in ipairs(placeable.spec_objectStorage.objectInfos or {}) do
+                    for _, obj in ipairs(objInfo.objects or {}) do
+                        if obj.baleAttributes ~= nil then
+                            if obj.baleAttributes.uniqueId then seenBaleIds[obj.baleAttributes.uniqueId] = true end
+                            addAmount(obj.baleAttributes.fillType, obj.baleAttributes.fillLevel, locName)
+                        elseif obj.baleObject ~= nil then
+                            if obj.baleObject.uniqueId then seenBaleIds[obj.baleObject.uniqueId] = true end
+                            addAmount(obj.baleObject.fillType, obj.baleObject.fillLevel, locName)
+                        elseif obj.palletAttributes ~= nil then
+                            addAmount(obj.palletAttributes.fillType, obj.palletAttributes.fillLevel, locName)
+                        end
+                    end
+                end
+            end
+
+            -- Object Storage Mod (e.g. bale storage mods)
+            if placeable.spec_objectStorageMod ~= nil and ownedByFarm then
+                local os = placeable.spec_objectStorageMod.objectStorage
+                if os ~= nil and os.storageAreasByFillType ~= nil then
+                    for ftIdx, areas in pairs(os.storageAreasByFillType) do
+                        for _, area in pairs(areas) do
+                            for _, obj in ipairs(area.objects or {}) do
+                                addAmount(ftIdx, obj.fillLevel, locName)
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Manure heap
+            if placeable.spec_manureHeap ~= nil and ownedByFarm then
+                local heap = placeable.spec_manureHeap.manureHeap
+                if heap ~= nil then
+                    for ftIdx, level in pairs(heap.fillLevels or {}) do
+                        addAmount(ftIdx, level, locName)
+                    end
+                end
+            end
+
+            -- Beehive pallet spawner (pending liters)
+            if placeable.spec_beehivePalletSpawner ~= nil and ownedByFarm then
+                local spec = placeable.spec_beehivePalletSpawner
+                addAmount(spec.fillType, spec.pendingLiters, locName)
+            end
+        end
+    end
+
+    -- Loose pallets & shipping containers
+    if g_currentMission.vehicleSystem ~= nil then
+        for _, vehicle in ipairs(g_currentMission.vehicleSystem.vehicles or {}) do
+            if vehicle.isPallet and (vehicle.ownerFarmId == farmId or vehicle.ownerFarmId == 0) then
+                local spec = vehicle.spec_fillUnit
+                if spec ~= nil and spec.fillUnits ~= nil and spec.fillUnits[1] ~= nil then
+                    local fu = spec.fillUnits[1]
+                    addAmount(fu.fillType, fu.fillLevel, "Loose Pallets")
+                end
+            end
+        end
+    end
+
+    -- Loose bales (deduplicated against Object Storage)
+    if g_currentMission.itemSystem ~= nil then
+        for _, item in ipairs(g_currentMission.itemSystem.itemsToSave or {}) do
+            local bale = item.item
+            if bale ~= nil and bale.isa ~= nil and bale:isa(Bale) then
+                if bale.ownerFarmId == farmId or bale.ownerFarmId == 0 then
+                    if bale.uniqueId == nil or not seenBaleIds[bale.uniqueId] then
+                        addAmount(bale.fillType, bale.fillLevel, "Loose Bales")
+                    end
+                end
+            end
+        end
+    end
+
+    -- Collect selling stations (non-hidden, non-own)
+    local stations = {}
+    if g_currentMission.storageSystem ~= nil then
+        for _, station in pairs(g_currentMission.storageSystem:getUnloadingStations() or {}) do
+            if station:isa(SellingStation) and not station.hideFromPricesMenu then
+                table.insert(stations, station)
+            end
+        end
+    end
+
+    -- Build result: one entry per fill type with totals + price data
+    local result = FarmMonitor.arr()
+
+    for ftIdx, totalLevel in pairs(totals) do
+        if totalLevel > 0 then
+            local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+            if ft ~= nil then
+                -- All selling stations that accept this fill type
+                local sellingStationEntries = FarmMonitor.arr()
+                for _, station in ipairs(stations) do
+                    if station.acceptedFillTypes and station.acceptedFillTypes[ftIdx] then
+                        local price = station:getEffectiveFillTypePrice(ftIdx)
+                        local t     = station:getCurrentPricingTrend(ftIdx)
+                        local trend
+                        if Utils.isBitSet(t, SellingStation.PRICE_GREAT_DEMAND) then
+                            trend = "GREAT_DEMAND"
+                        elseif Utils.isBitSet(t, SellingStation.PRICE_CLIMBING) then
+                            trend = "CLIMBING"
+                        elseif Utils.isBitSet(t, SellingStation.PRICE_FALLING) then
+                            trend = "FALLING"
+                        else
+                            trend = "STABLE"
+                        end
+                        table.insert(sellingStationEntries, FarmMonitor.obj(
+                            "name",  station:getName() or "",
+                            "price", MathUtil.round(price * 10000) / 10000,
+                            "value", MathUtil.round(totalLevel * price),
+                            "trend", trend
+                        ))
+                    end
+                end
+                table.sort(sellingStationEntries, function(a, b) return (a.price or 0) > (b.price or 0) end)
+
+                -- Max theoretical price over all 12 season periods
+                local maxPrice   = 0
+                local bestPeriod = 1
+                if ft.economy ~= nil and ft.economy.factors ~= nil and ft.pricePerLiter ~= nil then
+                    for period = SeasonPeriod.EARLY_SPRING, SeasonPeriod.LATE_WINTER do
+                        local p = ft.pricePerLiter * (ft.economy.factors[period] or 1.0)
+                        if p > maxPrice then
+                            maxPrice   = p
+                            bestPeriod = period
+                        end
+                    end
+                end
+
+                -- Storage locations for this fill type
+                local storageLocationEntries = FarmMonitor.arr()
+                if locations[ftIdx] ~= nil then
+                    for locName, liters in pairs(locations[ftIdx]) do
+                        table.insert(storageLocationEntries, FarmMonitor.obj(
+                            "name",   locName,
+                            "liters", MathUtil.round(liters)
+                        ))
+                    end
+                    table.sort(storageLocationEntries, function(a, b) return (a.liters or 0) > (b.liters or 0) end)
+                end
+
+                table.insert(result, FarmMonitor.obj(
+                    "fillType",        ft.name,
+                    "title",           ft.title or ft.name,
+                    "totalLiters",     MathUtil.round(totalLevel),
+                    "maxPrice",        MathUtil.round(maxPrice * 10000) / 10000,
+                    "maxValue",        MathUtil.round(totalLevel * maxPrice),
+                    "bestPeriod",      bestPeriod,
+                    "storageLocations", storageLocationEntries,
+                    "sellingStations", sellingStationEntries
+                ))
+            end
+        end
+    end
+
+    table.sort(result, function(a, b) return (a.maxValue or 0) > (b.maxValue or 0) end)
     return result
 end
 
