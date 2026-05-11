@@ -1,6 +1,6 @@
 # FS25 FarmMonitor
 
-A Farming Simulator 25 mod that exports live farm data to JSON files every 10 seconds and includes a local web dashboard for real-time monitoring.
+FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightweight Lua mod continuously exports silo levels, production chains, animal husbandries and fill types as JSON, while a small Go server picks them up and pushes live updates to a dark-themed web dashboard via Server-Sent Events — no browser refresh needed. Keep an eye on your entire farm from a second monitor, a tablet on the desk, or any device on your local network.
 
 ## Features
 

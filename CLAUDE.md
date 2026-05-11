@@ -80,7 +80,7 @@ These files are gitignored — they are generated at runtime only.
 ## Constraints
 
 - **Singleplayer only** (`multiplayer supported="false"` in modDesc.xml)
-- Current version: **0.1.1** (set in `modDesc.xml` and git tags)
+- Current version: **0.2.4** (set in `modDesc.xml` and git tags)
 - Lua serialises empty arrays as `{}` — the dashboard handles this transparently
 - The Go server polls JSON files every 2 s for changes and pushes SSE updates to all connected clients
 
