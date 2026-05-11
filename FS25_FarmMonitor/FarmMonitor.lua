@@ -485,13 +485,10 @@ function FarmMonitor:collectGoods()
                 end
             end
 
-            -- Productions (inputs + outputs)
+            -- Productions (outputs only — inputs are consumed goods, not freely sellable)
             if placeable.spec_productionPoint ~= nil and placeable.ownerFarmId == farmId then
                 local pp = placeable.spec_productionPoint.productionPoint
                 if pp ~= nil then
-                    for ftIdx, _ in pairs(pp.inputFillTypeIds or {}) do
-                        addAmount(ftIdx, pp:getFillLevel(ftIdx), locName)
-                    end
                     for _, ftIdx in ipairs(pp.outputFillTypeIdsArray or {}) do
                         addAmount(ftIdx, pp:getFillLevel(ftIdx), locName)
                     end
