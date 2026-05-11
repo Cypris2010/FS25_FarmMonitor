@@ -18,28 +18,10 @@
 - ✅ **Dashboard:** Balkenfarben (grün/gelb/rot) folgen demselben gewichteten Schema
 - ✅ **Dashboard:** Alle Alert-Schwellwerte (Eingänge, Ausgänge, Belegung) in den Settings konfigurierbar und persistent gespeichert
 
-## v0.3.0 — Multiplayer-Unterstützung
-- **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
-- **Lua:** `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
-- **Test:** MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
-- **Hintergrund:** Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal
-
-## v0.4.0 — Object Storages (Paletten & Ballenlager)
-- **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
-  - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
-  - Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
-  - Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
-  - Mistlager (`spec_manureHeap`)
-  - Bienenstock-Paletten (`spec_beehivePalletSpawner`)
-- **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
-- **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
-- **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
-- **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
-
-## v0.5.0 — Warenübersicht
+## v0.3.0 — Warenübersicht
 - **Server:** DDS-Icons der Fülltypen server-seitig zu PNG konvertieren — Go-Server liest `fillTypes.json`, konvertiert alle `hudOverlayFilename`-Pfade (`.dds`) zu PNG und serviert sie unter `/icons/<filltype>.png`
 - **Dashboard:** Fülltyp-Icons aus `/icons/<filltype>.png` laden und in folgenden Views anzeigen:
-  - Warenübersicht (v0.5.0)
+  - Warenübersicht (v0.3.0)
   - Produktionen (Inputs & Outputs)
   - Silos
   - Tierhaltung (optional, wo sinnvoll)
@@ -55,6 +37,24 @@
   - Ware, Gesamtmenge, Aktueller Preis, Aktueller Wert, Maximalpreis, Maximaler Wert, Bester Monat
   - Farbliche Hervorhebung: Blau ≥100%, Dunkelgrün ≥95%, Gelb ≥90%, Weiß <90%
   - Preistrend-Indikator (Pfeil hoch/runter/Sondernachfrage)
+
+## v0.4.0 — Object Storages (Paletten & Ballenlager)
+- **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
+  - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
+  - Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
+  - Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
+  - Mistlager (`spec_manureHeap`)
+  - Bienenstock-Paletten (`spec_beehivePalletSpawner`)
+- **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
+- **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
+- **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
+- **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
+
+## v0.5.0 — Multiplayer-Unterstützung
+- **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
+- **Lua:** `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
+- **Test:** MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
+- **Hintergrund:** Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal
 
 ## v0.6.0 — Feldübersicht
 - **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + `field:getFieldState()`
