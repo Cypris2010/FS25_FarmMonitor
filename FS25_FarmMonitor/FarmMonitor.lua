@@ -436,18 +436,24 @@ function FarmMonitor:collectGoods()
     local locations = {}   -- fillTypeIndex -> { locationName -> liters }
     local seenBaleIds = {}
 
-    local function addAmount(fillTypeIndex, amount, locationName)
+    local function addAmount(fillTypeIndex, amount, locationId, locationName)
         if fillTypeIndex == nil or amount == nil or amount <= 0 then return end
         totals[fillTypeIndex] = (totals[fillTypeIndex] or 0) + amount
-        if locationName ~= nil then
+        if locationId ~= nil then
             if locations[fillTypeIndex] == nil then locations[fillTypeIndex] = {} end
-            locations[fillTypeIndex][locationName] = (locations[fillTypeIndex][locationName] or 0) + amount
+            local loc = locations[fillTypeIndex][locationId]
+            if loc == nil then
+                locations[fillTypeIndex][locationId] = { name = locationName or locationId, liters = amount }
+            else
+                loc.liters = loc.liters + amount
+            end
         end
     end
 
     if g_currentMission.placeableSystem then
         for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
             local ownedByFarm = (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0)
+            local locId   = tostring(placeable:getUniqueId() or "")
             local locName = FarmMonitor:placeableName(placeable)
 
             -- Silos
@@ -455,7 +461,7 @@ function FarmMonitor:collectGoods()
                 for _, storage in ipairs(placeable.spec_silo.storages or {}) do
                     if storage.ownerFarmId == farmId or storage.ownerFarmId == 0 then
                         for ftIdx, level in pairs(storage.fillLevels or {}) do
-                            addAmount(ftIdx, level, locName)
+                            addAmount(ftIdx, level, locId, locName)
                         end
                     end
                 end
@@ -466,7 +472,7 @@ function FarmMonitor:collectGoods()
                 local storage = placeable.spec_siloExtension.storage
                 if storage ~= nil and (storage.ownerFarmId == farmId or storage.ownerFarmId == 0) then
                     for ftIdx, level in pairs(storage.fillLevels or {}) do
-                        addAmount(ftIdx, level, locName)
+                        addAmount(ftIdx, level, locId, locName)
                     end
                 end
             end
@@ -480,7 +486,7 @@ function FarmMonitor:collectGoods()
                         local supported = spec.loadingStation == nil
                             or spec.loadingStation.supportedFillTypes == nil
                             or spec.loadingStation.supportedFillTypes[ftIdx]
-                        if supported then addAmount(ftIdx, level, locName) end
+                        if supported then addAmount(ftIdx, level, locId, locName) end
                     end
                 end
             end
@@ -490,7 +496,7 @@ function FarmMonitor:collectGoods()
                 local pp = placeable.spec_productionPoint.productionPoint
                 if pp ~= nil then
                     for _, ftIdx in ipairs(pp.outputFillTypeIdsArray or {}) do
-                        addAmount(ftIdx, pp:getFillLevel(ftIdx), locName)
+                        addAmount(ftIdx, pp:getFillLevel(ftIdx), locId, locName)
                     end
                 end
             end
@@ -503,7 +509,7 @@ function FarmMonitor:collectGoods()
                     if bs.state == BunkerSilo.STATE_DRAIN or bs.state == BunkerSilo.STATE_FERMENTED then
                         ftIdx = bs.outputFillType
                     end
-                    addAmount(ftIdx, bs.fillLevel, locName)
+                    addAmount(ftIdx, bs.fillLevel, locId, locName)
                 end
             end
 
@@ -513,12 +519,12 @@ function FarmMonitor:collectGoods()
                     for _, obj in ipairs(objInfo.objects or {}) do
                         if obj.baleAttributes ~= nil then
                             if obj.baleAttributes.uniqueId then seenBaleIds[obj.baleAttributes.uniqueId] = true end
-                            addAmount(obj.baleAttributes.fillType, obj.baleAttributes.fillLevel, locName)
+                            addAmount(obj.baleAttributes.fillType, obj.baleAttributes.fillLevel, locId, locName)
                         elseif obj.baleObject ~= nil then
                             if obj.baleObject.uniqueId then seenBaleIds[obj.baleObject.uniqueId] = true end
-                            addAmount(obj.baleObject.fillType, obj.baleObject.fillLevel, locName)
+                            addAmount(obj.baleObject.fillType, obj.baleObject.fillLevel, locId, locName)
                         elseif obj.palletAttributes ~= nil then
-                            addAmount(obj.palletAttributes.fillType, obj.palletAttributes.fillLevel, locName)
+                            addAmount(obj.palletAttributes.fillType, obj.palletAttributes.fillLevel, locId, locName)
                         end
                     end
                 end
@@ -531,7 +537,7 @@ function FarmMonitor:collectGoods()
                     for ftIdx, areas in pairs(os.storageAreasByFillType) do
                         for _, area in pairs(areas) do
                             for _, obj in ipairs(area.objects or {}) do
-                                addAmount(ftIdx, obj.fillLevel, locName)
+                                addAmount(ftIdx, obj.fillLevel, locId, locName)
                             end
                         end
                     end
@@ -543,7 +549,7 @@ function FarmMonitor:collectGoods()
                 local heap = placeable.spec_manureHeap.manureHeap
                 if heap ~= nil then
                     for ftIdx, level in pairs(heap.fillLevels or {}) do
-                        addAmount(ftIdx, level, locName)
+                        addAmount(ftIdx, level, locId, locName)
                     end
                 end
             end
@@ -551,7 +557,7 @@ function FarmMonitor:collectGoods()
             -- Beehive pallet spawner (pending liters)
             if placeable.spec_beehivePalletSpawner ~= nil and ownedByFarm then
                 local spec = placeable.spec_beehivePalletSpawner
-                addAmount(spec.fillType, spec.pendingLiters, locName)
+                addAmount(spec.fillType, spec.pendingLiters, locId, locName)
             end
         end
     end
@@ -642,10 +648,11 @@ function FarmMonitor:collectGoods()
                 -- Storage locations for this fill type
                 local storageLocationEntries = FarmMonitor.arr()
                 if locations[ftIdx] ~= nil then
-                    for locName, liters in pairs(locations[ftIdx]) do
+                    for locId, loc in pairs(locations[ftIdx]) do
                         table.insert(storageLocationEntries, FarmMonitor.obj(
-                            "name",   locName,
-                            "liters", MathUtil.round(liters)
+                            "uniqueId", locId,
+                            "name",     loc.name,
+                            "liters",   MathUtil.round(loc.liters)
                         ))
                     end
                     table.sort(storageLocationEntries, function(a, b) return (a.liters or 0) > (b.liters or 0) end)
