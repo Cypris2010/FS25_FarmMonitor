@@ -599,6 +599,10 @@ function FarmMonitor:collectGoods()
         end
     end
 
+    -- Economic difficulty multiplier — same factor used by getEffectiveFillTypePrice internally
+    -- EconomyManager.getPriceMultiplier() is a static call (matches TSStockCheck usage)
+    local priceMult = EconomyManager.getPriceMultiplier()
+
     -- Build result: one entry per fill type with totals + price data
     local result = FarmMonitor.arr()
 
@@ -633,11 +637,13 @@ function FarmMonitor:collectGoods()
                 table.sort(sellingStationEntries, function(a, b) return (a.price or 0) > (b.price or 0) end)
 
                 -- Max theoretical price over all 12 season periods
+                -- Apply priceMult (economic difficulty) so maxPrice is comparable to
+                -- getEffectiveFillTypePrice() which already includes this factor.
                 local maxPrice   = 0
                 local bestPeriod = 1
                 if ft.economy ~= nil and ft.economy.factors ~= nil and ft.pricePerLiter ~= nil then
                     for period = SeasonPeriod.EARLY_SPRING, SeasonPeriod.LATE_WINTER do
-                        local p = ft.pricePerLiter * (ft.economy.factors[period] or 1.0)
+                        local p = ft.pricePerLiter * (ft.economy.factors[period] or 1.0) * priceMult
                         if p > maxPrice then
                             maxPrice   = p
                             bestPeriod = period
