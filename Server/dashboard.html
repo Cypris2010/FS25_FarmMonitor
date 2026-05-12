@@ -769,6 +769,272 @@
   }
   .toggle input:checked + .toggle-slider { background: rgba(154,227,58,.2); border-color: rgba(154,227,58,.5); }
   .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--green); box-shadow: 0 0 8px rgba(154,227,58,.6); }
+
+  /* ── Goods KPI bar ── */
+  .goods-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1300px) { .goods-kpi-bar { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 860px)  { .goods-kpi-bar { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .goods-kpi-bar { grid-template-columns: 1fr; } }
+
+  .goods-kpi-tile {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .goods-kpi-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .goods-kpi-val   { font-size: 20px; font-weight: 800; letter-spacing: -.04em; color: var(--green); line-height: 1.1; }
+  .goods-kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Goods search + controls ── */
+  .goods-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .goods-search {
+    flex: 1;
+    min-width: 150px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .18s;
+  }
+  .goods-search:focus { border-color: rgba(154,227,58,.5); }
+  .goods-search::placeholder { color: var(--muted); }
+
+  /* ── Goods grid ── */
+  .goods-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .goods-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .goods-quicknav:empty { display: none; }
+  .qnav-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background .15s, color .15s;
+  }
+  .qnav-item:hover { background: rgba(255,255,255,.07); color: var(--fg); }
+  .qnav-item.active { background: rgba(255,255,255,.1); color: var(--fg); }
+  .qnav-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--muted);
+  }
+  .qnav-dot.great-demand { background: var(--yellow); box-shadow: 0 0 6px rgba(255,212,59,.6); }
+  .qnav-dot.sell-now     { background: var(--red);    box-shadow: 0 0 6px rgba(255,92,77,.5); }
+  .qnav-dot.climbing     { background: var(--green); }
+  .qnav-dot.falling      { background: var(--orange); }
+  .qnav-dot.stable       { background: var(--blue); }
+  .qnav-dot.no-station   { background: var(--muted); }
+
+  .goods-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 1400px) { .goods-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .goods-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .goods-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .goods-grid { grid-template-columns: 1fr; } }
+
+  /* ── Good card ── */
+  .good-card {
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s ease, box-shadow .2s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .good-card:hover { border-color: rgba(255,255,255,.22); }
+  .good-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--muted);
+    opacity: .4;
+  }
+  .good-card.falling::before      { background: var(--orange); opacity: 1; }
+  .good-card.climbing::before     { background: var(--green);  opacity: 1; }
+  .good-card.great-demand::before { background: var(--yellow); opacity: 1; box-shadow: 0 0 14px rgba(255,212,59,.7); }
+  .good-card.sell-now::before     { background: var(--red);    opacity: 1; box-shadow: 0 0 14px rgba(255,92,77,.5); }
+  .good-card.stable::before       { background: var(--blue);   opacity: 1; }
+  .good-card.high-value {
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.045), 0 0 0 1px rgba(154,227,58,.2);
+  }
+
+  .good-name {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.04em;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .good-period-hint {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 400;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .good-amount {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    color: var(--muted);
+    line-height: 1;
+    margin-bottom: 7px;
+  }
+  .good-station-row {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .good-price-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .good-price-sub { color: var(--muted); font-size: 11px; margin-left: 2px; }
+  .trend-up   { color: var(--green); }
+  .trend-down { color: var(--orange); }
+  .trend-star { color: var(--green); }
+  .trend-flat { color: var(--blue); }
+
+  .good-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .good-station-count { font-size: 10px; color: var(--muted); }
+
+  /* ── Expanded detail ── */
+  .good-detail {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .good-card.expanded .good-detail { display: flex; }
+
+  .good-detail-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .good-station-row-detail {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 4px 8px;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .good-station-row-detail:last-child { border-bottom: none; }
+  .gsd-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gsd-price { color: var(--green); font-weight: 600; white-space: nowrap; }
+  .gsd-value { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  .good-loc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--line-soft);
+    gap: 8px;
+  }
+  .good-loc-row:last-child { border-bottom: none; }
+  .good-loc-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .good-loc-liters { color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+  .good-info-note {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: rgba(255,255,255,.025);
+    border-radius: 8px;
+    border: 1px solid var(--line-soft);
+    line-height: 1.5;
+  }
+  .good-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+  .good-bar-wrap .bar { flex: 1; margin-bottom: 0; }
+  .good-pct-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 30px;
+    text-align: right;
+  }
+  .good-max-line {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
 </style>
 </head>
 <body>
@@ -788,6 +1054,9 @@
       </button>
       <button class="nav-btn" data-view="husbandries" aria-label="Tierställe">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 11h6M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
+      </button>
+      <button class="nav-btn" data-view="goods" aria-label="Warenübersicht">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
       </button>
       <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
@@ -915,6 +1184,77 @@
       </section>
     </div>
 
+    <!-- View: Warenübersicht -->
+    <div id="view-goods" class="view" style="display:none; flex-direction:column; gap:18px;">
+
+      <!-- KPI bar -->
+      <div class="goods-kpi-bar" id="goods-kpi-bar"></div>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Warenübersicht</h2>
+              <p>Lagerbestände, Verkaufspreise und Empfehlungen</p>
+            </div>
+          </div>
+          <div class="goods-controls">
+            <input class="goods-search" type="text" placeholder="Ware suchen …" id="goods-search-input"
+              oninput="goodsSearch=this.value; renderGoods(appData?.goods)">
+            <select class="filter-btn" id="goods-trend-filter"
+              onchange="goodsTrendFilter=this.value; renderGoods(appData?.goods)">
+              <option value="all">Alle Trends</option>
+              <option value="climbing">↑ Steigend</option>
+              <option value="stable">→ Stabil</option>
+              <option value="falling">↓ Fallend</option>
+              <option value="no-station">Keine Station</option>
+            </select>
+            <select class="filter-btn" id="goods-month-filter"
+              onchange="goodsMonthFilter=this.value; renderGoods(appData?.goods)">
+              <option value="all">Alle Monate</option>
+              <option value="1">März</option>
+              <option value="2">April</option>
+              <option value="3">Mai</option>
+              <option value="4">Juni</option>
+              <option value="5">Juli</option>
+              <option value="6">August</option>
+              <option value="7">September</option>
+              <option value="8">Oktober</option>
+              <option value="9">November</option>
+              <option value="10">Dezember</option>
+              <option value="11">Januar</option>
+              <option value="12">Februar</option>
+            </select>
+            <select class="filter-btn" id="goods-sort"
+              onchange="goodsSort=this.value; renderGoods(appData?.goods)">
+              <option value="name" selected>Nach Name</option>
+              <option value="value">Nach Wert</option>
+              <option value="liters">Nach Menge</option>
+              <option value="month">Nach Monat</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)">
+              <label class="toggle">
+                <input type="checkbox" id="goods-hide-water" checked
+                  onchange="goodsHideWater=this.checked; renderGoods(appData?.goods)">
+                <span class="toggle-slider"></span>
+              </label>
+              Wasser ausblenden
+            </label>
+          </div>
+        </div>
+
+        <div class="goods-layout">
+          <div class="goods-quicknav" id="goods-quicknav"></div>
+          <div class="goods-grid" id="goods-grid">
+            <div class="state-box" style="grid-column:1/-1"><span>Lade Waren …</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- View: Warnungen -->
     <div id="view-alerts" class="view" style="display:none; flex-direction:column; gap:18px;">
       <section class="section-shell">
@@ -971,6 +1311,9 @@
   </button>
   <button class="nav-btn" data-view="husbandries" aria-label="Tierställe">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
+  </button>
+  <button class="nav-btn" data-view="goods" aria-label="Warenübersicht">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
   </button>
   <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
@@ -1562,6 +1905,296 @@ function renderHome(data) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Goods state + helpers
+// ═══════════════════════════════════════════════════════════
+
+let goodsSearch      = '';
+let goodsTrendFilter = 'all';
+let goodsMonthFilter = 'all';
+let goodsHideWater   = true;
+let goodsSort        = 'name';
+let goodsExpandedSet = new Set();
+
+const PERIOD_NAMES = [
+  '', 'März', 'April', 'Mai',
+  'Juni', 'Juli', 'August',
+  'September', 'Oktober', 'November',
+  'Dezember', 'Januar', 'Februar'
+];
+
+function fmtLiters(n) {
+  if (n == null) return '—';
+  if (n >= 1e6) return (n / 1e6).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' Mio l';
+  if (n >= 1e3) return (n / 1e3).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + ' Tsd l';
+  return n.toLocaleString('de-DE') + ' l';
+}
+
+function fmtEur(n) {
+  if (n == null || n === 0) return '—';
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+}
+
+function fmtPrice(n) {
+  if (n == null || n === 0) return '—';
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' €/l';
+}
+
+function goodTrendClass(g) {
+  const stations = Array.isArray(g.sellingStations) ? g.sellingStations : [];
+  if (stations.length === 0) return 'no-station';
+  const t = stations[0].trend;
+  if (t === 'GREAT_DEMAND') return 'great-demand';
+  if (t === 'CLIMBING')     return 'climbing';
+  if (t === 'FALLING')      return 'falling';
+  return 'stable';
+}
+
+// Visual class for card stripe + quicknav dot — combines trend AND price level
+function goodVisualClass(tCls, pricePct) {
+  if (tCls === 'great-demand') return 'great-demand';
+  if (tCls === 'no-station')   return 'no-station';
+  if (pricePct >= 95 && tCls === 'falling') return 'sell-now';
+  if (pricePct >= 95)          return 'climbing';
+  if (tCls === 'falling')      return 'falling';
+  return 'stable';
+}
+
+function trendIcon(trend) {
+  if (trend === 'GREAT_DEMAND') return '<span class="trend-star">⚡</span>';
+  if (trend === 'CLIMBING')     return '<span class="trend-up">↑</span>';
+  if (trend === 'FALLING')      return '<span class="trend-down">↓</span>';
+  return '<span class="trend-flat">→</span>';
+}
+
+function goodRecommendation(cls, pricePct) {
+  if (cls === 'no-station')   return { label: 'Keine Verkaufsstelle',      badgeCls: 'gray'   };
+  if (cls === 'great-demand') return { label: '⚡ Sondernachfrage!',        badgeCls: 'yellow' };
+  if (pricePct >= 95) {
+    if (cls === 'falling')    return { label: '🔥 Jetzt verkaufen!',        badgeCls: 'red'    };
+                              return { label: '↑ Warten möglich',           badgeCls: 'green'  };
+  }
+  if (pricePct >= 70) {
+    if (cls === 'falling')    return { label: '↓ Verkaufen prüfen',         badgeCls: 'orange' };
+                              return { label: '→ Beobachten',               badgeCls: 'blue'   };
+  }
+                              return { label: '⏳ Warten',                  badgeCls: 'blue'   };
+}
+
+function toggleGoodExpanded(fillType, e) {
+  e.stopPropagation();
+  if (goodsExpandedSet.has(fillType)) goodsExpandedSet.delete(fillType);
+  else goodsExpandedSet.add(fillType);
+  renderGoods(appData?.goods);
+}
+
+function renderGoodCard(g) {
+  const stations   = Array.isArray(g.sellingStations) ? g.sellingStations : [];
+  const locs       = Array.isArray(g.storageLocations) ? g.storageLocations : [];
+  const best       = stations[0] || null;
+  const tCls       = goodTrendClass(g);
+  const isExpanded = true;
+  const bestVal    = best ? (best.value || 0) : 0;
+  const isHighVal  = g.maxValue > 0 && bestVal >= g.maxValue * 0.95;
+  const pricePct   = (g.maxPrice && best && best.price) ? Math.round(best.price / g.maxPrice * 100) : 0;
+  const pBarCls    = pricePct >= 100 ? 'blue' : pricePct >= 90 ? 'green' : pricePct >= 70 ? '' : 'orange';
+  const rec        = goodRecommendation(tCls, pricePct);
+  const vCls       = goodVisualClass(tCls, pricePct);
+
+  // Top 5 stations table
+  const top5Html = stations.slice(0, 5).map((s, i) => `
+    <div class="good-station-row-detail">
+      <span class="gsd-name">${i === 0 ? '<strong>' + s.name + '</strong>' : s.name}</span>
+      <span class="gsd-price">${fmtPrice(s.price)}</span>
+      <span class="gsd-value">${fmtEur(s.value)}</span>
+      <span>${trendIcon(s.trend)}</span>
+    </div>`).join('') || '<span style="font-size:12px;color:var(--muted)">Keine Stationen</span>';
+
+  // Diff between best and 2nd
+  const diffHtml = stations.length >= 2
+    ? `<div class="good-info-note">Differenz zu nächster Station: ${fmtPrice(stations[0].price - stations[1].price)} = ${fmtEur(stations[0].value - stations[1].value)}</div>`
+    : '';
+
+  // Storage locations
+  const locsHtml = locs.length > 0
+    ? locs.map(l => `
+        <div class="good-loc-row">
+          <span class="good-loc-name">${l.name}</span>
+          <span class="good-loc-liters">${fmtLiters(l.liters)}</span>
+        </div>`).join('')
+    : '<span style="font-size:12px;color:var(--muted)">—</span>';
+
+  // Max price note — bar with inline % label + subtle max/season line
+  const maxNoteHtml = (pricePct > 0) ? `
+    <div class="good-bar-wrap">
+      <div class="bar ${pBarCls}"><i style="width:${Math.min(pricePct,100)}%"></i></div>
+      <span class="good-pct-label">${pricePct}%</span>
+    </div>
+    <div class="good-max-line">Max: ${fmtPrice(g.maxPrice)} · ${PERIOD_NAMES[g.bestPeriod] || '—'}</div>
+  ` : '';
+
+  return `
+    <article class="card good-card ${vCls} expanded${isHighVal ? ' high-value' : ''}"
+      id="good-${g.fillType}" aria-label="${g.title}">
+      <div class="good-name">
+        <span>${g.title}</span>
+        <span class="good-period-hint">${PERIOD_NAMES[g.bestPeriod] || ''}</span>
+      </div>
+      <div class="good-amount">${fmtLiters(g.totalLiters)}</div>
+      ${best ? `
+        <div class="good-station-row">🏪 ${best.name}</div>
+        <div class="good-price-row">
+          <span>${fmtPrice(best.price)}</span>
+          ${trendIcon(best.trend)}
+          <span class="good-price-sub">${fmtEur(bestVal)}</span>
+        </div>
+        ${maxNoteHtml}
+      ` : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Keine Verkaufsstelle</div>`}
+      <div class="good-footer">
+        <span class="badge ${rec.badgeCls}" style="font-size:11px;padding:3px 8px">${rec.label}</span>
+        <span class="good-station-count">${stations.length > 1 ? stations.length + ' Stationen' : stations.length === 1 ? '1 Station' : ''}</span>
+      </div>
+      <div class="good-detail">
+        <div>
+          <div class="good-detail-label">Verkaufsstellen (Top 5)</div>
+          ${top5Html}
+          ${diffHtml}
+        </div>
+        <div>
+          <div class="good-detail-label">Lagerorte</div>
+          ${locsHtml}
+        </div>
+      </div>
+    </article>`;
+}
+
+function scrollToGood(fillType) {
+  const el = document.getElementById('good-' + fillType);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Briefly highlight the active nav item
+  document.querySelectorAll('.qnav-item').forEach(b => b.classList.remove('active'));
+  const btn = [...document.querySelectorAll('.qnav-item')].find(b => b.onclick?.toString().includes(fillType));
+  if (btn) btn.classList.add('active');
+}
+
+function renderGoods(data) {
+  const kpiEl  = document.getElementById('goods-kpi-bar');
+  const gridEl = document.getElementById('goods-grid');
+  if (!kpiEl || !gridEl) return;
+
+  const goods = Array.isArray(data?.goods) ? data.goods : [];
+
+  if (goods.length === 0) {
+    kpiEl.innerHTML  = '';
+    gridEl.innerHTML = `<div class="state-box" style="grid-column:1/-1">
+      <strong>Keine Warendaten</strong>
+      <span>goods.json wurde noch nicht gefunden. FarmMonitor läuft?</span>
+    </div>`;
+    return;
+  }
+
+  // Base set (water optionally excluded) for KPIs
+  const base = goodsHideWater ? goods.filter(g => g.fillType !== 'WATER') : goods;
+
+  // Filter for grid
+  let filtered = base;
+  if (goodsSearch.trim()) {
+    const q = goodsSearch.trim().toLowerCase();
+    filtered = filtered.filter(g =>
+      (g.title || '').toLowerCase().includes(q) ||
+      (g.fillType || '').toLowerCase().includes(q));
+  }
+  if (goodsTrendFilter !== 'all') {
+    filtered = filtered.filter(g => {
+      const c = goodTrendClass(g);
+      if (goodsTrendFilter === 'no-station') return c === 'no-station';
+      if (goodsTrendFilter === 'climbing')   return c === 'climbing' || c === 'great-demand';
+      if (goodsTrendFilter === 'falling')    return c === 'falling';
+      if (goodsTrendFilter === 'stable')     return c === 'stable';
+      return true;
+    });
+  }
+  if (goodsMonthFilter !== 'all') {
+    const m = parseInt(goodsMonthFilter);
+    filtered = filtered.filter(g => g.bestPeriod === m);
+  }
+
+  // Sort
+  filtered = [...filtered].sort((a, b) => {
+    if (goodsSort === 'value') {
+      const av = a.sellingStations?.[0]?.value ?? 0;
+      const bv = b.sellingStations?.[0]?.value ?? 0;
+      return bv - av;
+    }
+    if (goodsSort === 'liters') return (b.totalLiters || 0) - (a.totalLiters || 0);
+    if (goodsSort === 'name')   return (a.title || '').localeCompare(b.title || '', 'de');
+    if (goodsSort === 'month')  return (a.bestPeriod || 0) - (b.bestPeriod || 0);
+    return 0;
+  });
+
+  // KPIs
+  const totalVal  = base.reduce((s, g) => s + (g.sellingStations?.[0]?.value ?? 0), 0);
+  const maxTotal  = base.reduce((s, g) => s + (g.maxValue || 0), 0);
+  const noStation = base.filter(g => !g.sellingStations?.length).length;
+  const tUp       = base.filter(g => { const c = goodTrendClass(g); return c === 'climbing' || c === 'great-demand'; }).length;
+  const tDown     = base.filter(g => goodTrendClass(g) === 'falling').length;
+  const tFlat     = base.filter(g => goodTrendClass(g) === 'stable').length;
+  const topGood   = base.reduce((top, g) =>
+    (g.sellingStations?.[0]?.value ?? 0) > (top.sellingStations?.[0]?.value ?? 0) ? g : top,
+    base[0] || {});
+
+  kpiEl.innerHTML = `
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Waren</div>
+      <div class="goods-kpi-val">${base.length}</div>
+      <div class="goods-kpi-sub">${noStation > 0 ? noStation + ' ohne Verkaufsstelle' : 'alle verkaufbar'}</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Gesamtwert aktuell</div>
+      <div class="goods-kpi-val" style="font-size:16px">${fmtEur(totalVal)}</div>
+      <div class="goods-kpi-sub">Zum besten Stationspreis</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Wertvollste Ware</div>
+      <div class="goods-kpi-val" style="font-size:15px">${topGood.title || '—'}</div>
+      <div class="goods-kpi-sub">${fmtEur(topGood.sellingStations?.[0]?.value)}</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Preistrend</div>
+      <div class="goods-kpi-val" style="font-size:17px">
+        <span style="color:var(--green)">↑${tUp}</span>
+        <span style="color:var(--blue);margin:0 5px">→${tFlat}</span>
+        <span style="color:var(--orange)">↓${tDown}</span>
+      </div>
+      <div class="goods-kpi-sub">Steigend · Stabil · Fallend</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Max-Gesamtwert</div>
+      <div class="goods-kpi-val" style="font-size:16px">${fmtEur(maxTotal)}</div>
+      <div class="goods-kpi-sub">Zum Jahreshöchstpreis</div>
+    </article>`;
+
+  gridEl.innerHTML = filtered.length === 0
+    ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Waren entsprechen dem Filter.</span></div>`
+    : filtered.map(renderGoodCard).join('');
+
+  // Quicknav
+  const navEl = document.getElementById('goods-quicknav');
+  if (navEl) {
+    navEl.innerHTML = filtered.map(g => {
+      const tCls   = goodTrendClass(g);
+      const best   = Array.isArray(g.sellingStations) ? g.sellingStations[0] : null;
+      const pct    = (g.maxPrice && best?.price) ? Math.round(best.price / g.maxPrice * 100) : 0;
+      const vCls   = goodVisualClass(tCls, pct);
+      return `<button class="qnav-item" onclick="scrollToGood('${g.fillType}')">
+        <span class="qnav-dot ${vCls}"></span>
+        <span style="overflow:hidden;text-overflow:ellipsis">${g.title}</span>
+      </button>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // View routing
 // ═══════════════════════════════════════════════════════════
 
@@ -1713,6 +2346,7 @@ function rerenderCurrentView() {
   if (currentView === 'silos')       renderSilos(appData.silos);
   if (currentView === 'productions') renderProductions(appData.productions);
   if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
+  if (currentView === 'goods')       renderGoods(appData.goods);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
 }
