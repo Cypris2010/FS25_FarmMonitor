@@ -911,6 +911,13 @@
     align-items: flex-start;
     gap: 6px;
   }
+  .good-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
   .good-period-hint {
     font-size: 10px;
     color: var(--muted);
@@ -2036,7 +2043,11 @@ function renderGoodCard(g) {
     <article class="card good-card ${vCls} expanded${isHighVal ? ' high-value' : ''}"
       id="good-${g.fillType}" aria-label="${g.title}">
       <div class="good-name">
-        <span>${g.title}</span>
+        <span style="display:flex;align-items:center;gap:7px;min-width:0">
+          <img class="good-icon" src="/icons/${g.fillType}.png" alt=""
+               onerror="this.style.display='none'">
+          <span style="overflow:hidden;text-overflow:ellipsis">${g.title}</span>
+        </span>
         <span class="good-period-hint">${PERIOD_NAMES[g.bestPeriod] || ''}</span>
       </div>
       <div class="good-amount">${fmtLiters(g.totalLiters)}</div>

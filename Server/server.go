@@ -383,6 +383,24 @@ func decodeDDS(data []byte) (image.Image, error) {
 				off += 16
 			}
 		}
+	case "DX10":
+		if len(data) < 148 {
+			return nil, fmt.Errorf("DDS DX10 header too short")
+		}
+		dxgi := binary.LittleEndian.Uint32(data[128:132])
+		if dxgi != 98 && dxgi != 99 { // BC7_UNORM / BC7_UNORM_SRGB
+			return nil, fmt.Errorf("unsupported DXGI format %d", dxgi)
+		}
+		off = 148
+		for y := 0; y < numBY; y++ {
+			for x := 0; x < numBX; x++ {
+				if off+16 > len(data) {
+					return img, nil
+				}
+				writeBC7Block(data[off:off+16], img, x*4, y*4, imgW, imgH)
+				off += 16
+			}
+		}
 	default:
 		return nil, fmt.Errorf("unsupported DDS format %q", fourCC)
 	}
