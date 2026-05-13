@@ -2271,6 +2271,11 @@ function renderSettings() {
         <input id="cfg-data" type="text" value="${srv.data ?? ''}" placeholder="Automatisch"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
       </label>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
+        Spielpfad <span style="font-size:11px">(leer = automatisch erkennen, für Vanilla-Icons)</span>
+        <input id="cfg-game" type="text" value="${srv.game ?? ''}" placeholder="Automatisch"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
+      </label>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
         <span style="font-size:12px;color:var(--muted)">⚠ Port und Host erfordern einen Serverneustart.</span>
         <button onclick="saveServerSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
@@ -2343,9 +2348,10 @@ async function saveServerSettings() {
   const port = parseInt(document.getElementById('cfg-port').value, 10);
   const host = document.getElementById('cfg-host').value.trim();
   const data = document.getElementById('cfg-data').value.trim();
+  const game = document.getElementById('cfg-game').value.trim();
   if (!port || port < 1 || port > 65535) return;
   if (!host) return;
-  globalSettings = { ...globalSettings, server: { port, host, ...(data ? { data } : {}) } };
+  globalSettings = { ...globalSettings, server: { port, host, ...(data ? { data } : {}), ...(game ? { game } : {}) } };
   await saveGlobalSettings();
   const msg = document.getElementById('cfg-saved');
   if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }

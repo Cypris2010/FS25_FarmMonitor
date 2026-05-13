@@ -559,9 +559,18 @@ func fs25DataDir() string {
 	}
 	switch runtime.GOOS {
 	case "darwin":
-		p := "/Applications/Farming Simulator 25.app/Contents/Resources"
-		if _, err := os.Stat(p); err == nil {
-			return p
+		candidates := []string{
+			"/Applications/Farming Simulator 25.app/Contents/Resources",
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			candidates = append(candidates,
+				filepath.Join(home, "Library/Application Support/Steam/steamapps/common/Farming Simulator 25"),
+			)
+		}
+		for _, p := range candidates {
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
 		}
 	case "windows":
 		for _, p := range []string{
@@ -616,6 +625,7 @@ type serverConfig struct {
 	Port *int    `json:"port,omitempty"`
 	Host *string `json:"host,omitempty"`
 	Data *string `json:"data,omitempty"`
+	Game *string `json:"game,omitempty"`
 }
 
 type settingsFile struct {
@@ -670,6 +680,9 @@ func main() {
 		}
 		if !explicit["data"] && s.Server.Data != nil && *s.Server.Data != "" {
 			*data = *s.Server.Data
+		}
+		if !explicit["game"] && s.Server.Game != nil && *s.Server.Game != "" {
+			*game = *s.Server.Game
 		}
 	}
 
