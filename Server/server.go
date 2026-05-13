@@ -1,19 +1,30 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	_ "embed"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
+
+// set once in main from -game flag or auto-detection
+var gameDataDir string
 
 //go:embed dashboard.html
 var dashboardHTML []byte
@@ -267,6 +278,319 @@ func handleEvents(b *broker) http.HandlerFunc {
 }
 
 // ---------------------------------------------------------------------------
+// DDS decoder (DXT1 / DXT5)
+// ---------------------------------------------------------------------------
+
+func rgb565(v uint16) (r, g, b uint8) {
+	r5, g6, b5 := uint8(v>>11), uint8((v>>5)&0x3F), uint8(v&0x1F)
+	return (r5 << 3) | (r5 >> 2), (g6 << 2) | (g6 >> 4), (b5 << 3) | (b5 >> 2)
+}
+
+func dxt1Colors(v0, v1 uint16, force4 bool) [4]color.RGBA {
+	r0, g0, b0 := rgb565(v0)
+	r1, g1, b1 := rgb565(v1)
+	var c [4]color.RGBA
+	c[0] = color.RGBA{r0, g0, b0, 255}
+	c[1] = color.RGBA{r1, g1, b1, 255}
+	if v0 > v1 || force4 {
+		c[2] = color.RGBA{uint8((2*int(r0) + int(r1) + 1) / 3), uint8((2*int(g0) + int(g1) + 1) / 3), uint8((2*int(b0) + int(b1) + 1) / 3), 255}
+		c[3] = color.RGBA{uint8((int(r0) + 2*int(r1) + 1) / 3), uint8((int(g0) + 2*int(g1) + 1) / 3), uint8((int(b0) + 2*int(b1) + 1) / 3), 255}
+	} else {
+		c[2] = color.RGBA{uint8((int(r0) + int(r1)) / 2), uint8((int(g0) + int(g1)) / 2), uint8((int(b0) + int(b1)) / 2), 255}
+		c[3] = color.RGBA{0, 0, 0, 0}
+	}
+	return c
+}
+
+func writeDXT1Block(block []byte, img *image.RGBA, bx, by, imgW, imgH int, force4 bool) {
+	v0 := binary.LittleEndian.Uint16(block[0:2])
+	v1 := binary.LittleEndian.Uint16(block[2:4])
+	colors := dxt1Colors(v0, v1, force4)
+	bits := binary.LittleEndian.Uint32(block[4:8])
+	for py := 0; py < 4; py++ {
+		for px := 0; px < 4; px++ {
+			x, y := bx+px, by+py
+			if x >= imgW || y >= imgH {
+				continue
+			}
+			img.SetRGBA(x, y, colors[(bits>>(uint(py*4+px)*2))&3])
+		}
+	}
+}
+
+func writeDXT5Block(block []byte, img *image.RGBA, bx, by, imgW, imgH int) {
+	a0, a1 := block[0], block[1]
+	var alphas [8]uint8
+	alphas[0], alphas[1] = a0, a1
+	if a0 > a1 {
+		for i := 2; i < 8; i++ {
+			alphas[i] = uint8((int(a0)*(8-i) + int(a1)*(i-1)) / 7)
+		}
+	} else {
+		for i := 2; i < 6; i++ {
+			alphas[i] = uint8((int(a0)*(6-i) + int(a1)*(i-1)) / 5)
+		}
+		alphas[6], alphas[7] = 0, 255
+	}
+	abits := uint64(block[2]) | uint64(block[3])<<8 | uint64(block[4])<<16 |
+		uint64(block[5])<<24 | uint64(block[6])<<32 | uint64(block[7])<<40
+
+	writeDXT1Block(block[8:16], img, bx, by, imgW, imgH, true)
+	for py := 0; py < 4; py++ {
+		for px := 0; px < 4; px++ {
+			x, y := bx+px, by+py
+			if x >= imgW || y >= imgH {
+				continue
+			}
+			c := img.RGBAAt(x, y)
+			c.A = alphas[(abits>>(uint(py*4+px)*3))&7]
+			img.SetRGBA(x, y, c)
+		}
+	}
+}
+
+func decodeDDS(data []byte) (image.Image, error) {
+	if len(data) < 128 || string(data[0:4]) != "DDS " {
+		return nil, fmt.Errorf("not a DDS file")
+	}
+	imgH := int(binary.LittleEndian.Uint32(data[12:16]))
+	imgW := int(binary.LittleEndian.Uint32(data[16:20]))
+	if imgW <= 0 || imgH <= 0 || imgW > 4096 || imgH > 4096 {
+		return nil, fmt.Errorf("invalid dimensions %dx%d", imgW, imgH)
+	}
+	fourCC := string(data[84:88])
+	img := image.NewRGBA(image.Rect(0, 0, imgW, imgH))
+	numBX, numBY := (imgW+3)/4, (imgH+3)/4
+	off := 128
+	switch fourCC {
+	case "DXT1":
+		for y := 0; y < numBY; y++ {
+			for x := 0; x < numBX; x++ {
+				if off+8 > len(data) {
+					return img, nil
+				}
+				writeDXT1Block(data[off:off+8], img, x*4, y*4, imgW, imgH, false)
+				off += 8
+			}
+		}
+	case "DXT5":
+		for y := 0; y < numBY; y++ {
+			for x := 0; x < numBX; x++ {
+				if off+16 > len(data) {
+					return img, nil
+				}
+				writeDXT5Block(data[off:off+16], img, x*4, y*4, imgW, imgH)
+				off += 16
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported DDS format %q", fourCC)
+	}
+	return img, nil
+}
+
+// ---------------------------------------------------------------------------
+// Icon cache
+// ---------------------------------------------------------------------------
+
+type iconCache struct {
+	mu   sync.RWMutex
+	data map[string][]byte // fill type name (uppercase) → PNG bytes
+}
+
+func newIconCache() *iconCache {
+	return &iconCache{data: make(map[string][]byte)}
+}
+
+func (c *iconCache) get(name string) ([]byte, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	v, ok := c.data[strings.ToUpper(name)]
+	return v, ok
+}
+
+func (c *iconCache) rebuild(fillTypesPath string) {
+	raw, err := os.ReadFile(fillTypesPath)
+	if err != nil {
+		return
+	}
+	var parsed struct {
+		FillTypes []struct {
+			Name               string `json:"name"`
+			HudOverlayFilename string `json:"hudOverlayFilename"`
+		} `json:"fillTypes"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		log.Printf("[icons] parse error: %v", err)
+		return
+	}
+	next := make(map[string][]byte, len(parsed.FillTypes))
+	for _, ft := range parsed.FillTypes {
+		if ft.HudOverlayFilename == "" {
+			continue
+		}
+		pngData, err := hudPathToPNG(ft.HudOverlayFilename)
+		if err != nil {
+			log.Printf("[icons] %s: %v", ft.Name, err)
+			continue
+		}
+		next[ft.Name] = pngData
+	}
+	c.mu.Lock()
+	c.data = next
+	c.mu.Unlock()
+	log.Printf("[icons] rebuilt: %d icons loaded", len(next))
+}
+
+func hudPathToPNG(hudPath string) ([]byte, error) {
+	fileData, err := readHudFile(hudPath)
+	if err != nil {
+		return nil, err
+	}
+	// Detect format by magic bytes, not extension (Lua sometimes reports wrong extension).
+	if len(fileData) >= 4 && string(fileData[0:4]) == "\x89PNG" {
+		return fileData, nil
+	}
+	img, err := decodeDDS(fileData)
+	if err != nil {
+		return nil, fmt.Errorf("DDS decode: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// readHudFile loads raw bytes for a hudOverlayFilename path.
+// Handles three cases:
+//  1. Absolute path that exists on disk (extracted mod or vanilla)
+//  2. Absolute path inside a packed mod ZIP (most common)
+//  3. dataS/... relative path → resolved via FS25 install dir
+func readHudFile(hudPath string) ([]byte, error) {
+	if filepath.IsAbs(hudPath) {
+		if data, err := os.ReadFile(hudPath); err == nil {
+			return data, nil
+		}
+		return readFromModZip(hudPath)
+	}
+	if strings.HasPrefix(hudPath, "dataS/") || strings.HasPrefix(hudPath, "dataS\\") {
+		base := fs25DataDir()
+		if base == "" {
+			return nil, fmt.Errorf("FS25 install dir not found (use -game flag): %s", hudPath)
+		}
+		return os.ReadFile(filepath.Join(base, filepath.FromSlash(hudPath)))
+	}
+	return nil, fmt.Errorf("unresolvable path: %s", hudPath)
+}
+
+// readFromModZip extracts a file from its mod's ZIP archive.
+// Example: .../mods/FS25_SomeMod/textures/icon.png → opens FS25_SomeMod.zip, reads textures/icon.png.
+// Also tries swapping .png ↔ .dds if the exact path is not found.
+func readFromModZip(absPath string) ([]byte, error) {
+	sep := string(filepath.Separator)
+	modsMarker := sep + "mods" + sep
+	idx := strings.Index(absPath, modsMarker)
+	if idx < 0 {
+		return nil, fmt.Errorf("no mods directory in path: %s", absPath)
+	}
+	modsDir := absPath[:idx+len(modsMarker)-1]
+	rest := absPath[idx+len(modsMarker):]
+	slashIdx := strings.Index(rest, sep)
+	if slashIdx < 0 {
+		return nil, fmt.Errorf("expected mod subdirectory in: %s", rest)
+	}
+	modName := rest[:slashIdx]
+	innerPath := filepath.ToSlash(rest[slashIdx+1:])
+	return readFromZip(filepath.Join(modsDir, modName+".zip"), innerPath)
+}
+
+func readFromZip(zipPath, innerPath string) ([]byte, error) {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", filepath.Base(zipPath), err)
+	}
+	defer r.Close()
+
+	// Build alternate path: swap .png ↔ .dds in case Lua reported the wrong extension.
+	altPath := innerPath
+	switch strings.ToLower(filepath.Ext(innerPath)) {
+	case ".png":
+		altPath = innerPath[:len(innerPath)-4] + ".dds"
+	case ".dds":
+		altPath = innerPath[:len(innerPath)-4] + ".png"
+	}
+
+	for _, f := range r.File {
+		name := filepath.ToSlash(f.Name)
+		if name == innerPath || name == altPath {
+			rc, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+	}
+	return nil, fmt.Errorf("%s not found in %s", innerPath, filepath.Base(zipPath))
+}
+
+func fs25DataDir() string {
+	if gameDataDir != "" {
+		return gameDataDir
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		p := "/Applications/Farming Simulator 25.app/Contents/Resources"
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	case "windows":
+		for _, p := range []string{
+			`C:\Program Files (x86)\Farming Simulator 2025`,
+			`C:\Program Files\Farming Simulator 2025`,
+		} {
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+		}
+	}
+	return ""
+}
+
+func watchAndRebuildIcons(fillTypesPath string, cache *iconCache) {
+	var lastMod time.Time
+	if info, err := os.Stat(fillTypesPath); err == nil {
+		lastMod = info.ModTime()
+		cache.rebuild(fillTypesPath)
+	}
+	for range time.Tick(2 * time.Second) {
+		info, err := os.Stat(fillTypesPath)
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(lastMod) {
+			lastMod = info.ModTime()
+			go cache.rebuild(fillTypesPath)
+		}
+	}
+}
+
+func handleIcons(cache *iconCache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := strings.TrimSuffix(r.PathValue("name"), ".png")
+		data, ok := cache.get(name)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Write(data)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Startup settings
 // ---------------------------------------------------------------------------
 
@@ -313,6 +637,7 @@ func main() {
 	port := flag.Int("port", 8080, "HTTP port")
 	host := flag.String("host", "127.0.0.1", "Listen address (use 0.0.0.0 for LAN access)")
 	data := flag.String("data", "", "Path to the directory containing the JSON data files (default: auto-detect from modSettings)")
+	game := flag.String("game", "", "Path to FS25 install directory (for vanilla icons, default: auto-detect)")
 	flag.Parse()
 
 	// Apply saved settings for any flag not explicitly set via CLI.
@@ -328,6 +653,10 @@ func main() {
 		if !explicit["data"] && s.Server.Data != nil && *s.Server.Data != "" {
 			*data = *s.Server.Data
 		}
+	}
+
+	if *game != "" {
+		gameDataDir = *game
 	}
 
 	dataDir := *data
@@ -350,12 +679,16 @@ func main() {
 	b := newBroker()
 	go watchFiles(jsonFiles, b)
 
+	icons := newIconCache()
+	go watchAndRebuildIcons(filepath.Join(dataDir, "fillTypes.json"), icons)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleDashboard)
 	mux.HandleFunc("/api/data", handleData(dataDir))
 	mux.HandleFunc("/api/events", handleEvents(b))
 	mux.HandleFunc("/api/settings", handleSettings())
 	mux.HandleFunc("/api/savegame/{savegameId}", handleSavegame())
+	mux.HandleFunc("/icons/{name}", handleIcons(icons))
 
 	log.Printf("Settings: %s", settingsPath())
 
