@@ -9,7 +9,7 @@
     <description>
         <en>Exports farm data (silos, productions, animal pens) to JSON for a browser dashboard.</en>
     </description>
-    <multiplayer supported="false"/>
+    <multiplayer supported="true"/>
     <extraSourceFiles>
         <sourceFile filename="FarmMonitor.lua"/>
     </extraSourceFiles>

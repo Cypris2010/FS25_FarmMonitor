@@ -40,6 +40,7 @@ function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
     end
+    if g_dedicatedServer ~= nil then return end
 
     -- Detect savegame change: reset state so files are re-exported for the new savegame
     local currentDir = g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory
