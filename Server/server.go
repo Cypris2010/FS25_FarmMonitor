@@ -442,12 +442,14 @@ func (c *iconCache) rebuild(fillTypesPath string) {
 		log.Printf("[icons] parse error: %v", err)
 		return
 	}
+	// Icons exported by Lua are written to {dataDir}/icons/{NAME}.{ext}
+	iconDir := filepath.Join(filepath.Dir(fillTypesPath), "icons")
 	next := make(map[string][]byte, len(parsed.FillTypes))
 	for _, ft := range parsed.FillTypes {
-		if ft.HudOverlayFilename == "" {
+		if ft.Name == "" {
 			continue
 		}
-		pngData, err := hudPathToPNG(ft.HudOverlayFilename)
+		pngData, err := loadIconForFillType(ft.Name, ft.HudOverlayFilename, iconDir)
 		if err != nil {
 			log.Printf("[icons] %s: %v", ft.Name, err)
 			continue
@@ -458,6 +460,37 @@ func (c *iconCache) rebuild(fillTypesPath string) {
 	c.data = next
 	c.mu.Unlock()
 	log.Printf("[icons] rebuilt: %d icons loaded", len(next))
+}
+
+// loadIconForFillType tries to load a PNG for the given fill type.
+// Priority:
+//  1. {iconDir}/{name}.png  — pre-exported by Lua (already PNG)
+//  2. {iconDir}/{name}.dds  — pre-exported by Lua (needs DDS→PNG conversion)
+//  3. Fallback: parse hudOverlayFilename via ZIP/game-data logic
+func loadIconForFillType(name, hudOverlayFilename, iconDir string) ([]byte, error) {
+	// 1. PNG pre-exported by Lua
+	pngPath := filepath.Join(iconDir, name+".png")
+	if data, err := os.ReadFile(pngPath); err == nil {
+		return data, nil
+	}
+	// 2. DDS pre-exported by Lua → convert
+	ddsPath := filepath.Join(iconDir, name+".dds")
+	if data, err := os.ReadFile(ddsPath); err == nil {
+		img, err := decodeDDS(data)
+		if err != nil {
+			return nil, fmt.Errorf("DDS decode (local): %w", err)
+		}
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+	// 3. Fallback: original ZIP/game-data path
+	if hudOverlayFilename == "" {
+		return nil, fmt.Errorf("no hudOverlayFilename and no local icon found")
+	}
+	return hudPathToPNG(hudOverlayFilename)
 }
 
 func hudPathToPNG(hudPath string) ([]byte, error) {
