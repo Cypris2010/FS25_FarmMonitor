@@ -164,8 +164,9 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Icon export  (written once per session alongside fillTypes.json)
--- Only works for mods installed as extracted folders; ZIP-packed mods and
--- vanilla icons (dataS/) are served directly by the Go server.
+-- Note: Giants Engine fileExists()/copyFile() do not see VFS paths (dataS/
+-- or ZIP-packed mods). The Go server reads mod ZIPs directly via readFromModZip.
+-- This function only copies icons for mods installed as extracted folders.
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:exportIcons(fillTypeEntries, outputDir)
@@ -177,29 +178,18 @@ function FarmMonitor:exportIcons(fillTypeEntries, outputDir)
         for _, entry in ipairs(fillTypeEntries) do
             local hudPath = entry.hudOverlayFilename
             local name    = entry.name
-            if hudPath ~= nil and hudPath ~= "" then
-                -- Keep original extension (.png or .dds) — server handles DDS→PNG conversion
+            if hudPath ~= nil and hudPath ~= "" and fileExists(hudPath) then
                 local ext = hudPath:match("%.(%w+)$") or "png"
                 local destPath = iconDir .. name .. "." .. ext
-
-                -- Only copy if file does not yet exist (avoid redundant I/O every session)
                 if not fileExists(destPath) then
-                    local file = io.open(hudPath, "rb")
-                    if file then
-                        local data = file:read("*a")
-                        file:close()
-                        local out = io.open(destPath, "wb")
-                        if out then
-                            out:write(data)
-                            out:close()
-                            count = count + 1
-                        end
+                    if copyFile(hudPath, destPath, false) then
+                        count = count + 1
                     end
                 end
             end
         end
         if count > 0 then
-            print("[FarmMonitor] Icons exported: " .. count .. " new files written to " .. iconDir)
+            print("[FarmMonitor] Icons exported: " .. count .. " files written to " .. iconDir)
         end
     end)
 
