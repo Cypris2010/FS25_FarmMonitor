@@ -150,7 +150,9 @@ function FarmMonitor:exportFillTypes()
         ))
         print("[FarmMonitor] fillTypes.json written (" .. #entries .. " entries)")
 
-        -- Export icons alongside fillTypes.json (uses FS25 VFS to read GAR/ZIP-packed files)
+        -- Export icons for mods installed as extracted folders.
+        -- Note: io.open cannot read VFS paths (dataS/ or ZIP-packed mods);
+        -- those are served directly by the Go server from the mod ZIP archives.
         local outputDir = getUserProfileAppPath() .. "modSettings/" .. modName .. "/"
         FarmMonitor:exportIcons(entries, outputDir)
     end)
@@ -162,6 +164,8 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Icon export  (written once per session alongside fillTypes.json)
+-- Only works for mods installed as extracted folders; ZIP-packed mods and
+-- vanilla icons (dataS/) are served directly by the Go server.
 -- ---------------------------------------------------------------------------
 
 function FarmMonitor:exportIcons(fillTypeEntries, outputDir)
@@ -172,31 +176,31 @@ function FarmMonitor:exportIcons(fillTypeEntries, outputDir)
         local count = 0
         for _, entry in ipairs(fillTypeEntries) do
             local hudPath = entry.hudOverlayFilename
-            local name    = entry.name  -- e.g. "BARLEY"
-            if hudPath == nil or hudPath == "" then goto continue end
+            local name    = entry.name
+            if hudPath ~= nil and hudPath ~= "" then
+                -- Keep original extension (.png or .dds) — server handles DDS→PNG conversion
+                local ext = hudPath:match("%.(%w+)$") or "png"
+                local destPath = iconDir .. name .. "." .. ext
 
-            -- Keep original extension (.png or .dds) — server handles DDS→PNG conversion
-            local ext = hudPath:match("%.(%w+)$") or "png"
-            local destPath = iconDir .. name .. "." .. ext
-
-            -- Only copy if file does not yet exist (avoid redundant I/O every session)
-            if not fileExists(destPath) then
-                local file = io.open(hudPath, "rb")
-                if file then
-                    local data = file:read("*a")
-                    file:close()
-                    local out = io.open(destPath, "wb")
-                    if out then
-                        out:write(data)
-                        out:close()
-                        count = count + 1
+                -- Only copy if file does not yet exist (avoid redundant I/O every session)
+                if not fileExists(destPath) then
+                    local file = io.open(hudPath, "rb")
+                    if file then
+                        local data = file:read("*a")
+                        file:close()
+                        local out = io.open(destPath, "wb")
+                        if out then
+                            out:write(data)
+                            out:close()
+                            count = count + 1
+                        end
                     end
                 end
             end
-
-            ::continue::
         end
-        print("[FarmMonitor] Icons exported: " .. count .. " new files written to " .. iconDir)
+        if count > 0 then
+            print("[FarmMonitor] Icons exported: " .. count .. " new files written to " .. iconDir)
+        end
     end)
 
     if not ok then

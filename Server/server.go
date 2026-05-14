@@ -597,7 +597,7 @@ func fs25DataDir() string {
 		}
 		if home, err := os.UserHomeDir(); err == nil {
 			candidates = append(candidates,
-				filepath.Join(home, "Library/Application Support/Steam/steamapps/common/Farming Simulator 25"),
+				filepath.Join(home, "Library/Application Support/Steam/steamapps/common/Farming Simulator 25/Farming Simulator 2025.app/Contents/Resources"),
 			)
 		}
 		for _, p := range candidates {
