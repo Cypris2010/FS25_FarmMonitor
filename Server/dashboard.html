@@ -309,14 +309,14 @@
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
   .metric-good-link {
     cursor: pointer;
-    color: var(--blue);
+    color: var(--text);
     text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     transition: opacity .15s;
   }
-  .metric-good-link:hover { opacity: .75; text-decoration: underline; }
+  .metric-good-link:hover { opacity: .65; }
 
   /* ── Empty / loading / error states ── */
   .state-box {
@@ -2553,7 +2553,14 @@ document.getElementById('animal-type-filter').addEventListener('change', e => {
 // ═══════════════════════════════════════════════════════════
 
 document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-  btn.addEventListener('click', () => showView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    if (currentView === btn.dataset.view) {
+      document.getElementById(`view-${currentView}`)?.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      showView(btn.dataset.view);
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
