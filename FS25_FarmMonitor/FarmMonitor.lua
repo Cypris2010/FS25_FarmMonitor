@@ -30,6 +30,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
     FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
     FarmMonitor.paths.goods       = outputDir .. "goods.json"
+    FarmMonitor.paths.fields      = outputDir .. "fields.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -114,6 +115,10 @@ function FarmMonitor:collectAndSave()
         FarmMonitor:writeJSON(FarmMonitor.paths.goods, FarmMonitor.obj(
             "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "goods",     FarmMonitor:collectGoods()
+        ))
+        FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
+            "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
+            "fields",    FarmMonitor:collectFields()
         ))
     end)
 
@@ -680,6 +685,117 @@ function FarmMonitor:collectGoods()
     end
 
     table.sort(result, function(a, b) return (a.maxValue or 0) > (b.maxValue or 0) end)
+    return result
+end
+
+-- ---------------------------------------------------------------------------
+-- Fields
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectFields()
+    local result = FarmMonitor.arr()
+    local farmId = g_currentMission:getFarmId()
+
+    if g_farmlandManager == nil then return result end
+
+    for _, farmland in pairs(g_farmlandManager.farmlands or {}) do
+        if farmland ~= nil
+            and farmland.showOnFarmlandsScreen
+            and farmland.farmId == farmId
+            and farmland.field ~= nil
+        then
+            local field  = farmland.field
+            local areaHa = farmland.areaInHa or field.areaHa or 0
+
+            -- Fruit type via density map at field centre (same API as FarmlandOverview)
+            local fruitTypeName        = ""
+            local fruitTypeTitle       = ""
+            local growthStage          = 0
+            local numGrowthStates      = 0
+            local harvestReady         = false
+            local withered             = false
+            local isCut                = false
+            local estimatedYieldLiters = 0
+
+            local ok1, cx, cz = pcall(function() return field:getCenterOfFieldWorldPosition() end)
+            if ok1 and cx ~= nil then
+                local fruitTypeIndex, gs = FSDensityMapUtil.getFruitTypeIndexAtWorldPos(cx, cz)
+                if fruitTypeIndex ~= nil and fruitTypeIndex > 0 then
+                    local ft = g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+                    if ft ~= nil then
+                        fruitTypeName   = ft.name or ""
+                        fruitTypeTitle  = (ft.fillType and ft.fillType.title) or ft.name or ""
+                        numGrowthStates = ft.numGrowthStates or 0
+                        growthStage     = gs or 0
+
+                        local minH = ft.minHarvestingGrowthState or 0
+                        local maxH = ft.maxHarvestingGrowthState or 0
+                        harvestReady = (minH > 0 and growthStage >= minH and growthStage <= maxH)
+
+                        -- withered: growthStage past the harvest window (or past preparing window)
+                        -- cutState: field was harvested, showing stubble — not withered
+                        local witheredStage = maxH + 1
+                        local maxPrep = ft.maxPreparingGrowthState or -1
+                        if maxPrep >= 0 then witheredStage = maxPrep + 1 end
+                        local cutSt = ft.cutState or -1
+                        withered = (maxH > 0 and growthStage >= witheredStage and growthStage ~= cutSt)
+                        local isCut = (cutSt >= 0 and growthStage == cutSt)
+
+                        if harvestReady and ft.literPerSqm ~= nil then
+                            local areaM2     = areaHa * 10000
+                            local multiplier = 1.0
+                            local ok2, m = pcall(function() return field:getHarvestScaleMultiplier() end)
+                            if ok2 and m ~= nil then multiplier = m end
+                            estimatedYieldLiters = MathUtil.round(ft.literPerSqm * areaM2 * multiplier)
+                        end
+                    end
+                end
+            end
+
+            -- Soil state via field:getFieldState()
+            local plowLevel         = 0
+            local sprayLevel        = 0
+            local limeLevel         = 0
+            local weedState         = 0
+            local stubbleShredLevel = 0
+            local stoneLevel        = 0
+
+            local ok3, fs = pcall(function() return field:getFieldState() end)
+            if ok3 and fs ~= nil then
+                plowLevel         = fs.plowLevel         or 0
+                sprayLevel        = fs.sprayLevel        or 0
+                limeLevel         = fs.limeLevel         or 0
+                weedState         = fs.weedState         or 0
+                stubbleShredLevel = fs.stubbleShredLevel or 0
+                stoneLevel        = fs.stoneLevel        or 0
+            end
+
+            table.insert(result, FarmMonitor.obj(
+                "id",                  farmland.name or tostring(farmland.id or 0),
+                "area",                MathUtil.round(areaHa * 100) / 100,
+                "fruitType",           fruitTypeName,
+                "fruitTitle",          fruitTypeTitle,
+                "growthStage",         growthStage,
+                "numGrowthStates",     numGrowthStates,
+                "harvestReady",        harvestReady,
+                "withered",            withered,
+                "cut",                 isCut,
+                "estimatedYieldLiters", estimatedYieldLiters,
+                "plowLevel",           plowLevel,
+                "sprayLevel",          sprayLevel,
+                "limeLevel",           limeLevel,
+                "weedState",           weedState,
+                "stubbleShredLevel",   stubbleShredLevel,
+                "stoneLevel",          stoneLevel
+            ))
+        end
+    end
+
+    table.sort(result, function(a, b)
+        local na, nb = tonumber(a.id), tonumber(b.id)
+        if na ~= nil and nb ~= nil then return na < nb end
+        return tostring(a.id) < tostring(b.id)
+    end)
     return result
 end
 

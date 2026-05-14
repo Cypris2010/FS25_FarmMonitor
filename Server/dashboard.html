@@ -1106,6 +1106,107 @@
     color: var(--muted);
     margin-bottom: 8px;
   }
+
+  /* ── Fields view ── */
+  .fields-layout {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .fields-quicknav {
+    flex: 0 0 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .fields-quicknav:empty { display: none; }
+  .fields-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    min-width: 0;
+  }
+  .field-card {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .field-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .field-id-area {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .field-num {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .field-area-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .field-crop-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .field-crop-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .field-growth-label {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .field-growth-bar {
+    height: 5px;
+    background: var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .field-growth-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+  .field-yield {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .field-soil-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .soil-chip {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+  }
+  .soil-chip.ok   { color: var(--muted); background: rgba(255,255,255,.05); border-color: var(--line); }
+  .soil-chip.warn { color: var(--orange); background: rgba(255,173,50,.08); border-color: rgba(255,173,50,.3); }
+  .soil-chip.crit { color: var(--red);    background: rgba(255,92,77,.08);  border-color: rgba(255,92,77,.3); }
+  @media (max-width: 860px)  { .fields-quicknav { display: none; } }
+  @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -1128,6 +1229,9 @@
       </button>
       <button class="nav-btn" data-view="goods" aria-label="Warenübersicht">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      </button>
+      <button class="nav-btn" data-view="fields" aria-label="Felder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5" r="1.8"/><path d="M5.5 2.2v.8M5.5 7v.8M2.7 5h.8M7.7 5h.8M3.5 3l.6.6M7.4 3l-.6.6M3.5 7l.6-.6M7.4 7l-.6-.6"/><path d="M1 11 L1 23 L23 23 L23 11"/><path d="M1 11 Q9 12 23 13.5"/><path d="M1 11 Q9 15 23 17"/><path d="M1 11 Q7 18 23 21"/><path d="M1 11 Q5 18 13 23"/><path d="M1 11 Q3 17 6 23"/></svg>
       </button>
       <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
@@ -1332,6 +1436,35 @@
       </section>
     </div>
 
+    <!-- View: Felder -->
+    <div id="view-fields" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Felder</h2>
+              <p>Zustand, Bewuchs und Bodenpflege deiner Felder</p>
+            </div>
+          </div>
+          <div class="filters" role="group" aria-label="Filter">
+            <button class="filter-btn active" data-field-filter="all">Alle</button>
+            <button class="filter-btn" data-field-filter="harvest">Erntereif</button>
+            <button class="filter-btn" data-field-filter="attention">Handlungsbedarf</button>
+            <button class="filter-btn" data-field-filter="empty">Leer</button>
+          </div>
+        </div>
+        <div class="fields-layout">
+          <div class="fields-quicknav" id="fields-quicknav"></div>
+          <div class="fields-grid" id="fields-content">
+            <div class="state-box" style="grid-column:1/-1"><span>Lade Felder …</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- View: Warnungen -->
     <div id="view-alerts" class="view" style="display:none; flex-direction:column; gap:18px;">
       <section class="section-shell">
@@ -1392,6 +1525,9 @@
   <button class="nav-btn" data-view="goods" aria-label="Warenübersicht">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
   </button>
+  <button class="nav-btn" data-view="fields" aria-label="Felder">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg>
+  </button>
   <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
   </button>
@@ -1405,6 +1541,7 @@ let appData          = null;
 let currentView      = 'home';
 let husFilter        = 'all';
 let husTypeFilter    = 'all';
+let fieldFilter      = 'all';
 let savegameId       = null;
 let savegameSettings = { placeables: {} };
 let globalSettings   = {};
@@ -1909,6 +2046,100 @@ function renderProductions(data) {
   }).join('');
 }
 
+function fieldNeedsAttention(f) {
+  return f.weedState > 0 || f.stoneLevel > 0 || f.limeLevel === 0 || f.plowLevel === 0 || f.sprayLevel === 0;
+}
+
+function renderFields(data) {
+  const el  = document.getElementById('fields-content');
+  const nav = document.getElementById('fields-quicknav');
+  const fields = Array.isArray(data?.fields) ? data.fields : [];
+
+  if (fields.length === 0) {
+    el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Keine eigenen Felder gefunden</span></div>';
+    nav.innerHTML = '';
+    return;
+  }
+
+  const filtered = fields.filter(f => {
+    if (fieldFilter === 'harvest')   return f.harvestReady;
+    if (fieldFilter === 'attention') return !f.harvestReady && fieldNeedsAttention(f);
+    if (fieldFilter === 'empty')     return !f.fruitType;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Kein Feld passt zum Filter</span></div>';
+    nav.innerHTML = '';
+    return;
+  }
+
+  // Quicknav
+  nav.innerHTML = filtered.map((f, idx) => {
+    let dotClass = 'no-station';
+    if (f.harvestReady)                            dotClass = 'climbing';
+    else if (fieldNeedsAttention(f))               dotClass = 'sell-now';
+    else if (f.fruitType)                          dotClass = 'great-demand';
+    return `<button class="qnav-item" onclick="document.getElementById('field-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
+      <span class="qnav-dot ${dotClass}"></span>
+      <span>Feld ${f.id}</span>
+    </button>`;
+  }).join('');
+
+  // Cards
+  el.innerHTML = filtered.map((f, idx) => {
+    // Header badges
+    let badges = '';
+    if (f.harvestReady) badges += '<span class="badge green">Erntereif!</span>';
+    if (f.withered)     badges += '<span class="badge red">Vertrocknet</span>';
+    if (f.cut)          badges += '<span class="badge gray">Abgeerntet</span>';
+
+    // Growth bar
+    let cropSection = '';
+    if (f.fruitType && f.numGrowthStates > 0) {
+      const pct = Math.round((f.growthStage / f.numGrowthStates) * 100);
+      const barColor = f.harvestReady ? 'var(--green)' : (pct > 60 ? 'var(--yellow)' : 'var(--blue)');
+      const yieldLine = f.harvestReady && f.estimatedYieldLiters > 0
+        ? `<div class="field-yield">Ernte: ~${fmt(f.estimatedYieldLiters)} L</div>`
+        : '';
+      cropSection = `
+        <div class="field-crop-row">
+          <span class="field-crop-name">${f.fruitTitle || f.fruitType}</span>
+          <span class="field-growth-label">Stufe ${f.growthStage}/${f.numGrowthStates}</span>
+        </div>
+        <div class="field-growth-bar">
+          <div class="field-growth-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        ${yieldLine}`;
+    } else {
+      cropSection = '<div class="field-crop-row"><span class="field-crop-name" style="color:var(--muted)">Kein Anbau</span></div>';
+    }
+
+    // Soil chips
+    const chips = [
+      { label: 'Pflug',   cls: f.plowLevel > 0 ? 'ok' : 'warn' },
+      { label: 'Dünger',  cls: f.sprayLevel > 0 ? 'ok' : 'warn' },
+      { label: 'Kalk',    cls: f.limeLevel > 0 ? 'ok' : 'warn' },
+      { label: 'Unkraut', cls: f.weedState  > 0 ? 'crit' : 'ok' },
+      { label: 'Mulch',   cls: f.stubbleShredLevel > 0 ? 'ok' : 'ok' },
+      { label: 'Steine',  cls: f.stoneLevel > 0 ? 'warn' : 'ok' },
+    ].map(c => `<span class="soil-chip ${c.cls}" title="${c.label}">${c.label}</span>`).join('');
+
+    return `
+      <article id="field-card-${idx}" class="card field-card">
+        <div class="field-card-head">
+          <div class="field-id-area">
+            <span class="field-num">Feld ${f.id}</span>
+            <span class="field-area-label">${f.area} ha</span>
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
+        </div>
+        ${cropSection}
+        <div class="field-soil-row">${chips}</div>
+      </article>`;
+  }).join('');
+}
+
 function collectAllAlerts(data) {
   const alerts = [];
   if (!data) return alerts;
@@ -1937,6 +2168,13 @@ function collectAllAlerts(data) {
       if (p < 20) alerts.push({ src: pp.name, text: `${i.title || i.fillType} kritisch niedrig (${p}%)`, level: 'crit' });
       else if (p < 40) alerts.push({ src: pp.name, text: `${i.title || i.fillType} niedrig (${p}%)`, level: 'warn' });
     });
+  });
+
+  // Fields
+  (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
+    if (f.harvestReady) alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
+    if (f.weedState > 0) alerts.push({ src: `Feld ${f.id}`, text: 'Unkraut vorhanden', level: 'warn' });
+    if (f.stoneLevel > 0) alerts.push({ src: `Feld ${f.id}`, text: 'Steine vorhanden', level: 'warn' });
   });
 
   return alerts;
@@ -1972,13 +2210,16 @@ function renderHome(data) {
   const kpiEl = document.getElementById('home-kpis');
   const alertEl = document.getElementById('home-alerts');
 
-  const siloCount   = data?.silos?.silos?.length ?? 0;
-  const prodCount   = data?.productions?.productions?.length ?? 0;
-  const husCount    = data?.husbandries?.husbandries?.length ?? 0;
-  const animals     = (Array.isArray(data?.husbandries?.husbandries) ? data.husbandries.husbandries : []).reduce((s, h) => s + (h.numAnimals || 0), 0);
-  const allAlerts   = collectAllAlerts(data);
-  const critCount   = allAlerts.filter(a => a.level === 'crit').length;
-  const alertCount  = allAlerts.length;
+  const siloCount      = data?.silos?.silos?.length ?? 0;
+  const prodCount      = data?.productions?.productions?.length ?? 0;
+  const husCount       = data?.husbandries?.husbandries?.length ?? 0;
+  const animals        = (Array.isArray(data?.husbandries?.husbandries) ? data.husbandries.husbandries : []).reduce((s, h) => s + (h.numAnimals || 0), 0);
+  const fieldsList     = Array.isArray(data?.fields?.fields) ? data.fields.fields : [];
+  const fieldCount     = fieldsList.length;
+  const harvestCount   = fieldsList.filter(f => f.harvestReady).length;
+  const allAlerts      = collectAllAlerts(data);
+  const critCount      = allAlerts.filter(a => a.level === 'crit').length;
+  const alertCount     = allAlerts.length;
 
   kpiEl.innerHTML = `
     <article class="card kpi-card">
@@ -1992,6 +2233,10 @@ function renderHome(data) {
     <article class="card kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg></div>
       <div><div class="kpi-label">Tierställe</div><div class="kpi-value">${husCount}</div><div class="kpi-sub">${animals} Tiere</div></div>
+    </article>
+    <article class="card kpi-card ${harvestCount > 0 ? 'warning' : ''}">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg></div>
+      <div><div class="kpi-label">Felder</div><div class="kpi-value">${fieldCount}</div><div class="kpi-sub">${harvestCount} erntereif</div></div>
     </article>
     <article class="card kpi-card ${alertCount > 0 ? 'warning' : ''}">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg></div>
@@ -2509,6 +2754,7 @@ function rerenderCurrentView() {
   if (currentView === 'productions') renderProductions(appData.productions);
   if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
   if (currentView === 'goods')       renderGoods(appData.goods);
+  if (currentView === 'fields')      renderFields(appData.fields);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
 }
@@ -2579,6 +2825,15 @@ document.querySelectorAll('[data-filter]').forEach(btn => {
     document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderHusbandries(appData?.husbandries);
+  });
+});
+
+document.querySelectorAll('[data-field-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    fieldFilter = btn.dataset.fieldFilter;
+    document.querySelectorAll('[data-field-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFields(appData?.fields);
   });
 });
 
