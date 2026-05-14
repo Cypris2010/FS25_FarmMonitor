@@ -14,6 +14,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Update modDesc.xml version
+        run: |
+          # Extract base (e.g. 0.3.0) and build number from suffix (e.g. -dev3 → 3, none → 0)
+          TAG="${{ github.ref_name }}"
+          BASE=$(echo "$TAG" | sed 's/-.*//')
+          # Encode pre-release type into build number: alpha=10, beta=20, rc=30, dev=40
+          SUFFIX=$(echo "$TAG" | sed -n 's/.*-\([a-z]*\)\([0-9]*\)$/\1 \2/p')
+          PRE_TYPE=$(echo "$SUFFIX" | awk '{print $1}')
+          PRE_NUM=$(echo "$SUFFIX"  | awk '{print $2}')
+          PRE_NUM=${PRE_NUM:-0}
+          case "$PRE_TYPE" in
+            alpha) BASE_OFF=10 ;;
+            beta)  BASE_OFF=20 ;;
+            rc)    BASE_OFF=30 ;;
+            dev)   BASE_OFF=40 ;;
+            *)     BASE_OFF=0  ;;
+          esac
+          BUILD=$((BASE_OFF + PRE_NUM))
+          VERSION="${BASE}.${BUILD}"
+          sed -i "s|<version>.*</version>|<version>${VERSION}</version>|" FS25_FarmMonitor/modDesc.xml
+          echo "Set modDesc version to ${VERSION}"
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
