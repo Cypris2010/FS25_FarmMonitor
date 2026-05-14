@@ -821,7 +821,7 @@
   .goods-quicknav {
     position: sticky;
     top: 18px;
-    width: 130px;
+    width: 90px;
     flex-shrink: 0;
     max-height: calc(100vh - 36px);
     overflow-y: auto;
@@ -840,7 +840,7 @@
   .prod-quicknav {
     position: sticky;
     top: 18px;
-    width: 130px;
+    width: 90px;
     flex-shrink: 0;
     max-height: calc(100vh - 36px);
     overflow-y: auto;
@@ -860,6 +860,34 @@
   @media (max-width: 860px)  { .prod-layout > .content-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 480px)  { .prod-layout > .content-grid { grid-template-columns: 1fr; } }
 
+  .hus-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .hus-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 90px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .hus-quicknav:empty { display: none; }
+  .hus-layout > .animal-grid {
+    flex: 1;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+  }
+  @media (max-width: 1400px) { .hus-layout > .animal-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .hus-layout > .animal-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .hus-layout > .animal-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .hus-layout > .animal-grid { grid-template-columns: 1fr; } }
+
   .qnav-item {
     display: flex;
     align-items: center;
@@ -872,10 +900,14 @@
     background: none;
     border: none;
     text-align: left;
-    white-space: nowrap;
+    overflow: hidden;
+    transition: background .15s, color .15s;
+  }
+  .qnav-item span:not(.qnav-dot) {
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: background .15s, color .15s;
+    white-space: nowrap;
+    min-width: 0;
   }
   .qnav-item:hover { background: rgba(255,255,255,.07); color: var(--fg); }
   .qnav-item.active { background: rgba(255,255,255,.1); color: var(--fg); }
@@ -1207,10 +1239,13 @@
         <div id="husbandry-alerts"></div>
 
         <!-- Cards grid -->
-        <div class="animal-grid" id="husbandries-content">
-          <div class="state-box" style="grid-column:1/-1">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
-            <strong>Lade Tierställe …</strong>
+        <div class="hus-layout">
+          <div class="hus-quicknav" id="hus-quicknav"></div>
+          <div class="animal-grid" id="husbandries-content">
+            <div class="state-box" style="grid-column:1/-1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
+              <strong>Lade Tierställe …</strong>
+            </div>
           </div>
         </div>
       </section>
@@ -1577,7 +1612,7 @@ function statusBadge(level) {
 // Renderers
 // ═══════════════════════════════════════════════════════════
 
-function renderHusbandryCard(h) {
+function renderHusbandryCard(h, idx) {
   const { level, hints } = husStatus(h);
   const occPct = h.maxAnimals > 0 ? pct(h.numAnimals, h.maxAnimals) : null;
   const { warn, crit, outWarn, outCrit, occWatch, occWarn } = alertThresholds();
@@ -1647,7 +1682,7 @@ function renderHusbandryCard(h) {
 
   const husHidden = !isVisible(h.uniqueId);
   return `
-    <article class="card animal-card ${level}${editMode && husHidden ? ' card-edit-hidden' : ''}" data-status="${level}" data-type="${h.animalType}" aria-label="${h.name}">
+    <article id="hus-card-${idx}" class="card animal-card ${level}${editMode && husHidden ? ' card-edit-hidden' : ''}" data-status="${level}" data-type="${h.animalType}" aria-label="${h.name}">
       <div class="animal-head">
         <div class="animal-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
@@ -1722,9 +1757,22 @@ function renderHusbandries(data) {
     filtered = filtered.filter(h => ['warn','crit'].includes(husStatus(h).level));
   }
 
+  // Quicknav
+  const nav = document.getElementById('hus-quicknav');
+  if (nav) {
+    nav.innerHTML = filtered.map((h, idx) => {
+      const lvl = husStatus(h).level;
+      const dotClass = lvl === 'crit' ? 'sell-now' : lvl === 'warn' ? 'falling' : lvl === 'watch' ? 'great-demand' : 'climbing';
+      return `<button class="qnav-item" onclick="document.getElementById('hus-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
+        <span class="qnav-dot ${dotClass}"></span>
+        <span>${h.name || '—'}</span>
+      </button>`;
+    }).join('');
+  }
+
   grid.innerHTML = filtered.length === 0
     ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Tierställe entsprechen dem Filter.</span></div>`
-    : filtered.map(renderHusbandryCard).join('');
+    : filtered.map((h, idx) => renderHusbandryCard(h, idx)).join('');
 
   // Warning band — based on ALL husbandries, not filtered
   const warnings = [];
@@ -2243,7 +2291,7 @@ function renderGoods(data) {
       const vCls   = goodVisualClass(tCls, pct);
       return `<button class="qnav-item" onclick="scrollToGood('${g.fillType}')">
         <span class="qnav-dot ${vCls}"></span>
-        <span style="overflow:hidden;text-overflow:ellipsis">${g.title}</span>
+        <span>${g.title}</span>
       </button>`;
     }).join('');
   }
