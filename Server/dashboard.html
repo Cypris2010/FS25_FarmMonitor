@@ -831,6 +831,35 @@
     gap: 2px;
   }
   .goods-quicknav:empty { display: none; }
+
+  .prod-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .prod-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .prod-quicknav:empty { display: none; }
+  .prod-layout > .content-grid {
+    flex: 1;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+  }
+  @media (max-width: 1400px) { .prod-layout > .content-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .prod-layout > .content-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .prod-layout > .content-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .prod-layout > .content-grid { grid-template-columns: 1fr; } }
+
   .qnav-item {
     display: flex;
     align-items: center;
@@ -1138,8 +1167,11 @@
             Ansicht bearbeiten
           </button>
         </div>
-        <div class="content-grid" id="productions-content">
-          <div class="state-box"><span>Lade Produktionen …</span></div>
+        <div class="prod-layout">
+          <div class="prod-quicknav" id="prod-quicknav"></div>
+          <div class="content-grid" id="productions-content">
+            <div class="state-box"><span>Lade Produktionen …</span></div>
+          </div>
         </div>
       </section>
     </div>
@@ -1753,15 +1785,38 @@ function renderSilos(data) {
 }
 
 function renderProductions(data) {
-  const el = document.getElementById('productions-content');
+  const el  = document.getElementById('productions-content');
+  const nav = document.getElementById('prod-quicknav');
   if (!data || !data.productions || data.productions.length === 0) {
-    el.innerHTML = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
+    el.innerHTML  = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
+    nav.innerHTML = '';
     return;
   }
-  const prodsToShow = editMode ? data.productions : data.productions.filter(pp => isVisible(pp.uniqueId));
-  el.innerHTML = [...prodsToShow].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de')).map(pp => {
+  const prodsToShow = (editMode ? data.productions : data.productions.filter(pp => isVisible(pp.uniqueId)))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+
+  // Quicknav
+  nav.innerHTML = prodsToShow.map((pp, idx) => {
+    const chains = Array.isArray(pp.productions) ? pp.productions : [];
+    const running  = chains.filter(c => c.status === 'running').length;
+    const stopped  = chains.filter(c => c.status === 'stopped').length;
+    const inactive = chains.filter(c => c.status === 'inactive').length;
+    let dotClass = 'no-station';
+    if (chains.length === 0)                       dotClass = 'no-station';
+    else if (stopped > 0)                          dotClass = 'sell-now';
+    else if (running > 0 && inactive > 0)          dotClass = 'great-demand';
+    else if (running > 0)                          dotClass = 'climbing';
+    else                                           dotClass = 'no-station';
+    return `<button class="qnav-item" onclick="document.getElementById('prod-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
+      <span class="qnav-dot ${dotClass}"></span>
+      <span>${pp.name || '—'}</span>
+    </button>`;
+  }).join('');
+
+  // Cards
+  el.innerHTML = prodsToShow.map((pp, idx) => {
     const hidden = !isVisible(pp.uniqueId);
-    let html = `<article class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
+    let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
     if (Array.isArray(pp.inputs) && pp.inputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
       html += [...pp.inputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
