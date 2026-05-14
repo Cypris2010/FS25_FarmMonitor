@@ -2104,6 +2104,16 @@ function toggleGoodExpanded(fillType, e) {
   renderGoods(appData?.goods);
 }
 
+function goodProductionUsages(fillType) {
+  const productions = appData?.productions?.productions ?? [];
+  return productions.filter(pp => {
+    const hasInput = Array.isArray(pp.inputs) && pp.inputs.some(i => i.fillType === fillType);
+    if (!hasInput) return false;
+    const hasActiveChain = Array.isArray(pp.productions) && pp.productions.some(c => c.status !== 'inactive');
+    return hasActiveChain;
+  });
+}
+
 function renderGoodCard(g) {
   const stations   = Array.isArray(g.sellingStations) ? g.sellingStations : [];
   const locs       = Array.isArray(g.storageLocations) ? g.storageLocations : [];
@@ -2175,6 +2185,23 @@ function renderGoodCard(g) {
           <div class="good-detail-label">Verkaufsstellen (Top 5)</div>
           ${top5Html}
           ${diffHtml}
+          ${(() => {
+            const usages = goodProductionUsages(g.fillType);
+            if (!usages.length) return '';
+            return '<div class="good-detail-label" style="margin-top:12px">Verarbeitung</div>' +
+              '<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">' +
+              usages.map(pp => {
+                const inp = pp.inputs.find(i => i.fillType === g.fillType);
+                const p = pct(inp.level, inp.capacity);
+                const cls = barClass(p, false);
+                return `<div style="display:grid;grid-template-columns:90px 80px auto;align-items:center;gap:8px;font-size:12px;color:var(--text)">
+                  <span class="metric-good-link" onclick="goToProduction('${pp.name.replace(/'/g, "\\'")}')" title="In Produktionen anzeigen" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pp.name}</span>
+                  <div class="bar ${cls}"><i style="width:${p}%"></i></div>
+                  <span style="text-align:right;color:var(--muted);white-space:nowrap">${fmtLiters(inp.level)} <small>${p}%</small></span>
+                </div>`;
+              }).join('') +
+              '</div>';
+          })()}
         </div>
         <div>
           <div class="good-detail-label">Lagerorte</div>
@@ -2196,8 +2223,20 @@ function scrollToGood(fillType) {
 
 function goToGood(fillType) {
   showView('goods');
-  // Wait for the goods view to render before scrolling
   requestAnimationFrame(() => requestAnimationFrame(() => scrollToGood(fillType)));
+}
+
+function goToProduction(ppName) {
+  showView('productions');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const productions = appData?.productions?.productions ?? [];
+    const prodsToShow = (editMode ? productions : productions.filter(pp => isVisible(pp.uniqueId)))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+    const idx = prodsToShow.findIndex(pp => pp.name === ppName);
+    if (idx === -1) return;
+    const el = document.getElementById('prod-card-' + idx);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
 }
 
 function renderGoods(data) {
