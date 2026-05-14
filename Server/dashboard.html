@@ -307,6 +307,16 @@
     margin: 10px 0;
   }
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .metric-good-link {
+    cursor: pointer;
+    color: var(--blue);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .metric-good-link:hover { opacity: .75; text-decoration: underline; }
 
   /* ── Empty / loading / error states ── */
   .state-box {
@@ -1438,14 +1448,16 @@ function barClass(p, isOutput, w = 1) {
   return 'green';
 }
 
-function metricRow(label, val, cap, colorClass) {
+function metricRow(label, val, cap, colorClass, goodFillType) {
   const p = pct(val, cap);
-  const capStr = cap ? ` / ${fmt(cap)}` : '';
+  const labelEl = goodFillType
+    ? `<span class="metric-good-link" onclick="goToGood('${goodFillType}')" title="In Warenübersicht anzeigen">${label}</span>`
+    : `<span>${label}</span>`;
   return `
     <div class="metric">
-      <span>${label}</span>
+      ${labelEl}
       <div class="bar ${colorClass}"><i style="width:${p}%"></i></div>
-      <span class="metric-val">${fmt(val)}${capStr ? '' : ''} <small>${p}%</small></span>
+      <span class="metric-val">${fmt(val)} <small>${p}%</small></span>
     </div>`;
 }
 
@@ -1867,9 +1879,11 @@ function renderProductions(data) {
     let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
     if (Array.isArray(pp.inputs) && pp.inputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
+      const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
       html += [...pp.inputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
         const p = pct(i.level, i.capacity);
-        return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false));
+        const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
+        return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false), link);
       }).join('');
     }
     if (Array.isArray(pp.outputs) && pp.outputs.length) {
@@ -2178,6 +2192,12 @@ function scrollToGood(fillType) {
   document.querySelectorAll('.qnav-item').forEach(b => b.classList.remove('active'));
   const btn = [...document.querySelectorAll('.qnav-item')].find(b => b.onclick?.toString().includes(fillType));
   if (btn) btn.classList.add('active');
+}
+
+function goToGood(fillType) {
+  showView('goods');
+  // Wait for the goods view to render before scrolling
+  requestAnimationFrame(() => requestAnimationFrame(() => scrollToGood(fillType)));
 }
 
 function renderGoods(data) {
