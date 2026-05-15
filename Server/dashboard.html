@@ -2097,15 +2097,27 @@ function renderFields(data) {
     // Growth bar
     let cropSection = '';
     if (f.fruitType && f.numGrowthStates > 0) {
-      const pct = Math.round((f.growthStage / f.numGrowthStates) * 100);
-      const barColor = f.harvestReady ? 'var(--green)' : (pct > 60 ? 'var(--yellow)' : 'var(--blue)');
+      // growthStage > numGrowthStates means a special state (harvestReady/withered/cut)
+      // — clamp bar to 100% and show a meaningful label instead of "Stufe X/Y"
+      const growing = !f.harvestReady && !f.withered && !f.cut && f.growthStage > 0;
+      const pct      = growing ? Math.round((f.growthStage / f.numGrowthStates) * 100) : 100;
+      const barColor = f.withered    ? 'var(--red)'
+                     : f.harvestReady ? 'var(--green)'
+                     : f.cut          ? 'var(--muted)'
+                     : pct > 60       ? 'var(--yellow)'
+                     :                  'var(--blue)';
+      const stageLabel = f.harvestReady ? 'Erntereif'
+                       : f.withered     ? 'Vertrocknet'
+                       : f.cut          ? 'Abgeerntet'
+                       : f.growthStage === 0 ? '—'
+                       : `Stufe ${f.growthStage}/${f.numGrowthStates}`;
       const yieldLine = f.harvestReady && f.estimatedYieldLiters > 0
         ? `<div class="field-yield">Ernte: ~${fmt(f.estimatedYieldLiters)} L</div>`
         : '';
       cropSection = `
         <div class="field-crop-row">
           <span class="field-crop-name">${f.fruitTitle || f.fruitType}</span>
-          <span class="field-growth-label">Stufe ${f.growthStage}/${f.numGrowthStates}</span>
+          <span class="field-growth-label">${stageLabel}</span>
         </div>
         <div class="field-growth-bar">
           <div class="field-growth-fill" style="width:${pct}%;background:${barColor}"></div>
@@ -2121,7 +2133,7 @@ function renderFields(data) {
       { label: 'Dünger',  cls: f.sprayLevel > 0 ? 'ok' : 'warn' },
       { label: 'Kalk',    cls: f.limeLevel > 0 ? 'ok' : 'warn' },
       { label: 'Unkraut', cls: f.weedState  > 0 ? 'crit' : 'ok' },
-      { label: 'Mulch',   cls: f.stubbleShredLevel > 0 ? 'ok' : 'ok' },
+      { label: 'Mulch',   cls: f.stubbleShredLevel > 0 ? 'ok' : 'warn' },
       { label: 'Steine',  cls: f.stoneLevel > 0 ? 'warn' : 'ok' },
     ].map(c => `<span class="soil-chip ${c.cls}" title="${c.label}">${c.label}</span>`).join('');
 
