@@ -732,14 +732,11 @@ function FarmMonitor:collectFields()
                         local maxH = ft.maxHarvestingGrowthState or 0
                         harvestReady = (minH > 0 and growthStage >= minH and growthStage <= maxH)
 
-                        -- withered: growthStage past the harvest window (or past preparing window)
-                        -- cutState: field was harvested, showing stubble — not withered
-                        local witheredStage = maxH + 1
-                        local maxPrep = ft.maxPreparingGrowthState or -1
-                        if maxPrep >= 0 then witheredStage = maxPrep + 1 end
                         local cutSt = ft.cutState or -1
-                        withered = (maxH > 0 and growthStage >= witheredStage and growthStage ~= cutSt)
-                        local isCut = (cutSt >= 0 and growthStage == cutSt)
+                        isCut    = (cutSt >= 0 and growthStage == cutSt)
+                        -- ft.witheredState is a direct attribute on FruitTypeDesc
+                        local wSt = ft.witheredState or -1
+                        withered = (wSt >= 0 and growthStage == wSt)
 
                         if harvestReady and ft.literPerSqm ~= nil then
                             local areaM2     = areaHa * 10000
