@@ -223,6 +223,15 @@
     50%       { opacity: 0.45; }
   }
 
+  @keyframes card-flash {
+    0%   { box-shadow: inset 0 0 40px rgba(155,227,58,.5), 0 0 14px rgba(155,227,58,.9); }
+    60%  { box-shadow: inset 0 0 40px rgba(155,227,58,.5), 0 0 14px rgba(155,227,58,.9); }
+    100% { box-shadow: none; }
+  }
+  .card-flash {
+    animation: card-flash 500ms ease-out forwards;
+  }
+
   .live-dot.disconnected {
     background: var(--red);
     box-shadow: 0 0 12px rgba(255,92,77,.85);
@@ -1995,7 +2004,7 @@ function renderProductions(data) {
     else if (running > 0 && inactive > 0)          dotClass = 'great-demand';
     else if (running > 0)                          dotClass = 'climbing';
     else                                           dotClass = 'no-station';
-    return `<button class="qnav-item" onclick="document.getElementById('prod-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
+    return `<button class="qnav-item" onclick="(function(){var el=document.getElementById('prod-card-${idx}');el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>flashCard(el),300);})()">
       <span class="qnav-dot ${dotClass}"></span>
       <span>${pp.name || '—'}</span>
     </button>`;
@@ -2467,11 +2476,19 @@ function renderGoodCard(g) {
     </article>`;
 }
 
+function flashCard(el) {
+  if (!el) return;
+  el.classList.remove('card-flash');
+  void el.offsetWidth; // reflow to restart animation
+  el.classList.add('card-flash');
+  el.addEventListener('animationend', () => el.classList.remove('card-flash'), { once: true });
+}
+
 function scrollToGood(fillType) {
   const el = document.getElementById('good-' + fillType);
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  // Briefly highlight the active nav item
+  setTimeout(() => flashCard(el), 300);
   document.querySelectorAll('.qnav-item').forEach(b => b.classList.remove('active'));
   const btn = [...document.querySelectorAll('.qnav-item')].find(b => b.onclick?.toString().includes(fillType));
   if (btn) btn.classList.add('active');
@@ -2492,6 +2509,7 @@ function goToProduction(ppName) {
     if (idx === -1) return;
     const el = document.getElementById('prod-card-' + idx);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => flashCard(el), 300);
   }));
 }
 
