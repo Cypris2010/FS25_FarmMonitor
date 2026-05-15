@@ -2054,6 +2054,7 @@ function renderFields(data) {
   const el  = document.getElementById('fields-content');
   const nav = document.getElementById('fields-quicknav');
   const fields = Array.isArray(data?.fields) ? data.fields : [];
+  const meta  = data?.meta || {};
 
   if (fields.length === 0) {
     el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Keine eigenen Felder gefunden</span></div>';
@@ -2127,15 +2128,22 @@ function renderFields(data) {
       cropSection = '<div class="field-crop-row"><span class="field-crop-name" style="color:var(--muted)">Kein Anbau</span></div>';
     }
 
-    // Soil chips
+    // Soil chips — show level/max when max > 1, otherwise just ok/warn
+    function soilChip(label, val, max, invertBad) {
+      const cls = invertBad
+        ? (val > 0 ? 'crit' : 'ok')
+        : (val >= max && max > 0 ? 'ok' : val > 0 ? 'warn' : 'crit');
+      const suffix = max > 1 ? ` ${val}/${max}` : '';
+      return `<span class="soil-chip ${cls}" title="${label}">${label}${suffix}</span>`;
+    }
     const chips = [
-      { label: 'Pflug',   cls: f.plowLevel > 0 ? 'ok' : 'warn' },
-      { label: 'Dünger',  cls: f.sprayLevel > 0 ? 'ok' : 'warn' },
-      { label: 'Kalk',    cls: f.limeLevel > 0 ? 'ok' : 'warn' },
-      { label: 'Unkraut', cls: f.weedState  > 0 ? 'crit' : 'ok' },
-      { label: 'Mulch',   cls: f.stubbleShredLevel > 0 ? 'ok' : 'warn' },
-      { label: 'Steine',  cls: f.stoneLevel > 0 ? 'warn' : 'ok' },
-    ].map(c => `<span class="soil-chip ${c.cls}" title="${c.label}">${c.label}</span>`).join('');
+      soilChip('Pflug',   f.plowLevel,         meta.plowLevelMax         || 1, false),
+      soilChip('Dünger',  f.sprayLevel,         meta.sprayLevelMax        || 1, false),
+      soilChip('Kalk',    f.limeLevel,          meta.limeLevelMax         || 1, false),
+      soilChip('Unkraut', f.weedState,          meta.weedStateMax         || 1, true),
+      soilChip('Mulch',   f.stubbleShredLevel,  meta.stubbleShredLevelMax || 1, false),
+      soilChip('Steine',  f.stoneLevel,         meta.stoneLevelMax        || 1, true),
+    ].join('');
 
     return `
       <article id="field-card-${idx}" class="card field-card">

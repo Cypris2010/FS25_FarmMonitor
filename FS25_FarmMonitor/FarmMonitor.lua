@@ -13,6 +13,7 @@ FarmMonitor.animalFoodExported = false
 FarmMonitor.savegameName       = nil
 FarmMonitor.savegameId         = nil
 FarmMonitor.savegameDirectory  = nil
+FarmMonitor.fieldLevelMeta     = nil   -- cached once per savegame
 
 addModEventListener(FarmMonitor)
 
@@ -51,6 +52,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.savegameId         = nil
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
+        FarmMonitor.fieldLevelMeta     = nil
         FarmMonitor.timer              = 0
     end
 
@@ -118,6 +120,7 @@ function FarmMonitor:collectAndSave()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
             "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
+            "meta",      FarmMonitor:collectFieldLevelMeta(),
             "fields",    FarmMonitor:collectFields()
         ))
     end)
@@ -691,6 +694,37 @@ end
 -- ---------------------------------------------------------------------------
 -- Fields
 -- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectFieldLevelMeta()
+    if FarmMonitor.fieldLevelMeta ~= nil then return FarmMonitor.fieldLevelMeta end
+
+    local fgs = g_currentMission.fieldGroundSystem
+    local meta = {}
+
+    if fgs ~= nil then
+        meta.sprayLevelMax        = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL)        or 0
+        meta.limeLevelMax         = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL)         or 0
+        meta.plowLevelMax         = fgs:getMaxValue(FieldDensityMap.PLOW_LEVEL)         or 0
+
+        local _, _, mulchChannels = fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL)
+        meta.stubbleShredLevelMax = mulchChannels ~= nil and (2 ^ mulchChannels - 1) or 0
+    end
+
+    local ws = g_currentMission.weedSystem
+    if ws ~= nil then
+        local _, _, weedChannels = ws:getDensityMapData()
+        meta.weedStateMax = weedChannels ~= nil and (2 ^ weedChannels - 1) or 0
+    end
+
+    local ss = g_currentMission.stoneSystem
+    if ss ~= nil then
+        local _, stoneMax = ss:getMinMaxValues()
+        meta.stoneLevelMax = stoneMax or 0
+    end
+
+    FarmMonitor.fieldLevelMeta = meta
+    return meta
+end
 
 function FarmMonitor:collectFields()
     local result = FarmMonitor.arr()
