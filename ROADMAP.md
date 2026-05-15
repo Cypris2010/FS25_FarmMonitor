@@ -47,10 +47,6 @@
 - **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
 - **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
 
-## v0.5.0 — Multiplayer-Unterstützung
-- **Lua:** `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
-- **Test:** MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
-- **Hintergrund:** Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal
 
 ## v0.6.0 — Feldübersicht Erweiterungen
 - **Lua:** Optional mit PrecisionFarming DLC (`g_modIsLoaded["FS25_precisionFarming"]`):
