@@ -10,14 +10,17 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 
 ## Features
 
-- **Live JSON export** — silos, productions, animal husbandries, fill types and animal food recipes written to the modSettings folder
+- **Live JSON export** — silos, productions, animal husbandries, goods, fields, fill types and animal food recipes written to the modSettings folder every 10 s
 - **Unique placeable IDs** — every silo, production point and husbandry carries a persistent `uniqueId` (from the savegame) and a `savegameId` (`mapId + creationDate`) for reliable cross-session identification
 - **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
-- **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Alerts, Settings
+- **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Warenübersicht, Felder, Alerts, Settings
 - **Tierställe detail page** — per-stall cards with occupancy, food, water and output progress bars, computed status (OK / Watch / Warning / Critical) and a warning band for urgent issues
 - **Smart husbandry alerts** — food group alerts are weighted by consumption share (`eatWeight`): a pig's minor food component (e.g. root vegetables at 5%) only triggers a warning when nearly empty, avoiding false alarms
+- **Warenübersicht** — aggregated stock across all storage types per fill type, with current and maximum prices, price trend indicators (rising / falling / high demand), best selling month and colour-coded value rating
+- **Felder** — per-field cards showing fruit type, growth stage, harvest-readiness, estimated yield and soil conditions (ploughing, fertiliser, lime, weed, mulch, stones)
 - **Configurable alert thresholds** — warn and critical levels for inputs (food/water/straw), outputs and occupancy are adjustable in the Settings view and stored globally
 - **Per-savegame visibility settings** — hide individual placeables from the dashboard via the edit mode button; settings are persisted per savegame on the server
+- **Multiplayer** — every player runs the mod locally; each sees their own farm's data written to their own modSettings folder
 
 ## What it exports
 
@@ -26,6 +29,8 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 | `silos.json` | All silo and silo extension fill levels | every 10 s |
 | `productions.json` | Production point inputs, outputs and chain status | every 10 s |
 | `husbandries.json` | Animal counts, food/water/straw levels, health and outputs (milk, manure, …) | every 10 s |
+| `goods.json` | Aggregated fill levels per fill type across all storages, with current and max prices, price trends and best selling month | every 10 s |
+| `fields.json` | Per-field fruit type, growth stage, harvest readiness, estimated yield and soil conditions | every 10 s |
 | `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
 | `animalFood.json` | Food group recipes per animal type (consumption type, fill types, production and eat weights) | once on map load |
 
@@ -96,6 +101,8 @@ Open **http://localhost:8080** in a browser.
 | Silos | Fill-level bars for every silo and silo extension |
 | Productions | Input/output bars and chain status (running / inactive / stopped) per production point |
 | Tierställe | Per-stall cards with occupancy, food, water, outputs and computed status |
+| Warenübersicht | Stock table per fill type with current value, max value, price trend and best selling month; colour-coded price rating |
+| Felder | Grid of owned fields with fruit type, growth progress, harvest-ready highlights and soil condition indicators |
 | Alerts | Consolidated list of all active warnings across all categories |
 | Settings | Toggle visibility of individual placeables per savegame; configure alert thresholds for inputs, outputs and occupancy |
 
@@ -279,7 +286,7 @@ All five JSON files include a `savegameId` field composed of `mapId + "_" + crea
 
 ## Notes
 
-- Singleplayer only (`multiplayer supported="false"`).
+- Multiplayer is supported — each player runs the mod locally and sees their own farm's data. Dedicated servers (no local player) are not supported.
 - The JSON files are gitignored and not part of this repository — they are generated at runtime.
 - `fillTypes.json` and `animalFood.json` are written once per session since their definitions do not change while a map is loaded.
 - Lua serialises empty arrays as `{}` (empty object) rather than `[]`. The dashboard handles this transparently.
