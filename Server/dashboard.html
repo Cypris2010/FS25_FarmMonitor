@@ -2050,11 +2050,11 @@ function fieldNeedsAttention(f) {
   return f.weedState > 0 || f.stoneLevel > 0 || f.limeLevel === 0 || f.plowLevel === 0 || f.sprayLevel === 0;
 }
 
-function renderFields(data) {
+function renderFields(data, fieldMeta) {
   const el  = document.getElementById('fields-content');
   const nav = document.getElementById('fields-quicknav');
   const fields = Array.isArray(data?.fields) ? data.fields : [];
-  const meta  = data?.meta || {};
+  const meta  = fieldMeta || data?.meta || {};
 
   if (fields.length === 0) {
     el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Keine eigenen Felder gefunden</span></div>';
@@ -2774,7 +2774,7 @@ function rerenderCurrentView() {
   if (currentView === 'productions') renderProductions(appData.productions);
   if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
   if (currentView === 'goods')       renderGoods(appData.goods);
-  if (currentView === 'fields')      renderFields(appData.fields);
+  if (currentView === 'fields')      renderFields(appData.fields, appData.fieldMeta);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
 }
@@ -2853,7 +2853,7 @@ document.querySelectorAll('[data-field-filter]').forEach(btn => {
     fieldFilter = btn.dataset.fieldFilter;
     document.querySelectorAll('[data-field-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderFields(appData?.fields);
+    renderFields(appData?.fields, appData?.fieldMeta);
   });
 });
 

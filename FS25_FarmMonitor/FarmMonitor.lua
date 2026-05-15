@@ -8,12 +8,12 @@ FarmMonitor = {}
 FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
 FarmMonitor.paths             = {}
-FarmMonitor.fillTypesExported  = false
-FarmMonitor.animalFoodExported = false
-FarmMonitor.savegameName       = nil
-FarmMonitor.savegameId         = nil
-FarmMonitor.savegameDirectory  = nil
-FarmMonitor.fieldLevelMeta     = nil   -- cached once per savegame
+FarmMonitor.fillTypesExported   = false
+FarmMonitor.animalFoodExported  = false
+FarmMonitor.fieldMetaExported   = false
+FarmMonitor.savegameName        = nil
+FarmMonitor.savegameId          = nil
+FarmMonitor.savegameDirectory   = nil
 
 addModEventListener(FarmMonitor)
 
@@ -30,6 +30,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.husbandries = outputDir .. "husbandries.json"
     FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
     FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
+    FarmMonitor.paths.fieldMeta   = outputDir .. "fieldMeta.json"
     FarmMonitor.paths.goods       = outputDir .. "goods.json"
     FarmMonitor.paths.fields      = outputDir .. "fields.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
@@ -52,7 +53,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.savegameId         = nil
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
-        FarmMonitor.fieldLevelMeta     = nil
+        FarmMonitor.fieldMetaExported  = false
         FarmMonitor.timer              = 0
     end
 
@@ -68,6 +69,11 @@ function FarmMonitor:update(dt)
     if not FarmMonitor.animalFoodExported then
         FarmMonitor:exportAnimalFood()
         FarmMonitor.animalFoodExported = true
+    end
+
+    if not FarmMonitor.fieldMetaExported then
+        FarmMonitor:exportFieldMeta()
+        FarmMonitor.fieldMetaExported = true
     end
 
     FarmMonitor.timer = FarmMonitor.timer + dt
@@ -120,7 +126,6 @@ function FarmMonitor:collectAndSave()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
             "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
-            "meta",      FarmMonitor:collectFieldLevelMeta(),
             "fields",    FarmMonitor:collectFields()
         ))
     end)
@@ -695,35 +700,47 @@ end
 -- Fields
 -- ---------------------------------------------------------------------------
 
-function FarmMonitor:collectFieldLevelMeta()
-    if FarmMonitor.fieldLevelMeta ~= nil then return FarmMonitor.fieldLevelMeta end
+function FarmMonitor:exportFieldMeta()
+    local ok, err = pcall(function()
+        local fgs = g_currentMission.fieldGroundSystem
+        local meta = {}
 
-    local fgs = g_currentMission.fieldGroundSystem
-    local meta = {}
+        if fgs ~= nil then
+            meta.sprayLevelMax        = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL) or 0
+            meta.limeLevelMax         = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL)  or 0
+            meta.plowLevelMax         = fgs:getMaxValue(FieldDensityMap.PLOW_LEVEL)  or 0
 
-    if fgs ~= nil then
-        meta.sprayLevelMax        = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL)        or 0
-        meta.limeLevelMax         = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL)         or 0
-        meta.plowLevelMax         = fgs:getMaxValue(FieldDensityMap.PLOW_LEVEL)         or 0
+            local _, _, mulchChannels = fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL)
+            meta.stubbleShredLevelMax = mulchChannels ~= nil and (2 ^ mulchChannels - 1) or 0
+        end
 
-        local _, _, mulchChannels = fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL)
-        meta.stubbleShredLevelMax = mulchChannels ~= nil and (2 ^ mulchChannels - 1) or 0
+        local ws = g_currentMission.weedSystem
+        if ws ~= nil then
+            local _, _, weedChannels = ws:getDensityMapData()
+            meta.weedStateMax = weedChannels ~= nil and (2 ^ weedChannels - 1) or 0
+        end
+
+        local ss = g_currentMission.stoneSystem
+        if ss ~= nil then
+            local _, stoneMax = ss:getMinMaxValues()
+            meta.stoneLevelMax = stoneMax or 0
+        end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.fieldMeta, FarmMonitor.obj(
+            "savegameId",         FarmMonitor.savegameId,
+            "sprayLevelMax",      meta.sprayLevelMax        or 0,
+            "limeLevelMax",       meta.limeLevelMax         or 0,
+            "plowLevelMax",       meta.plowLevelMax         or 0,
+            "stubbleShredLevelMax", meta.stubbleShredLevelMax or 0,
+            "weedStateMax",       meta.weedStateMax         or 0,
+            "stoneLevelMax",      meta.stoneLevelMax        or 0
+        ))
+        print("[FarmMonitor] fieldMeta.json written")
+    end)
+
+    if not ok then
+        print("[FarmMonitor] ERROR writing fieldMeta.json: " .. tostring(err))
     end
-
-    local ws = g_currentMission.weedSystem
-    if ws ~= nil then
-        local _, _, weedChannels = ws:getDensityMapData()
-        meta.weedStateMax = weedChannels ~= nil and (2 ^ weedChannels - 1) or 0
-    end
-
-    local ss = g_currentMission.stoneSystem
-    if ss ~= nil then
-        local _, stoneMax = ss:getMinMaxValues()
-        meta.stoneLevelMax = stoneMax or 0
-    end
-
-    FarmMonitor.fieldLevelMeta = meta
-    return meta
 end
 
 function FarmMonitor:collectFields()

@@ -211,6 +211,7 @@ func handleData(dataDir string) http.HandlerFunc {
 		AnimalFood  json.RawMessage `json:"animalFood"`
 		Goods       json.RawMessage `json:"goods"`
 		Fields      json.RawMessage `json:"fields"`
+		FieldMeta   json.RawMessage `json:"fieldMeta"`
 	}
 
 	readFile := func(name string) json.RawMessage {
@@ -232,6 +233,7 @@ func handleData(dataDir string) http.HandlerFunc {
 			AnimalFood:  readFile("animalFood.json"),
 			Goods:       readFile("goods.json"),
 			Fields:      readFile("fields.json"),
+			FieldMeta:   readFile("fieldMeta.json"),
 		})
 	}
 }
@@ -348,6 +350,7 @@ func main() {
 		filepath.Join(dataDir, "animalFood.json"),
 		filepath.Join(dataDir, "goods.json"),
 		filepath.Join(dataDir, "fields.json"),
+		filepath.Join(dataDir, "fieldMeta.json"),
 	}
 
 	b := newBroker()
