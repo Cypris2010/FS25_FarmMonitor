@@ -49,17 +49,7 @@
       linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
     background-size: 80px 80px;
-    mask-image: radial-gradient(circle at center, transparent 0 28%, black 80%);
-    opacity: .45;
-  }
-
-  body::after {
-    content: "";
-    position: fixed; inset: 0; pointer-events: none;
-    background-image: radial-gradient(rgba(255,255,255,.18) .7px, transparent .7px);
-    background-size: 9px 9px;
-    opacity: .08;
-    mix-blend-mode: screen;
+    opacity: .3;
   }
 
   /* ── Layout ── */
@@ -223,13 +213,14 @@
     width: 9px; height: 9px;
     border-radius: 999px;
     background: var(--green);
-    box-shadow: 0 0 12px rgba(154,227,58,.85);
+    box-shadow: 0 0 14px rgba(154,227,58,.9);
     animation: pulse 2s ease-in-out infinite;
+    will-change: opacity;
   }
 
   @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 12px rgba(154,227,58,.85); }
-    50%       { box-shadow: 0 0 22px rgba(154,227,58,1); }
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
   }
 
   .live-dot.disconnected {
