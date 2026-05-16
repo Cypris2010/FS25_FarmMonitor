@@ -2047,14 +2047,14 @@ function renderProductions(data) {
 }
 
 function fieldNeedsAttention(f) {
-  return f.weedState > 0 || f.stoneLevel > 0 || f.limeLevel === 0 || f.plowLevel === 0 || f.sprayLevel === 0;
+  return (f.weedPct ?? 0) >= 10 || (f.stonePct ?? 0) >= 0.1
+      || (f.limePct ?? 0) < 100 || (f.plowPct ?? 0) < 90 || (f.fertPct ?? 0) < 100;
 }
 
-function renderFields(data, fieldMeta) {
+function renderFields(data) {
   const el  = document.getElementById('fields-content');
   const nav = document.getElementById('fields-quicknav');
   const fields = Array.isArray(data?.fields) ? data.fields : [];
-  const meta  = fieldMeta || data?.meta || {};
 
   if (fields.length === 0) {
     el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Keine eigenen Felder gefunden</span></div>';
@@ -2078,9 +2078,9 @@ function renderFields(data, fieldMeta) {
   // Quicknav
   nav.innerHTML = filtered.map((f, idx) => {
     let dotClass = 'no-station';
-    if (f.harvestReady)                            dotClass = 'climbing';
-    else if (fieldNeedsAttention(f))               dotClass = 'sell-now';
-    else if (f.fruitType)                          dotClass = 'great-demand';
+    if (f.harvestReady)              dotClass = 'climbing';
+    else if (fieldNeedsAttention(f)) dotClass = 'sell-now';
+    else if (f.fruitType)            dotClass = 'great-demand';
     return `<button class="qnav-item" onclick="document.getElementById('field-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
       <span class="qnav-dot ${dotClass}"></span>
       <span>Feld ${f.id}</span>
@@ -2095,25 +2095,25 @@ function renderFields(data, fieldMeta) {
     if (f.withered)     badges += '<span class="badge red">Vertrocknet</span>';
     if (f.cut)          badges += '<span class="badge gray">Abgeerntet</span>';
 
-    // Growth bar
+    // Growth bar — use minHarvest/maxHarvest for progress
     let cropSection = '';
-    if (f.fruitType && f.numGrowthStates > 0) {
-      // growthStage > numGrowthStates means a special state (harvestReady/withered/cut)
-      // — clamp bar to 100% and show a meaningful label instead of "Stufe X/Y"
-      const growing = !f.harvestReady && !f.withered && !f.cut && f.growthStage > 0;
-      const pct      = growing ? Math.round((f.growthStage / f.numGrowthStates) * 100) : 100;
-      const barColor = f.withered    ? 'var(--red)'
+    if (f.fruitType && f.maxHarvest > 0) {
+      const growing  = !f.harvestReady && !f.withered && !f.cut && f.growthStage > 0;
+      const barPct   = f.harvestReady ? 100
+                     : growing        ? Math.round((f.growthStage / f.maxHarvest) * 100)
+                     : f.growthStage === 0 ? 0 : 100;
+      const barColor = f.withered     ? 'var(--red)'
                      : f.harvestReady ? 'var(--green)'
                      : f.cut          ? 'var(--muted)'
-                     : pct > 60       ? 'var(--yellow)'
+                     : barPct > 60    ? 'var(--yellow)'
                      :                  'var(--blue)';
-      const stageLabel = f.harvestReady ? 'Erntereif'
-                       : f.withered     ? 'Vertrocknet'
-                       : f.cut          ? 'Abgeerntet'
+      const stageLabel = f.harvestReady    ? 'Erntereif'
+                       : f.withered        ? 'Vertrocknet'
+                       : f.cut             ? 'Abgeerntet'
                        : f.growthStage === 0 ? '—'
-                       : `Stufe ${f.growthStage}/${f.numGrowthStates}`;
-      const yieldLine = f.harvestReady && f.estimatedYieldLiters > 0
-        ? `<div class="field-yield">Ernte: ~${fmt(f.estimatedYieldLiters)} L</div>`
+                       : `Stufe ${f.growthStage}/${f.maxHarvest}`;
+      const yieldLine = f.yieldBonusPct != null
+        ? `<div class="field-yield">Ernte-Bonus: ${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}%</div>`
         : '';
       cropSection = `
         <div class="field-crop-row">
@@ -2121,28 +2121,39 @@ function renderFields(data, fieldMeta) {
           <span class="field-growth-label">${stageLabel}</span>
         </div>
         <div class="field-growth-bar">
-          <div class="field-growth-fill" style="width:${pct}%;background:${barColor}"></div>
+          <div class="field-growth-fill" style="width:${barPct}%;background:${barColor}"></div>
         </div>
         ${yieldLine}`;
     } else {
       cropSection = '<div class="field-crop-row"><span class="field-crop-name" style="color:var(--muted)">Kein Anbau</span></div>';
     }
 
-    // Soil chips — show level/max when max > 1, otherwise just ok/warn
-    function soilChip(label, val, max, invertBad) {
-      const cls = invertBad
-        ? (val > 0 ? 'crit' : 'ok')
-        : (val >= max && max > 0 ? 'ok' : val > 0 ? 'warn' : 'crit');
-      const suffix = max > 1 ? ` ${val}/${max}` : '';
-      return `<span class="soil-chip ${cls}" title="${label}">${label}${suffix}</span>`;
+    // Soil chips — percentage-based from density maps
+    function soilChip(label, pctVal, invert) {
+      let cls, text;
+      if (invert) {
+        cls  = pctVal >= 10 ? 'crit' : pctVal > 0 ? 'warn' : 'ok';
+        text = pctVal > 0 ? `${label} ${pctVal.toFixed(0)}%` : label;
+      } else {
+        cls  = pctVal >= 90 ? 'ok' : pctVal >= 50 ? 'warn' : 'crit';
+        text = `${label} ${pctVal.toFixed(0)}%`;
+      }
+      return `<span class="soil-chip ${cls}" title="${label}">${text}</span>`;
+    }
+    function rollChip() {
+      const v = f.needsRollingPct ?? 100;
+      const cls  = v <= 10 ? 'ok' : v <= 50 ? 'warn' : 'crit';
+      const text = v <= 10 ? 'Walze' : `Walze ${(100 - v).toFixed(0)}%`;
+      return `<span class="soil-chip ${cls}" title="Walze">${text}</span>`;
     }
     const chips = [
-      soilChip('Pflug',   f.plowLevel,         meta.plowLevelMax         || 1, false),
-      soilChip('Dünger',  f.sprayLevel,         meta.sprayLevelMax        || 1, false),
-      soilChip('Kalk',    f.limeLevel,          meta.limeLevelMax         || 1, false),
-      soilChip('Unkraut', f.weedState,          meta.weedStateMax         || 1, true),
-      soilChip('Mulch',   f.stubbleShredLevel,  meta.stubbleShredLevelMax || 1, false),
-      soilChip('Steine',  f.stoneLevel,         meta.stoneLevelMax        || 1, true),
+      soilChip('Pflug',   f.plowPct  ?? 0, false),
+      soilChip('Dünger',  f.fertPct  ?? 0, false),
+      soilChip('Kalk',    f.limePct  ?? 0, false),
+      soilChip('Mulch',   f.mulchPct ?? 0, false),
+      rollChip(),
+      soilChip('Unkraut', f.weedPct  ?? 0, true),
+      soilChip('Steine',  f.stonePct ?? 0, true),
     ].join('');
 
     return `
@@ -2192,9 +2203,9 @@ function collectAllAlerts(data) {
 
   // Fields
   (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
-    if (f.harvestReady) alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
-    if (f.weedState > 0) alerts.push({ src: `Feld ${f.id}`, text: 'Unkraut vorhanden', level: 'warn' });
-    if (f.stoneLevel > 0) alerts.push({ src: `Feld ${f.id}`, text: 'Steine vorhanden', level: 'warn' });
+    if (f.harvestReady)        alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
+    if ((f.weedPct ?? 0) >= 10) alerts.push({ src: `Feld ${f.id}`, text: `Unkraut (${(f.weedPct ?? 0).toFixed(0)}%)`, level: 'warn' });
+    if ((f.stonePct ?? 0) >= 0.1) alerts.push({ src: `Feld ${f.id}`, text: `Steine (${(f.stonePct ?? 0).toFixed(0)}%)`, level: 'warn' });
   });
 
   return alerts;
@@ -2783,7 +2794,7 @@ function rerenderCurrentView() {
   if (currentView === 'productions') renderProductions(appData.productions);
   if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
   if (currentView === 'goods')       renderGoods(appData.goods);
-  if (currentView === 'fields')      renderFields(appData.fields, appData.fieldMeta);
+  if (currentView === 'fields')      renderFields(appData.fields);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
 }
@@ -2862,7 +2873,7 @@ document.querySelectorAll('[data-field-filter]').forEach(btn => {
     fieldFilter = btn.dataset.fieldFilter;
     document.querySelectorAll('[data-field-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderFields(appData?.fields, appData?.fieldMeta);
+    renderFields(appData?.fields);
   });
 });
 

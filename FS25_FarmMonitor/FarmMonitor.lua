@@ -12,7 +12,6 @@ FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires imm
 FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
-FarmMonitor.fieldMetaExported   = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
@@ -32,7 +31,6 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.husbandries = outputDir .. "husbandries.json"
     FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
     FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
-    FarmMonitor.paths.fieldMeta   = outputDir .. "fieldMeta.json"
     FarmMonitor.paths.goods       = outputDir .. "goods.json"
     FarmMonitor.paths.fields      = outputDir .. "fields.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
@@ -55,7 +53,6 @@ function FarmMonitor:update(dt)
         FarmMonitor.savegameId         = nil
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
-        FarmMonitor.fieldMetaExported  = false
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval  -- trigger field export on next tick
     end
@@ -72,11 +69,6 @@ function FarmMonitor:update(dt)
     if not FarmMonitor.animalFoodExported then
         FarmMonitor:exportAnimalFood()
         FarmMonitor.animalFoodExported = true
-    end
-
-    if not FarmMonitor.fieldMetaExported then
-        FarmMonitor:exportFieldMeta()
-        FarmMonitor.fieldMetaExported = true
     end
 
     FarmMonitor.timer = FarmMonitor.timer + dt
@@ -137,21 +129,6 @@ function FarmMonitor:collectAndSave()
 
     if not ok then
         print("[FarmMonitor] ERROR during collect: " .. tostring(err))
-    end
-end
-
-function FarmMonitor:collectAndSaveFields()
-    local ok, err = pcall(function()
-        local ts           = getDate("%Y-%m-%dT%H:%M:%S")
-        local farmId       = g_currentMission:getFarmId()
-        FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
-            "timestamp", ts, "farmId", farmId,
-            "savegame",  FarmMonitor.savegameName, "savegameId", FarmMonitor.savegameId,
-            "fields",    FarmMonitor:collectFields()
-        ))
-    end)
-    if not ok then
-        print("[FarmMonitor] ERROR during field collect: " .. tostring(err))
     end
 end
 
@@ -717,57 +694,209 @@ function FarmMonitor:collectGoods()
 end
 
 -- ---------------------------------------------------------------------------
--- Fields
+-- Fields  (density-map approach, based on FS25_FarmlandOverview by Fetty42)
 -- ---------------------------------------------------------------------------
 
-function FarmMonitor:exportFieldMeta()
+local function buildFieldSoilSamplers()
+    local mission = g_currentMission
+    if mission == nil or mission.fieldGroundSystem == nil or FieldDensityMap == nil then
+        return nil
+    end
+
+    local fgs  = mission.fieldGroundSystem
+    local layers = {
+        mulch  = FieldDensityMap.STUBBLE_SHRED_LEVEL,
+        plow   = FieldDensityMap.PLOW_LEVEL,
+        roll   = FieldDensityMap.ROLLER_LEVEL,
+        spray  = FieldDensityMap.SPRAY_LEVEL,
+        lime   = FieldDensityMap.LIME_LEVEL,
+    }
+
+    local samplers = {}
+    for key, layerId in pairs(layers) do
+        local mapId, firstCh, numCh = fgs:getDensityMapData(layerId)
+        if mapId ~= nil then
+            local modifier = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            local filter   = DensityMapFilter.new(modifier)
+            local maxVal   = nil
+            if fgs.getMaxValue ~= nil then
+                maxVal = fgs:getMaxValue(layerId)
+            end
+            samplers[key] = { modifier = modifier, filter = filter, maxValue = maxVal }
+        end
+    end
+
+    if mission.weedSystem ~= nil and mission.weedSystem.getDensityMapData ~= nil then
+        local ok, mapId, firstCh, numCh = pcall(function()
+            return mission.weedSystem:getDensityMapData()
+        end)
+        if ok and mapId ~= nil then
+            local modifier = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            samplers.weed = { modifier = modifier, filter = DensityMapFilter.new(modifier), maxValue = 9 }
+        end
+    end
+
+    if mission.stoneSystem ~= nil and mission.stoneSystem.getDensityMapData ~= nil then
+        local ok, mapId, firstCh, numCh = pcall(function()
+            return mission.stoneSystem:getDensityMapData()
+        end)
+        if ok and mapId ~= nil then
+            local modifier = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            samplers.stone = { modifier = modifier, filter = DensityMapFilter.new(modifier) }
+        end
+    end
+
+    return samplers
+end
+
+local function applyPolygon(field, modifier)
+    local poly = field:getDensityMapPolygon()
+    if poly == nil then return false end
+    poly:applyToModifier(modifier)
+    return true
+end
+
+local function areaForValue(modifier, filter, value)
+    filter:setValueCompareParams(DensityValueCompareType.EQUAL, value)
+    local _, area, total = modifier:executeGet(filter)
+    return area or 0, total or 0
+end
+
+local function pct(area, total)
+    if total == nil or total <= 0 then return 0 end
+    return (area / total) * 100
+end
+
+local function computeSoilStatus(field, samplers)
+    if field == nil or samplers == nil then return {} end
+    local s = {}
+
+    -- Mulch: 0/1 binary; report % covered
+    if samplers.mulch then
+        local m, f = samplers.mulch.modifier, samplers.mulch.filter
+        if applyPolygon(field, m) then
+            local a, tot = areaForValue(m, f, 1)
+            s.mulchPct = pct(a, tot)
+        end
+    end
+
+    -- Plow: 0/1 binary
+    if samplers.plow then
+        local m, f = samplers.plow.modifier, samplers.plow.filter
+        if applyPolygon(field, m) then
+            local a, tot = areaForValue(m, f, 1)
+            s.plowPct = pct(a, tot)
+        end
+    end
+
+    -- Roll: 0/1 (value=1 means "needs rolling" → invert: rolled = low coverage)
+    if samplers.roll then
+        local m, f = samplers.roll.modifier, samplers.roll.filter
+        if applyPolygon(field, m) then
+            local a, tot = areaForValue(m, f, 1)
+            s.needsRollingPct = pct(a, tot)
+        end
+    end
+
+    -- Fertilizer (0/1/2): gating with 90% threshold
+    if samplers.spray then
+        local m, f   = samplers.spray.modifier, samplers.spray.filter
+        local maxVal = samplers.spray.maxValue or 2
+        if applyPolygon(field, m) then
+            local a2, tot = areaForValue(m, f, math.min(2, maxVal))
+            local a1, _   = areaForValue(m, f, math.min(1, maxVal))
+            local p2 = pct(a2, tot)
+            local p1 = pct(a1, tot)
+            if maxVal >= 2 and p2 >= 90 then
+                s.fertPct = 100
+            elseif maxVal >= 2 and p2 > 0 then
+                local a0 = math.max(0, tot - a1 - a2)
+                s.fertPct = (a1 >= a0) and 50 or 0
+            else
+                s.fertPct = (p1 >= 90) and 50 or 0
+            end
+        end
+    end
+
+    -- Lime (0/1/2/3): multi-step with 90% gating on top value
+    if samplers.lime then
+        local m, f   = samplers.lime.modifier, samplers.lime.filter
+        local maxVal = samplers.lime.maxValue or 3
+        if applyPolygon(field, m) then
+            local a3, tot = areaForValue(m, f, math.min(3, maxVal))
+            local a2, _   = areaForValue(m, f, math.min(2, maxVal))
+            local a1, _   = areaForValue(m, f, math.min(1, maxVal))
+            local p3 = pct(a3, tot)
+            if maxVal >= 3 and p3 >= 90 then
+                s.limePct = 100
+            else
+                local a0 = math.max(0, tot - a1 - a2 - a3)
+                if a2 >= a1 and a2 >= a0 then
+                    s.limePct = 66.7
+                elseif a1 >= a0 then
+                    s.limePct = 33.3
+                else
+                    s.limePct = 0
+                end
+            end
+        end
+    end
+
+    -- Weeds: penalizing if values 3/4/5 cover ≥ 10%
+    if samplers.weed then
+        local m, f = samplers.weed.modifier, samplers.weed.filter
+        if applyPolygon(field, m) then
+            local a3, tot = areaForValue(m, f, 3)
+            local a4, _   = areaForValue(m, f, 4)
+            local a5, _   = areaForValue(m, f, 5)
+            s.weedPct = pct(a3 + a4 + a5, tot)
+        end
+    end
+
+    -- Stones: any coverage > 0.1%
+    if samplers.stone then
+        local m, f = samplers.stone.modifier, samplers.stone.filter
+        if applyPolygon(field, m) then
+            local a2, tot = areaForValue(m, f, 2)
+            local a3, _   = areaForValue(m, f, 3)
+            local a4, _   = areaForValue(m, f, 4)
+            s.stonePct = pct(a2 + a3 + a4, tot)
+        end
+    end
+
+    return s
+end
+
+function FarmMonitor:collectAndSaveFields()
     local ok, err = pcall(function()
-        local fgs = g_currentMission.fieldGroundSystem
-        local meta = {}
-
-        if fgs ~= nil then
-            meta.sprayLevelMax        = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL) or 0
-            meta.limeLevelMax         = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL)  or 0
-            meta.plowLevelMax         = fgs:getMaxValue(FieldDensityMap.PLOW_LEVEL)  or 0
-
-            local _, _, mulchChannels = fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL)
-            meta.stubbleShredLevelMax = mulchChannels ~= nil and (2 ^ mulchChannels - 1) or 0
-        end
-
-        local ws = g_currentMission.weedSystem
-        if ws ~= nil then
-            local _, _, weedChannels = ws:getDensityMapData()
-            meta.weedStateMax = weedChannels ~= nil and (2 ^ weedChannels - 1) or 0
-        end
-
-        local ss = g_currentMission.stoneSystem
-        if ss ~= nil then
-            local _, stoneMax = ss:getMinMaxValues()
-            meta.stoneLevelMax = stoneMax or 0
-        end
-
-        FarmMonitor:writeJSON(FarmMonitor.paths.fieldMeta, FarmMonitor.obj(
-            "savegameId",         FarmMonitor.savegameId,
-            "sprayLevelMax",      meta.sprayLevelMax        or 0,
-            "limeLevelMax",       meta.limeLevelMax         or 0,
-            "plowLevelMax",       meta.plowLevelMax         or 0,
-            "stubbleShredLevelMax", meta.stubbleShredLevelMax or 0,
-            "weedStateMax",       meta.weedStateMax         or 0,
-            "stoneLevelMax",      meta.stoneLevelMax        or 0
+        local ts     = getDate("%Y-%m-%dT%H:%M:%S")
+        local farmId = g_currentMission:getFarmId()
+        FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
+            "timestamp",  ts,
+            "farmId",     farmId,
+            "savegame",   FarmMonitor.savegameName,
+            "savegameId", FarmMonitor.savegameId,
+            "fields",     FarmMonitor:collectFields()
         ))
-        print("[FarmMonitor] fieldMeta.json written")
     end)
-
     if not ok then
-        print("[FarmMonitor] ERROR writing fieldMeta.json: " .. tostring(err))
+        print("[FarmMonitor] ERROR during field collect: " .. tostring(err))
     end
 end
 
 function FarmMonitor:collectFields()
-    local result = FarmMonitor.arr()
-    local farmId = g_currentMission:getFarmId()
-
+    local result  = FarmMonitor.arr()
+    local farmId  = g_currentMission:getFarmId()
+    local mission = g_currentMission
     if g_farmlandManager == nil then return result end
+
+    local yieldSettings = {
+        plowingRequired = (mission.missionInfo ~= nil) and (mission.missionInfo.plowingRequiredEnabled ~= false),
+        limeRequired    = (mission.missionInfo ~= nil) and (mission.missionInfo.limeRequired ~= false),
+        weedsEnabled    = (mission.missionInfo ~= nil) and (mission.missionInfo.weedsEnabled ~= false),
+    }
+
+    local samplers = buildFieldSoilSamplers()
 
     for _, farmland in pairs(g_farmlandManager.farmlands or {}) do
         if farmland ~= nil
@@ -778,128 +907,78 @@ function FarmMonitor:collectFields()
             local field  = farmland.field
             local areaHa = farmland.areaInHa or field.areaHa or 0
 
-            -- Fruit type via density map at field centre (same API as FarmlandOverview)
+            -- Fruit type & growth state via density map at field centre
             local fruitTypeName        = ""
             local fruitTypeTitle       = ""
             local growthStage          = 0
-            local numGrowthStates      = 0
+            local minHarvest           = 0
+            local maxHarvest           = 0
             local harvestReady         = false
             local withered             = false
             local isCut                = false
-            local estimatedYieldLiters = 0
+            local fruitTypeIndex       = nil
 
-            local ok1, cx, cz = pcall(function() return field:getCenterOfFieldWorldPosition() end)
-            if ok1 and cx ~= nil then
-                local fruitTypeIndex, gs = FSDensityMapUtil.getFruitTypeIndexAtWorldPos(cx, cz)
-                if fruitTypeIndex ~= nil and fruitTypeIndex > 0 then
-                    local ft = g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+            local cx, cz = field:getCenterOfFieldWorldPosition()
+            if cx ~= nil then
+                local ftIdx, gs = FSDensityMapUtil.getFruitTypeIndexAtWorldPos(cx, cz)
+                if ftIdx ~= nil and ftIdx > 0 then
+                    fruitTypeIndex = ftIdx
+                    local ft = g_fruitTypeManager:getFruitTypeByIndex(ftIdx)
                     if ft ~= nil then
-                        fruitTypeName   = ft.name or ""
-                        fruitTypeTitle  = (ft.fillType and ft.fillType.title) or ft.name or ""
-                        numGrowthStates = ft.numGrowthStates or 0
-                        growthStage     = gs or 0
-
-                        local minH = ft.minHarvestingGrowthState or 0
-                        local maxH = ft.maxHarvestingGrowthState or 0
-                        harvestReady = (minH > 0 and growthStage >= minH and growthStage <= maxH)
-
-                        local cutSt = ft.cutState or -1
-                        isCut    = (cutSt >= 0 and growthStage == cutSt)
-                        -- ft.witheredState is a direct attribute on FruitTypeDesc
-                        local wSt = ft.witheredState or -1
-                        withered = (wSt >= 0 and growthStage == wSt)
-
-                        if harvestReady and ft.literPerSqm ~= nil then
-                            local areaM2     = areaHa * 10000
-                            local multiplier = 1.0
-                            local ok2, m = pcall(function() return field:getHarvestScaleMultiplier() end)
-                            if ok2 and m ~= nil then multiplier = m end
-                            estimatedYieldLiters = MathUtil.round(ft.literPerSqm * areaM2 * multiplier)
-                        end
+                        fruitTypeName  = ft.name or ""
+                        fruitTypeTitle = (ft.fillType and ft.fillType.title) or ft.name or ""
+                        growthStage    = gs or 0
+                        minHarvest     = ft.minHarvestingGrowthState or 0
+                        maxHarvest     = ft.maxHarvestingGrowthState or 0
+                        harvestReady   = (minHarvest > 0 and growthStage >= minHarvest and growthStage <= maxHarvest)
+                        isCut          = (ft.cutState ~= nil and ft.cutState >= 0 and growthStage == ft.cutState)
+                        withered       = (ft.witheredState ~= nil and ft.witheredState >= 0 and growthStage == ft.witheredState)
                     end
                 end
             end
 
-            -- Soil state: sample 3x3 grid around field centre, return majority per field
-            local soilKeys = {"plowLevel","sprayLevel","sprayType","limeLevel",
-                              "rollerLevel","weedState","weedFactor",
-                              "stubbleShredLevel","stoneLevel","waterLevel","groundType"}
-            local soilVotes = {}
-            for _, k in ipairs(soilKeys) do soilVotes[k] = {} end
-            local debugSamples = FarmMonitor.arr()
-
-            if ok1 and cx ~= nil then
-                local side   = math.sqrt(areaHa * 10000)  -- approx side length in metres
-                local offset = side * 0.3
-                for _, dx in ipairs({-offset, 0, offset}) do
-                    for _, dz in ipairs({-offset, 0, offset}) do
-                        local sx, sz = cx + dx, cz + dz
-                        local ok3, fs = pcall(function()
-                            return field:getFieldStateAtWorldPos(sx, sz)
-                        end)
-                        if not ok3 or fs == nil then
-                            ok3, fs = pcall(function() return field:getFieldState() end)
-                        end
-                        if ok3 and fs ~= nil then
-                            for _, k in ipairs(soilKeys) do
-                                local v = fs[k] or 0
-                                soilVotes[k][v] = (soilVotes[k][v] or 0) + 1
-                            end
-                            table.insert(debugSamples, FarmMonitor.obj(
-                                "x", MathUtil.round(sx), "z", MathUtil.round(sz),
-                                "plowLevel",       fs.plowLevel       or 0,
-                                "sprayLevel",      fs.sprayLevel      or 0,
-                                "sprayType",       fs.sprayType       or 0,
-                                "limeLevel",       fs.limeLevel       or 0,
-                                "rollerLevel",     fs.rollerLevel     or 0,
-                                "weedState",       fs.weedState       or 0,
-                                "weedFactor",      fs.weedFactor      or 0,
-                                "stubbleShredLevel", fs.stubbleShredLevel or 0,
-                                "stoneLevel",      fs.stoneLevel      or 0,
-                                "waterLevel",      fs.waterLevel      or 0,
-                                "groundType",      fs.groundType      or 0
-                            ))
-                        end
-                    end
-                end
-            end
-
-            local function majority(votes)
-                local best, bestCount = 0, 0
-                for v, count in pairs(votes) do
-                    if count > bestCount then best, bestCount = v, count end
-                end
-                return best
-            end
-
+            -- Soil status via density maps
             local soil = {}
-            for _, k in ipairs(soilKeys) do
-                soil[k] = majority(soilVotes[k])
+            if samplers ~= nil and cx ~= nil then
+                soil = computeSoilStatus(field, samplers)
+            end
+
+            -- Harvest yield multiplier via engine function
+            local yieldBonus = nil
+            if harvestReady and fruitTypeIndex ~= nil and mission.getHarvestScaleMultiplier ~= nil then
+                local sprayF  = (soil.fertPct or 0) / 100
+                local plowF   = (not yieldSettings.plowingRequired) and 1 or (((soil.plowPct or 0) >= 90) and 1 or 0)
+                local limeF   = (not yieldSettings.limeRequired)    and 1 or ((soil.limePct or 0) / 100)
+                local weedPen = (not yieldSettings.weedsEnabled)    and 0 or ((soil.weedPct or 0) >= 10 and 1 or 0)
+                local weedBon = math.max(0, 1 - weedPen)
+                local mulchF  = (((soil.mulchPct or 0) >= 90) and 1 or 0)
+                local rollF   = (((soil.needsRollingPct or 100) <= 10) and 1 or 0)
+                local ok, m = pcall(mission.getHarvestScaleMultiplier, mission,
+                    fruitTypeIndex, sprayF, plowF, limeF, weedBon, mulchF, rollF)
+                if ok and type(m) == "number" then
+                    yieldBonus = MathUtil.round((m - 1.0) * 1000) / 10  -- % with 1 decimal
+                end
             end
 
             table.insert(result, FarmMonitor.obj(
-                "id",                   farmland.name or tostring(farmland.id or 0),
-                "area",                 MathUtil.round(areaHa * 100) / 100,
-                "fruitType",            fruitTypeName,
-                "fruitTitle",           fruitTypeTitle,
-                "growthStage",          growthStage,
-                "numGrowthStates",      numGrowthStates,
-                "harvestReady",         harvestReady,
-                "withered",             withered,
-                "cut",                  isCut,
-                "estimatedYieldLiters", estimatedYieldLiters,
-                "plowLevel",            soil.plowLevel,
-                "sprayLevel",           soil.sprayLevel,
-                "sprayType",            soil.sprayType,
-                "limeLevel",            soil.limeLevel,
-                "rollerLevel",          soil.rollerLevel,
-                "weedState",            soil.weedState,
-                "weedFactor",           soil.weedFactor,
-                "stubbleShredLevel",    soil.stubbleShredLevel,
-                "stoneLevel",           soil.stoneLevel,
-                "waterLevel",           soil.waterLevel,
-                "groundType",           soil.groundType,
-                "debugSamples",         debugSamples
+                "id",              farmland.name or tostring(farmland.id or 0),
+                "area",            MathUtil.round(areaHa * 100) / 100,
+                "fruitType",       fruitTypeName,
+                "fruitTitle",      fruitTypeTitle,
+                "growthStage",     growthStage,
+                "minHarvest",      minHarvest,
+                "maxHarvest",      maxHarvest,
+                "harvestReady",    harvestReady,
+                "withered",        withered,
+                "cut",             isCut,
+                "yieldBonusPct",   yieldBonus,
+                "mulchPct",        soil.mulchPct        or 0,
+                "plowPct",         soil.plowPct         or 0,
+                "needsRollingPct", soil.needsRollingPct or 0,
+                "fertPct",         soil.fertPct         or 0,
+                "limePct",         soil.limePct         or 0,
+                "weedPct",         soil.weedPct         or 0,
+                "stonePct",        soil.stonePct        or 0
             ))
         end
     end
