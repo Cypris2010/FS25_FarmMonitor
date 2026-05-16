@@ -7,6 +7,8 @@ local modName = g_currentModName  -- capture before it gets reset
 FarmMonitor = {}
 FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
+FarmMonitor.fieldInterval     = 60000  -- milliseconds between field exports
+FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires immediately
 FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
@@ -55,6 +57,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.animalFoodExported = false
         FarmMonitor.fieldMetaExported  = false
         FarmMonitor.timer              = 0
+        FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval  -- trigger field export on next tick
     end
 
     if FarmMonitor.savegameName == nil then
@@ -80,6 +83,12 @@ function FarmMonitor:update(dt)
     if FarmMonitor.timer >= FarmMonitor.updateInterval then
         FarmMonitor.timer = 0
         FarmMonitor:collectAndSave()
+    end
+
+    FarmMonitor.fieldTimer = FarmMonitor.fieldTimer + dt
+    if FarmMonitor.fieldTimer >= FarmMonitor.fieldInterval then
+        FarmMonitor.fieldTimer = 0
+        FarmMonitor:collectAndSaveFields()
     end
 end
 
@@ -124,14 +133,25 @@ function FarmMonitor:collectAndSave()
             "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "goods",     FarmMonitor:collectGoods()
         ))
-        FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
-            "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
-            "fields",    FarmMonitor:collectFields()
-        ))
     end)
 
     if not ok then
         print("[FarmMonitor] ERROR during collect: " .. tostring(err))
+    end
+end
+
+function FarmMonitor:collectAndSaveFields()
+    local ok, err = pcall(function()
+        local ts           = getDate("%Y-%m-%dT%H:%M:%S")
+        local farmId       = g_currentMission:getFarmId()
+        FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
+            "timestamp", ts, "farmId", farmId,
+            "savegame",  FarmMonitor.savegameName, "savegameId", FarmMonitor.savegameId,
+            "fields",    FarmMonitor:collectFields()
+        ))
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR during field collect: " .. tostring(err))
     end
 end
 
@@ -800,41 +820,86 @@ function FarmMonitor:collectFields()
                 end
             end
 
-            -- Soil state via field:getFieldState()
-            local plowLevel         = 0
-            local sprayLevel        = 0
-            local limeLevel         = 0
-            local weedState         = 0
-            local stubbleShredLevel = 0
-            local stoneLevel        = 0
+            -- Soil state: sample 3x3 grid around field centre, return majority per field
+            local soilKeys = {"plowLevel","sprayLevel","sprayType","limeLevel",
+                              "rollerLevel","weedState","weedFactor",
+                              "stubbleShredLevel","stoneLevel","waterLevel","groundType"}
+            local soilVotes = {}
+            for _, k in ipairs(soilKeys) do soilVotes[k] = {} end
+            local debugSamples = FarmMonitor.arr()
 
-            local ok3, fs = pcall(function() return field:getFieldState() end)
-            if ok3 and fs ~= nil then
-                plowLevel         = fs.plowLevel         or 0
-                sprayLevel        = fs.sprayLevel        or 0
-                limeLevel         = fs.limeLevel         or 0
-                weedState         = fs.weedState         or 0
-                stubbleShredLevel = fs.stubbleShredLevel or 0
-                stoneLevel        = fs.stoneLevel        or 0
+            if ok1 and cx ~= nil then
+                local side   = math.sqrt(areaHa * 10000)  -- approx side length in metres
+                local offset = side * 0.3
+                for _, dx in ipairs({-offset, 0, offset}) do
+                    for _, dz in ipairs({-offset, 0, offset}) do
+                        local sx, sz = cx + dx, cz + dz
+                        local ok3, fs = pcall(function()
+                            return field:getFieldStateAtWorldPos(sx, sz)
+                        end)
+                        if not ok3 or fs == nil then
+                            ok3, fs = pcall(function() return field:getFieldState() end)
+                        end
+                        if ok3 and fs ~= nil then
+                            for _, k in ipairs(soilKeys) do
+                                local v = fs[k] or 0
+                                soilVotes[k][v] = (soilVotes[k][v] or 0) + 1
+                            end
+                            table.insert(debugSamples, FarmMonitor.obj(
+                                "x", MathUtil.round(sx), "z", MathUtil.round(sz),
+                                "plowLevel",       fs.plowLevel       or 0,
+                                "sprayLevel",      fs.sprayLevel      or 0,
+                                "sprayType",       fs.sprayType       or 0,
+                                "limeLevel",       fs.limeLevel       or 0,
+                                "rollerLevel",     fs.rollerLevel     or 0,
+                                "weedState",       fs.weedState       or 0,
+                                "weedFactor",      fs.weedFactor      or 0,
+                                "stubbleShredLevel", fs.stubbleShredLevel or 0,
+                                "stoneLevel",      fs.stoneLevel      or 0,
+                                "waterLevel",      fs.waterLevel      or 0,
+                                "groundType",      fs.groundType      or 0
+                            ))
+                        end
+                    end
+                end
+            end
+
+            local function majority(votes)
+                local best, bestCount = 0, 0
+                for v, count in pairs(votes) do
+                    if count > bestCount then best, bestCount = v, count end
+                end
+                return best
+            end
+
+            local soil = {}
+            for _, k in ipairs(soilKeys) do
+                soil[k] = majority(soilVotes[k])
             end
 
             table.insert(result, FarmMonitor.obj(
-                "id",                  farmland.name or tostring(farmland.id or 0),
-                "area",                MathUtil.round(areaHa * 100) / 100,
-                "fruitType",           fruitTypeName,
-                "fruitTitle",          fruitTypeTitle,
-                "growthStage",         growthStage,
-                "numGrowthStates",     numGrowthStates,
-                "harvestReady",        harvestReady,
-                "withered",            withered,
-                "cut",                 isCut,
+                "id",                   farmland.name or tostring(farmland.id or 0),
+                "area",                 MathUtil.round(areaHa * 100) / 100,
+                "fruitType",            fruitTypeName,
+                "fruitTitle",           fruitTypeTitle,
+                "growthStage",          growthStage,
+                "numGrowthStates",      numGrowthStates,
+                "harvestReady",         harvestReady,
+                "withered",             withered,
+                "cut",                  isCut,
                 "estimatedYieldLiters", estimatedYieldLiters,
-                "plowLevel",           plowLevel,
-                "sprayLevel",          sprayLevel,
-                "limeLevel",           limeLevel,
-                "weedState",           weedState,
-                "stubbleShredLevel",   stubbleShredLevel,
-                "stoneLevel",          stoneLevel
+                "plowLevel",            soil.plowLevel,
+                "sprayLevel",           soil.sprayLevel,
+                "sprayType",            soil.sprayType,
+                "limeLevel",            soil.limeLevel,
+                "rollerLevel",          soil.rollerLevel,
+                "weedState",            soil.weedState,
+                "weedFactor",           soil.weedFactor,
+                "stubbleShredLevel",    soil.stubbleShredLevel,
+                "stoneLevel",           soil.stoneLevel,
+                "waterLevel",           soil.waterLevel,
+                "groundType",           soil.groundType,
+                "debugSamples",         debugSamples
             ))
         end
     end
