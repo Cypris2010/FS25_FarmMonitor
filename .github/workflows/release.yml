@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Update modDesc.xml version
+      - name: Update modDesc.xml version and commit
         run: |
           # Extract base (e.g. 0.3.0) and build number from suffix (e.g. -dev3 → 3, none → 0)
           TAG="${{ github.ref_name }}"
@@ -35,6 +35,12 @@ jobs:
           VERSION="${BASE}.${BUILD}"
           sed -i "s|<version>.*</version>|<version>${VERSION}</version>|" FS25_FarmMonitor/modDesc.xml
           echo "Set modDesc version to ${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH=$(git branch -r --contains HEAD | grep -v HEAD | head -1 | sed 's|origin/||' | xargs)
+          git add FS25_FarmMonitor/modDesc.xml
+          git commit -m "chore: set modDesc version to ${VERSION} [skip ci]"
+          git push origin HEAD:${BRANCH}
 
       - uses: actions/setup-go@v5
         with:
