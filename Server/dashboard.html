@@ -2063,8 +2063,8 @@ function renderFields(data) {
   }
 
   const filtered = fields.filter(f => {
-    if (fieldFilter === 'harvest')   return f.harvestReady;
-    if (fieldFilter === 'attention') return !f.harvestReady && fieldNeedsAttention(f);
+    if (fieldFilter === 'harvest')   return f.harvestReady || f.needsPreparation;
+    if (fieldFilter === 'attention') return !f.harvestReady && !f.needsPreparation && fieldNeedsAttention(f);
     if (fieldFilter === 'empty')     return !f.fruitType;
     return true;
   });
@@ -2079,6 +2079,7 @@ function renderFields(data) {
   nav.innerHTML = filtered.map((f, idx) => {
     let dotClass = 'no-station';
     if (f.harvestReady)              dotClass = 'climbing';
+    else if (f.needsPreparation)     dotClass = 'sell-now';
     else if (fieldNeedsAttention(f)) dotClass = 'sell-now';
     else if (f.fruitType)            dotClass = 'great-demand';
     return `<button class="qnav-item" onclick="document.getElementById('field-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
@@ -2091,26 +2092,29 @@ function renderFields(data) {
   el.innerHTML = filtered.map((f, idx) => {
     // Header badges
     let badges = '';
-    if (f.harvestReady) badges += '<span class="badge green">Erntereif!</span>';
-    if (f.withered)     badges += '<span class="badge red">Vertrocknet</span>';
-    if (f.cut)          badges += '<span class="badge gray">Abgeerntet</span>';
+    if (f.harvestReady)       badges += '<span class="badge green">Erntereif!</span>';
+    if (f.needsPreparation)   badges += '<span class="badge green">Erntevorbereitung</span>';
+    if (f.withered)           badges += '<span class="badge red">Vertrocknet</span>';
+    if (f.cut)                badges += '<span class="badge gray">Abgeerntet</span>';
 
     // Growth bar — use minHarvest/maxHarvest for progress
     let cropSection = '';
     if (f.fruitType && f.maxHarvest > 0) {
-      const growing  = !f.harvestReady && !f.withered && !f.cut && f.growthStage > 0;
-      const barPct   = f.harvestReady ? 100
+      const growing  = !f.harvestReady && !f.needsPreparation && !f.withered && !f.cut && f.growthStage > 0;
+      const barPct   = (f.harvestReady || f.needsPreparation) ? 100
                      : growing        ? Math.round((f.growthStage / f.maxHarvest) * 100)
                      : f.growthStage === 0 ? 0 : 100;
-      const barColor = f.withered     ? 'var(--red)'
-                     : f.harvestReady ? 'var(--green)'
-                     : f.cut          ? 'var(--muted)'
-                     : barPct > 60    ? 'var(--yellow)'
-                     :                  'var(--blue)';
-      const stageLabel = f.harvestReady    ? 'Erntereif'
-                       : f.withered        ? 'Vertrocknet'
-                       : f.cut             ? 'Abgeerntet'
-                       : f.growthStage === 0 ? '—'
+      const barColor = f.withered          ? 'var(--red)'
+                     : f.harvestReady      ? 'var(--green)'
+                     : f.needsPreparation  ? 'var(--green)'
+                     : f.cut               ? 'var(--muted)'
+                     : barPct > 60         ? 'var(--yellow)'
+                     :                       'var(--blue)';
+      const stageLabel = f.harvestReady       ? 'Erntereif'
+                       : f.needsPreparation   ? 'Erntevorbereitung'
+                       : f.withered           ? 'Vertrocknet'
+                       : f.cut                ? 'Abgeerntet'
+                       : f.growthStage === 0  ? '—'
                        : `Stufe ${f.growthStage}/${f.maxHarvest}`;
       const yieldLine = f.yieldBonusPct != null
         ? `<div class="field-yield">Ernte-Bonus: ${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}%</div>`
@@ -2204,6 +2208,7 @@ function collectAllAlerts(data) {
   // Fields
   (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
     if (f.harvestReady)        alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
+    if (f.needsPreparation)    alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntevorbereitung nötig (${f.area} ha)`, level: 'warn' });
     if ((f.weedPct ?? 0) >= 10) alerts.push({ src: `Feld ${f.id}`, text: `Unkraut (${(f.weedPct ?? 0).toFixed(0)}%)`, level: 'warn' });
     if ((f.stonePct ?? 0) >= 0.1) alerts.push({ src: `Feld ${f.id}`, text: `Steine (${(f.stonePct ?? 0).toFixed(0)}%)`, level: 'warn' });
   });
@@ -2247,7 +2252,7 @@ function renderHome(data) {
   const animals        = (Array.isArray(data?.husbandries?.husbandries) ? data.husbandries.husbandries : []).reduce((s, h) => s + (h.numAnimals || 0), 0);
   const fieldsList     = Array.isArray(data?.fields?.fields) ? data.fields.fields : [];
   const fieldCount     = fieldsList.length;
-  const harvestCount   = fieldsList.filter(f => f.harvestReady).length;
+  const harvestCount   = fieldsList.filter(f => f.harvestReady || f.needsPreparation).length;
   const allAlerts      = collectAllAlerts(data);
   const critCount      = allAlerts.filter(a => a.level === 'crit').length;
   const alertCount     = allAlerts.length;

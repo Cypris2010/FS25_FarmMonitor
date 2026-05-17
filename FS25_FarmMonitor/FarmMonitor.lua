@@ -12,6 +12,7 @@ FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires imm
 FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
+FarmMonitor.fruitTypesExported  = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
@@ -33,6 +34,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
     FarmMonitor.paths.goods       = outputDir .. "goods.json"
     FarmMonitor.paths.fields      = outputDir .. "fields.json"
+    FarmMonitor.paths.fruitTypes  = outputDir .. "fruitTypes.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -53,6 +55,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.savegameId         = nil
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
+        FarmMonitor.fruitTypesExported = false
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval  -- trigger field export on next tick
     end
@@ -64,6 +67,11 @@ function FarmMonitor:update(dt)
     if not FarmMonitor.fillTypesExported then
         FarmMonitor:exportFillTypes()
         FarmMonitor.fillTypesExported = true
+    end
+
+    if not FarmMonitor.fruitTypesExported then
+        FarmMonitor:exportFruitTypes()
+        FarmMonitor.fruitTypesExported = true
     end
 
     if not FarmMonitor.animalFoodExported then
@@ -163,6 +171,68 @@ function FarmMonitor:exportFillTypes()
 
     if not ok then
         print("[FarmMonitor] ERROR writing fillTypes.json: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Fruit type growth stage registry  (written once per session)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportFruitTypes()
+    local ok, err = pcall(function()
+        local entries = {}
+        local fruitTypes = g_fruitTypeManager and g_fruitTypeManager.fruitTypes
+        if fruitTypes == nil then return end
+
+        for _, ft in ipairs(fruitTypes) do
+            if ft ~= nil and ft.name ~= nil then
+                -- Collect all named growth stages from growthStateToName
+                local stages = {}
+                if ft.growthStateToName then
+                    for stageIndex, stageName in pairs(ft.growthStateToName) do
+                        table.insert(stages, FarmMonitor.obj(
+                            "index", stageIndex,
+                            "name",  stageName
+                        ))
+                    end
+                    table.sort(stages, function(a, b) return a.index < b.index end)
+                end
+
+                -- Find max cut stage across all cutStates entries
+                local maxCutStage = ft.cutState or 0
+                if ft.cutStates then
+                    for k, _ in pairs(ft.cutStates) do
+                        if k > maxCutStage then maxCutStage = k end
+                    end
+                end
+
+                table.insert(entries, FarmMonitor.obj(
+                    "name",              ft.name,
+                    "title",             (ft.fillType and ft.fillType.title) or ft.name,
+                    "numGrowthStates",   ft.numGrowthStates or 0,
+                    "minHarvest",        ft.minHarvestingGrowthState or 0,
+                    "maxHarvest",        ft.maxHarvestingGrowthState or 0,
+                    "witheredState",     ft.witheredState or -1,
+                    "cutState",          ft.cutState or -1,
+                    "maxCutStage",       maxCutStage,
+                    "minForage",         ft.minForageGrowthState or -1,
+                    "maxForage",         ft.maxForageGrowthState or -1,
+                    "stages",            stages
+                ))
+            end
+        end
+
+        table.sort(entries, function(a, b) return a.name < b.name end)
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.fruitTypes, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "fruitTypes", entries
+        ))
+        print("[FarmMonitor] fruitTypes.json written (" .. #entries .. " fruit types)")
+    end)
+
+    if not ok then
+        print("[FarmMonitor] ERROR writing fruitTypes.json: " .. tostring(err))
     end
 end
 
@@ -917,6 +987,7 @@ function FarmMonitor:collectFields()
             local withered             = false
             local isCut                = false
             local fruitTypeIndex       = nil
+            local needsPreparation     = false
 
             local cx, cz = field:getCenterOfFieldWorldPosition()
             if cx ~= nil then
@@ -925,14 +996,29 @@ function FarmMonitor:collectFields()
                     fruitTypeIndex = ftIdx
                     local ft = g_fruitTypeManager:getFruitTypeByIndex(ftIdx)
                     if ft ~= nil then
-                        fruitTypeName  = ft.name or ""
-                        fruitTypeTitle = (ft.fillType and ft.fillType.title) or ft.name or ""
-                        growthStage    = gs or 0
-                        minHarvest     = ft.minHarvestingGrowthState or 0
-                        maxHarvest     = ft.maxHarvestingGrowthState or 0
-                        harvestReady   = (minHarvest > 0 and growthStage >= minHarvest and growthStage <= maxHarvest)
-                        isCut          = (ft.cutState ~= nil and ft.cutState >= 0 and growthStage == ft.cutState)
-                        withered       = (ft.witheredState ~= nil and ft.witheredState >= 0 and growthStage == ft.witheredState)
+                        fruitTypeName     = ft.name or ""
+                        fruitTypeTitle    = (ft.fillType and ft.fillType.title) or ft.name or ""
+                        growthStage       = gs or 0
+                        minHarvest        = ft.minHarvestingGrowthState or 0
+                        maxHarvest        = ft.maxHarvestingGrowthState or 0
+                        harvestReady      = ft:getIsHarvestReady(growthStage)
+                        needsPreparation  = ft:getIsPreparable(growthStage)
+                        isCut             = ft:getIsCut(growthStage)
+                        withered          = ft:getIsWithered(growthStage)
+                        -- Fallback: custom map crops may define post-harvest stages
+                        -- (e.g. tyre tracks) with isCut="false". Any stage above the
+                        -- highest known cut stage is treated as harvested.
+                        if not harvestReady and not isCut and not withered and not needsPreparation then
+                            local maxCutStage = ft.cutState or 0
+                            if ft.cutStates then
+                                for k, _ in pairs(ft.cutStates) do
+                                    if k > maxCutStage then maxCutStage = k end
+                                end
+                            end
+                            if maxCutStage > 0 and growthStage > maxCutStage then
+                                isCut = true
+                            end
+                        end
                     end
                 end
             end
@@ -968,9 +1054,10 @@ function FarmMonitor:collectFields()
                 "growthStage",     growthStage,
                 "minHarvest",      minHarvest,
                 "maxHarvest",      maxHarvest,
-                "harvestReady",    harvestReady,
-                "withered",        withered,
-                "cut",             isCut,
+                "harvestReady",       harvestReady,
+                "needsPreparation",  needsPreparation,
+                "withered",          withered,
+                "cut",               isCut,
                 "yieldBonusPct",   yieldBonus,
                 "mulchPct",        soil.mulchPct        or 0,
                 "plowPct",         soil.plowPct         or 0,
