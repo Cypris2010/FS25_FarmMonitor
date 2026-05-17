@@ -969,6 +969,17 @@ function FarmMonitor:collectFields()
 
     local samplers = buildFieldSoilSamplers()
 
+    -- Spray type application rates (liters per hectare = litersPerSecond * 36000)
+    local function sprayLph(name)
+        if g_sprayTypeManager == nil then return 0 end
+        local st = g_sprayTypeManager:getSprayTypeByName(name)
+        if st == nil or st.litersPerSecond == nil then return 0 end
+        return st.litersPerSecond * 36000
+    end
+    local limeLph  = sprayLph("LIME")
+    local fertLph  = sprayLph("FERTILIZER")
+    local herbLph  = sprayLph("HERBICIDE")
+
     for _, farmland in pairs(g_farmlandManager.farmlands or {}) do
         if farmland ~= nil
             and farmland.showOnFarmlandsScreen
@@ -990,6 +1001,8 @@ function FarmMonitor:collectFields()
             local isCut                = false
             local fruitTypeIndex       = nil
             local needsPreparation     = false
+            local seedLph              = nil
+            local seedTotal            = nil
 
             local cx, cz = field:getCenterOfFieldWorldPosition()
             if cx ~= nil then
@@ -1020,6 +1033,12 @@ function FarmMonitor:collectFields()
                             if maxCutStage > 0 and growthStage > maxCutStage then
                                 isCut = true
                             end
+                        end
+                        -- Seed requirement for this fruit type
+                        if ft.seedUsagePerSqm ~= nil and ft.seedUsagePerSqm > 0 then
+                            local lph = ft.seedUsagePerSqm * 10000
+                            seedLph   = MathUtil.round(lph * 10) / 10
+                            seedTotal = MathUtil.round(lph * fieldAreaHa)
                         end
                     end
                 end
@@ -1068,7 +1087,15 @@ function FarmMonitor:collectFields()
                 "fertPct",         soil.fertPct         or 0,
                 "limePct",         soil.limePct         or 0,
                 "weedPct",         soil.weedPct         or 0,
-                "stonePct",        soil.stonePct        or 0
+                "stonePct",        soil.stonePct        or 0,
+                "seedLph",         seedLph,
+                "seedTotal",       seedTotal,
+                "matLimeLph",      limeLph > 0 and MathUtil.round(limeLph)             or nil,
+                "matLimeTotal",    limeLph > 0 and MathUtil.round(limeLph * fieldAreaHa) or nil,
+                "matFertLph",      fertLph > 0 and MathUtil.round(fertLph)             or nil,
+                "matFertTotal",    fertLph > 0 and MathUtil.round(fertLph * fieldAreaHa) or nil,
+                "matHerbLph",      herbLph > 0 and MathUtil.round(herbLph)             or nil,
+                "matHerbTotal",    herbLph > 0 and MathUtil.round(herbLph * fieldAreaHa) or nil
             ))
         end
     end

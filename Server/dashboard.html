@@ -1223,6 +1223,29 @@
     color: var(--muted);
     text-align: right;
   }
+  .need-section {
+    margin-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    padding-top: 6px;
+  }
+  .need-title {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 4px;
+  }
+  .need-row {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .need-label { color: var(--muted); }
+  .need-lph   { color: rgba(255,255,255,.55); font-size: 10px; }
+  .need-total { color: var(--fg); text-align: right; }
   @media (max-width: 860px)  { .fields-quicknav { display: none; } }
   @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
 </style>
@@ -2195,6 +2218,27 @@ function renderFields(data) {
       soilBar('Steine',  f.stonePct ?? 0, true),
     ].join('');
 
+    // Need section: seed + missing soil treatments
+    function needRow(label, lph, total) {
+      return `<div class="need-row">
+        <span class="need-label">${label}</span>
+        <span class="need-lph">${lph.toLocaleString('de-DE')} L/ha</span>
+        <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
+      </div>`;
+    }
+    const needRows = [];
+    if (f.seedLph != null && f.seedTotal != null && f.fruitType && !f.cut && !f.withered)
+      needRows.push(needRow('Saatgut', f.seedLph, f.seedTotal));
+    if ((f.limePct ?? 0) < 90 && f.matLimeLph != null)
+      needRows.push(needRow('Kalk', f.matLimeLph, f.matLimeTotal));
+    if ((f.fertPct ?? 0) < 90 && f.matFertLph != null)
+      needRows.push(needRow('Dünger', f.matFertLph, f.matFertTotal));
+    if ((f.weedPct ?? 0) >= 10 && f.matHerbLph != null)
+      needRows.push(needRow('Herbizid', f.matHerbLph, f.matHerbTotal));
+    const needSection = needRows.length > 0
+      ? `<div class="need-section"><div class="need-title">Bedarf</div>${needRows.join('')}</div>`
+      : '';
+
     return `
       <article id="field-card-${idx}" class="card field-card">
         <div class="field-card-head">
@@ -2206,6 +2250,7 @@ function renderFields(data) {
         </div>
         ${cropSection}
         <div class="soil-bars">${chips}</div>
+        ${needSection}
       </article>`;
   }).join('');
 }
