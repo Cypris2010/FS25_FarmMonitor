@@ -975,7 +975,8 @@ function FarmMonitor:collectFields()
             and farmland.field ~= nil
         then
             local field  = farmland.field
-            local areaHa = farmland.areaInHa or field.areaHa or 0
+            local areaHa      = farmland.areaInHa or 0
+            local fieldAreaHa = field.areaHa or 0
 
             -- Fruit type & growth state via density map at field centre
             local fruitTypeName        = ""
@@ -1031,7 +1032,7 @@ function FarmMonitor:collectFields()
 
             -- Harvest yield multiplier via engine function
             local yieldBonus = nil
-            if harvestReady and fruitTypeIndex ~= nil and mission.getHarvestScaleMultiplier ~= nil then
+            if fruitTypeIndex ~= nil and mission.getHarvestScaleMultiplier ~= nil then
                 local sprayF  = (soil.fertPct or 0) / 100
                 local plowF   = (not yieldSettings.plowingRequired) and 1 or (((soil.plowPct or 0) >= 90) and 1 or 0)
                 local limeF   = (not yieldSettings.limeRequired)    and 1 or ((soil.limePct or 0) / 100)
@@ -1049,6 +1050,7 @@ function FarmMonitor:collectFields()
             table.insert(result, FarmMonitor.obj(
                 "id",              farmland.name or tostring(farmland.id or 0),
                 "area",            MathUtil.round(areaHa * 100) / 100,
+                "fieldArea",       MathUtil.round(fieldAreaHa * 100) / 100,
                 "fruitType",       fruitTypeName,
                 "fruitTitle",      fruitTypeTitle,
                 "growthStage",     growthStage,

@@ -2165,7 +2165,7 @@ function renderFields(data) {
         <div class="field-card-head">
           <div class="field-id-area">
             <span class="field-num">Feld ${f.id}</span>
-            <span class="field-area-label">${f.area} ha</span>
+            <span class="field-area-label">${f.fieldArea || f.area} ha${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">Land ${f.area} ha</span>` : ''}</span>
           </div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
         </div>
