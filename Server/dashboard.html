@@ -1128,10 +1128,14 @@
   .fields-grid {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
     gap: 12px;
     min-width: 0;
   }
+  @media (max-width: 1400px) { .fields-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .fields-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .fields-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
   .field-card {
     padding: 14px 16px;
     display: flex;
@@ -1165,7 +1169,7 @@
     gap: 6px;
   }
   .field-crop-name {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--fg);
   }
@@ -1174,16 +1178,11 @@
     color: var(--muted);
     white-space: nowrap;
   }
-  .field-growth-bar {
-    height: 5px;
-    background: var(--line);
-    border-radius: 3px;
-    overflow: hidden;
-  }
   .field-growth-fill {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 999px;
     transition: width .4s ease;
+    box-shadow: 0 0 10px currentColor;
   }
   .field-yield {
     font-size: 11px;
@@ -2082,7 +2081,7 @@ function renderFields(data) {
     else if (f.needsPreparation)     dotClass = 'sell-now';
     else if (fieldNeedsAttention(f)) dotClass = 'sell-now';
     else if (f.fruitType)            dotClass = 'great-demand';
-    return `<button class="qnav-item" onclick="document.getElementById('field-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
+    return `<button class="qnav-item" data-idx="${idx}" onclick="scrollToField(${idx})">
       <span class="qnav-dot ${dotClass}"></span>
       <span>Feld ${f.id}</span>
     </button>`;
@@ -2124,7 +2123,7 @@ function renderFields(data) {
           <span class="field-crop-name">${f.fruitTitle || f.fruitType}</span>
           <span class="field-growth-label">${stageLabel}</span>
         </div>
-        <div class="field-growth-bar">
+        <div class="bar">
           <div class="field-growth-fill" style="width:${barPct}%;background:${barColor}"></div>
         </div>
         ${yieldLine}`;
@@ -2498,6 +2497,16 @@ function flashCard(el) {
   void el.offsetWidth; // reflow to restart animation
   el.classList.add('card-flash');
   el.addEventListener('animationend', () => el.classList.remove('card-flash'), { once: true });
+}
+
+function scrollToField(idx) {
+  const el = document.getElementById('field-card-' + idx);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => flashCard(el), 300);
+  document.querySelectorAll('#fields-quicknav .qnav-item').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`#fields-quicknav .qnav-item[data-idx="${idx}"]`);
+  if (btn) btn.classList.add('active');
 }
 
 function scrollToGood(fillType) {
