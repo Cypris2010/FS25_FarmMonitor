@@ -2106,6 +2106,12 @@ function renderFields(data) {
     </button>`;
   }).join('');
 
+  // Build fruitType lookup map: name -> literPerSqm
+  const fruitTypeLookup = {};
+  (appData?.fruitTypes?.fruitTypes ?? []).forEach(ft => {
+    if (ft.name) fruitTypeLookup[ft.name] = ft;
+  });
+
   // Cards
   el.innerHTML = filtered.map((f, idx) => {
     // Header badges
@@ -2134,8 +2140,14 @@ function renderFields(data) {
                        : f.cut                ? 'Abgeerntet'
                        : f.growthStage === 0  ? '—'
                        : `Stufe ${f.growthStage}/${f.maxHarvest}`;
-      const yieldLine = f.yieldBonusPct != null
-        ? `<div class="field-yield">Ernte-Bonus: ${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}%</div>`
+      const ft = fruitTypeLookup[f.fruitType];
+      const literPerSqm = ft?.literPerSqm ?? 0;
+      const fieldAreaM2 = (f.fieldArea || f.area || 0) * 10000;
+      const multiplier  = 1 + (f.yieldBonusPct ?? 0) / 100;
+      const projLiters  = literPerSqm > 0 ? Math.round(literPerSqm * fieldAreaM2 * multiplier) : null;
+
+      const yieldLine = f.yieldBonusPct != null || projLiters != null
+        ? `<div class="field-yield">${projLiters != null ? `~${projLiters.toLocaleString('de-DE')} L` : ''}${f.yieldBonusPct != null ? `<span style="margin-left:6px;opacity:.7">${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}% Bonus</span>` : ''}</div>`
         : '';
       cropSection = `
         <div class="field-crop-row">

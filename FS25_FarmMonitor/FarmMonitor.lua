@@ -217,6 +217,7 @@ function FarmMonitor:exportFruitTypes()
                     "maxCutStage",       maxCutStage,
                     "minForage",         ft.minForageGrowthState or -1,
                     "maxForage",         ft.maxForageGrowthState or -1,
+                    "literPerSqm",       ft.literPerSqm or 0,
                     "stages",            stages
                 ))
             end
