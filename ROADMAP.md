@@ -81,10 +81,16 @@
 - **Dashboard:** Responsive Layout für Smartphone/Tablet
 - **Dashboard:** PWA-Manifest + Offline-Fähigkeit (als App auf Homescreen speicherbar)
 
-## v0.8.0 — Historische Daten
+## v0.8.0 — Historische Daten & Alert-Benachrichtigungen
 - Zeitreihen für Silo-Füllstände, Preise, Produktionsleistung
 - Charts im Dashboard
 - Datenpersistenz auf dem Server (SQLite oder CSV)
+- **Dashboard:** Notification-Banner oben im Dashboard bei neuen Alerts
+  - Fingerprint-basiertes Delta-Tracking: jeder Alert erhält stabilen Key aus Typ + Name + Ressource + Level (z.B. `"husbandry:Hühner:water:crit"`)
+  - `seenFingerprints` in localStorage (`farmmonitor_seen_alerts`) — kein Server-State nötig
+  - Nach jedem SSE-Update: neue Fingerprints (nicht in seen) → Banner anzeigen; aufgelöste Fingerprints → aus seen entfernen (ermöglicht Re-Trigger)
+  - Banner zeigt Anzahl neuer Alerts + schwersten Level; Klick navigiert zum Alerts-View; Dismiss fügt Fingerprints zu seen hinzu
+  - Nur `dashboard.html` betroffen (~50–80 Zeilen JS + ~20 Zeilen CSS)
 
 ## v0.9.0 — Polish & QoL
 - Mehrsprachigkeit (DE/EN)
