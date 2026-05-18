@@ -2276,14 +2276,16 @@ function renderFields(data) {
       .sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name, 'de'));
     const fieldAreaHa = f.fieldArea || f.area || 0;
     const seedKey = `farmmonitor_seed_${f.id}`;
-    const savedSeed = localStorage.getItem(seedKey) || '';
+    const savedSeed = localStorage.getItem(seedKey);
+    // localStorage > current fruit on field > empty
+    const activeSeed = savedSeed !== null ? savedSeed : (f.fruitType || '');
     const selectOpts = [`<option value="">Frucht wählen …</option>`]
       .concat(seedableFruits.map(ft =>
-        `<option value="${ft.name}" ${ft.name === savedSeed ? 'selected' : ''}>${ft.title || ft.name}</option>`
+        `<option value="${ft.name}" ${ft.name === activeSeed ? 'selected' : ''}>${ft.title || ft.name}</option>`
       )).join('');
-    const savedFt = seedableFruits.find(ft => ft.name === savedSeed);
-    const savedResultHtml = savedFt
-      ? `<span>${(savedFt.seedUsagePerSqm * 10000).toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(savedFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString('de-DE')} L</span>`
+    const activeFt = seedableFruits.find(ft => ft.name === activeSeed);
+    const savedResultHtml = activeFt
+      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString('de-DE')} L</span>`
       : '';
     const seedSelector = `
       <div class="seed-row">
