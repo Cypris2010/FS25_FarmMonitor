@@ -1620,12 +1620,18 @@ let globalSettings   = {};
 function alertThresholds() {
   const a = globalSettings.alerts || {};
   return {
-    warn:       a.warn       ?? 40,
-    crit:       a.crit       ?? 20,
-    outWarn:    a.outWarn    ?? 80,
-    outCrit:    a.outCrit    ?? 90,
-    occWatch:   a.occWatch   ?? 95,
-    occWarn:    a.occWarn    ?? 100,
+    warn:          a.warn          ?? 40,
+    crit:          a.crit          ?? 20,
+    outWarn:       a.outWarn       ?? 80,
+    outCrit:       a.outCrit       ?? 90,
+    occWatch:      a.occWatch      ?? 95,
+    occWarn:       a.occWarn       ?? 100,
+    fieldPlowWarn:  a.fieldPlowWarn  ?? 90,  fieldPlowCrit:  a.fieldPlowCrit  ?? 50,
+    fieldFertWarn:  a.fieldFertWarn  ?? 100, fieldFertCrit:  a.fieldFertCrit  ?? 50,
+    fieldLimeWarn:  a.fieldLimeWarn  ?? 100, fieldLimeCrit:  a.fieldLimeCrit  ?? 50,
+    fieldMulchWarn: a.fieldMulchWarn ?? 90,  fieldMulchCrit: a.fieldMulchCrit ?? 50,
+    fieldWeedWarn:  a.fieldWeedWarn  ?? 5,   fieldWeedCrit:  a.fieldWeedCrit  ?? 10,
+    fieldStoneWarn: a.fieldStoneWarn ?? 0.5, fieldStoneCrit: a.fieldStoneCrit ?? 1,
   };
 }
 let editMode         = false;
@@ -2135,8 +2141,12 @@ function updateSeedResult(select, fieldId, fieldAreaHa) {
 }
 
 function fieldNeedsAttention(f) {
-  return (f.weedPct ?? 0) >= 10 || (f.stonePct ?? 0) >= 0.1
-      || (f.limePct ?? 0) < 100 || (f.plowPct ?? 0) < 90 || (f.fertPct ?? 0) < 100;
+  const t = alertThresholds();
+  return (f.weedPct  ?? 0) >= t.fieldWeedWarn
+      || (f.stonePct ?? 0) >= t.fieldStoneWarn
+      || (f.limePct  ?? 0) < t.fieldLimeWarn
+      || (f.plowPct  ?? 0) < t.fieldPlowWarn
+      || (f.fertPct  ?? 0) < t.fieldFertWarn;
 }
 
 function renderFields(data) {
@@ -2164,12 +2174,30 @@ function renderFields(data) {
   }
 
   // Quicknav
+  const nt = alertThresholds();
   nav.innerHTML = filtered.map((f, idx) => {
-    let dotClass = 'no-station';
-    if (f.harvestReady)              dotClass = 'climbing';
-    else if (f.needsPreparation)     dotClass = 'sell-now';
-    else if (fieldNeedsAttention(f)) dotClass = 'sell-now';
-    else if (f.fruitType)            dotClass = 'great-demand';
+    // Worst soil level: 2=red, 1=yellow, 0=green
+    let worst = 0;
+    const chk = (val, warn, crit, invert) => {
+      if (invert) {
+        if (val >= crit) worst = Math.max(worst, 2);
+        else if (val >= warn) worst = Math.max(worst, 1);
+      } else {
+        if (val < crit) worst = Math.max(worst, 2);
+        else if (val < warn) worst = Math.max(worst, 1);
+      }
+    };
+    chk(f.plowPct  ?? 0, nt.fieldPlowWarn,  nt.fieldPlowCrit,  false);
+    chk(f.fertPct  ?? 0, nt.fieldFertWarn,  nt.fieldFertCrit,  false);
+    chk(f.limePct  ?? 0, nt.fieldLimeWarn,  nt.fieldLimeCrit,  false);
+    chk(f.mulchPct ?? 0, nt.fieldMulchWarn, nt.fieldMulchCrit, false);
+    chk(f.weedPct  ?? 0, nt.fieldWeedWarn,  nt.fieldWeedCrit,  true);
+    chk(f.stonePct ?? 0, nt.fieldStoneWarn, nt.fieldStoneCrit, true);
+
+    let dotClass = !f.fruitType ? 'no-station'
+                 : worst === 2  ? 'sell-now'
+                 : worst === 1  ? 'great-demand'
+                 :                'climbing';
     return `<button class="qnav-item" data-idx="${idx}" onclick="scrollToField(${idx})">
       <span class="qnav-dot ${dotClass}"></span>
       <span>Feld ${f.id}</span>
@@ -2233,11 +2261,11 @@ function renderFields(data) {
     }
 
     // Soil bars — thin colored bars per soil metric
-    function soilBar(label, pctVal, invert) {
+    function soilBar(label, pctVal, invert, warnThresh, critThresh) {
       const fill  = Math.min(100, Math.max(0, pctVal));
       const color = invert
-        ? (pctVal >= 10 ? 'var(--red)' : pctVal > 0 ? 'var(--yellow)' : 'var(--green)')
-        : (pctVal >= 90 ? 'var(--green)' : pctVal >= 50 ? 'var(--yellow)' : 'var(--red)');
+        ? (pctVal >= critThresh ? 'var(--red)' : pctVal >= warnThresh ? 'var(--yellow)' : 'var(--green)')
+        : (pctVal >= warnThresh ? 'var(--green)' : pctVal >= critThresh ? 'var(--yellow)' : 'var(--red)');
       const pctLabel = pctVal.toFixed(0) + '%';
       return `<div class="soil-bar-row">
         <span class="soil-bar-label">${label}</span>
@@ -2255,16 +2283,17 @@ function renderFields(data) {
         <span class="soil-bar-pct">${done.toFixed(0)}%</span>
       </div>`;
     }
+    const t = alertThresholds();
     const chipsMain = [
-      soilBar('Pflug',  f.plowPct  ?? 0, false),
-      soilBar('Dünger', f.fertPct  ?? 0, false),
-      soilBar('Kalk',   f.limePct  ?? 0, false),
-      soilBar('Mulch',  f.mulchPct ?? 0, false),
+      soilBar('Pflug',  f.plowPct  ?? 0, false, t.fieldPlowWarn,  t.fieldPlowCrit),
+      soilBar('Dünger', f.fertPct  ?? 0, false, t.fieldFertWarn,  t.fieldFertCrit),
+      soilBar('Kalk',   f.limePct  ?? 0, false, t.fieldLimeWarn,  t.fieldLimeCrit),
+      soilBar('Mulch',  f.mulchPct ?? 0, false, t.fieldMulchWarn, t.fieldMulchCrit),
       rollBar(),
     ].join('');
     const chipsExtra = [
-      soilBar('Unkraut', f.weedPct  ?? 0, true),
-      soilBar('Steine',  f.stonePct ?? 0, true),
+      soilBar('Unkraut', f.weedPct  ?? 0, true, t.fieldWeedWarn,  t.fieldWeedCrit),
+      soilBar('Steine',  f.stonePct ?? 0, true, t.fieldStoneWarn, t.fieldStoneCrit),
     ].join('');
 
     // Need section: seed selector + missing soil treatments
@@ -2306,11 +2335,11 @@ function renderFields(data) {
       <div id="seed-result-${f.id}" style="margin-bottom:6px">${activeSeedResultHtml}</div>`;
 
     const needRows = [];
-    if ((f.limePct ?? 0) < 90 && f.matLimeLph != null)
+    if ((f.limePct ?? 0) < t.fieldLimeWarn && f.matLimeLph != null)
       needRows.push(needRow('Kalk', f.matLimeLph, f.matLimeTotal));
-    if ((f.fertPct ?? 0) < 90 && f.matFertLph != null)
+    if ((f.fertPct ?? 0) < t.fieldFertWarn && f.matFertLph != null)
       needRows.push(needRow('Dünger', f.matFertLph, f.matFertTotal));
-    if ((f.weedPct ?? 0) >= 10 && f.matHerbLph != null)
+    if ((f.weedPct ?? 0) >= t.fieldWeedWarn && f.matHerbLph != null)
       needRows.push(needRow('Herbizid', f.matHerbLph, f.matHerbTotal));
     const bodenbedarfSection = needRows.length > 0
       ? `<div class="need-title">Bodenbedarf</div>${needRows.join('')}`
@@ -2366,11 +2395,12 @@ function collectAllAlerts(data) {
   });
 
   // Fields
+  const { fieldWeedWarn: fWW, fieldStoneWarn: fSW } = alertThresholds();
   (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
-    if (f.harvestReady)        alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
-    if (f.needsPreparation)    alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntevorbereitung nötig (${f.area} ha)`, level: 'warn' });
-    if ((f.weedPct ?? 0) >= 10) alerts.push({ src: `Feld ${f.id}`, text: `Unkraut (${(f.weedPct ?? 0).toFixed(0)}%)`, level: 'warn' });
-    if ((f.stonePct ?? 0) >= 0.1) alerts.push({ src: `Feld ${f.id}`, text: `Steine (${(f.stonePct ?? 0).toFixed(0)}%)`, level: 'warn' });
+    if (f.harvestReady)                  alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
+    if (f.needsPreparation)              alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntevorbereitung nötig (${f.area} ha)`, level: 'warn' });
+    if ((f.weedPct  ?? 0) >= fWW)        alerts.push({ src: `Feld ${f.id}`, text: `Unkraut (${(f.weedPct ?? 0).toFixed(0)}%)`, level: 'warn' });
+    if ((f.stonePct ?? 0) >= fSW)        alerts.push({ src: `Feld ${f.id}`, text: `Steine (${(f.stonePct ?? 0).toFixed(0)}%)`, level: 'warn' });
   });
 
   return alerts;
@@ -2896,17 +2926,31 @@ function renderSettings() {
   const al = globalSettings.alerts || {};
 
   function inputPair(label, hint, id1, val1, id2, val2) {
+    const dot = c => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:5px;flex-shrink:0"></span>';
     const inp = (id, val) => '<input id="' + id + '" type="number" min="1" max="100" value="' + val + '"'
       + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
     return '<div>'
       + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + ' — <span style="opacity:.7">' + hint + '</span></div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Warnung ab (%) ' + inp(id1, val1) + '</label>'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Kritisch ab (%) ' + inp(id2, val2) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--yellow)') + 'Warnung ab (%)</span>' + inp(id1, val1) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--red)') + 'Kritisch ab (%)</span>' + inp(id2, val2) + '</label>'
+      + '</div></div>';
+  }
+  function inputPairField(label, lbl1, col1, id1, val1, lbl2, col2, id2, val2, step) {
+    const s = step ?? 1;
+    const dot = c => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:5px;flex-shrink:0"></span>';
+    const inp = (id, val) => '<input id="' + id + '" type="number" min="0" max="100" step="' + s + '" value="' + val + '"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
+    return '<div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot(col1) + lbl1 + '</span>' + inp(id1, val1) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot(col2) + lbl2 + '</span>' + inp(id2, val2) + '</label>'
       + '</div></div>';
   }
 
   const al2 = globalSettings.alerts || {};
+
   const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
     + inputPair('Eingänge', 'Futter, Wasser, Stroh', 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
@@ -2922,6 +2966,18 @@ function renderSettings() {
     + '<div style="display:flex;align-items:center;justify-content:flex-end">'
     + '<button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
     + '<div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '</div>'
+    + '<div class="settings-section-title" style="margin-top:24px">Warnstufen Felder</div>'
+    + '<div class="placeable-list" style="gap:18px;padding:16px">'
+    + inputPairField('Pflug',   'Gelb unter (%)', 'var(--yellow)', 'cfg-field-plow-w',  al2.fieldPlowWarn  ?? 90,  'Rot unter (%)', 'var(--red)', 'cfg-field-plow-c',  al2.fieldPlowCrit  ?? 50)
+    + inputPairField('Dünger',  'Gelb unter (%)', 'var(--yellow)', 'cfg-field-fert-w',  al2.fieldFertWarn  ?? 100, 'Rot unter (%)', 'var(--red)', 'cfg-field-fert-c',  al2.fieldFertCrit  ?? 50)
+    + inputPairField('Kalk',    'Gelb unter (%)', 'var(--yellow)', 'cfg-field-lime-w',  al2.fieldLimeWarn  ?? 100, 'Rot unter (%)', 'var(--red)', 'cfg-field-lime-c',  al2.fieldLimeCrit  ?? 50)
+    + inputPairField('Mulch',   'Gelb unter (%)', 'var(--yellow)', 'cfg-field-mulch-w', al2.fieldMulchWarn ?? 90,  'Rot unter (%)', 'var(--red)', 'cfg-field-mulch-c', al2.fieldMulchCrit ?? 50)
+    + inputPairField('Unkraut', 'Gelb ab (%)',    'var(--yellow)', 'cfg-field-weed-w',  al2.fieldWeedWarn  ?? 5,   'Rot ab (%)',    'var(--red)', 'cfg-field-weed-c',  al2.fieldWeedCrit  ?? 10)
+    + inputPairField('Steine',  'Gelb ab (%)',    'var(--yellow)', 'cfg-field-stone-w', al2.fieldStoneWarn ?? 0.5, 'Rot ab (%)',    'var(--red)', 'cfg-field-stone-c', al2.fieldStoneCrit ?? 1, 0.1)
+    + '<div style="display:flex;align-items:center;justify-content:flex-end">'
+    + '<button onclick="saveFieldAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
+    + '<div id="cfg-field-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
     + '</div>';
 
   el.innerHTML = serverBlock + alertBlock
@@ -2943,10 +2999,38 @@ async function saveAlertSettings() {
   if (!warn || !crit || crit >= warn) return;
   if (!outWarn || !outCrit || outWarn >= outCrit) return;
   if (!occWatch || !occWarn || occWatch >= occWarn) return;
-  globalSettings = { ...globalSettings, alerts: { warn, crit, outWarn, outCrit, occWatch, occWarn } };
+  globalSettings = { ...globalSettings, alerts: { ...globalSettings.alerts, warn, crit, outWarn, outCrit, occWatch, occWarn } };
   await saveGlobalSettings();
   rerenderCurrentView();
   const msg = document.getElementById('cfg-alert-saved');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
+}
+
+async function saveFieldAlertSettings() {
+  const g = id => parseFloat(document.getElementById(id).value);
+  const fieldPlowWarn  = g('cfg-field-plow-w');  const fieldPlowCrit  = g('cfg-field-plow-c');
+  const fieldFertWarn  = g('cfg-field-fert-w');  const fieldFertCrit  = g('cfg-field-fert-c');
+  const fieldLimeWarn  = g('cfg-field-lime-w');  const fieldLimeCrit  = g('cfg-field-lime-c');
+  const fieldMulchWarn = g('cfg-field-mulch-w'); const fieldMulchCrit = g('cfg-field-mulch-c');
+  const fieldWeedWarn  = g('cfg-field-weed-w');  const fieldWeedCrit  = g('cfg-field-weed-c');
+  const fieldStoneWarn = g('cfg-field-stone-w'); const fieldStoneCrit = g('cfg-field-stone-c');
+  const vals = [fieldPlowWarn, fieldPlowCrit, fieldFertWarn, fieldFertCrit,
+                fieldLimeWarn, fieldLimeCrit, fieldMulchWarn, fieldMulchCrit,
+                fieldWeedWarn, fieldWeedCrit, fieldStoneWarn, fieldStoneCrit];
+  if (vals.some(isNaN)) return;
+  if (fieldPlowCrit  >= fieldPlowWarn)  return;
+  if (fieldFertCrit  >= fieldFertWarn)  return;
+  if (fieldLimeCrit  >= fieldLimeWarn)  return;
+  if (fieldMulchCrit >= fieldMulchWarn) return;
+  if (fieldWeedWarn  >= fieldWeedCrit)  return;
+  if (fieldStoneWarn >= fieldStoneCrit) return;
+  globalSettings = { ...globalSettings, alerts: { ...globalSettings.alerts,
+    fieldPlowWarn, fieldPlowCrit, fieldFertWarn, fieldFertCrit,
+    fieldLimeWarn, fieldLimeCrit, fieldMulchWarn, fieldMulchCrit,
+    fieldWeedWarn, fieldWeedCrit, fieldStoneWarn, fieldStoneCrit } };
+  await saveGlobalSettings();
+  rerenderCurrentView();
+  const msg = document.getElementById('cfg-field-saved');
   if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
 }
 
