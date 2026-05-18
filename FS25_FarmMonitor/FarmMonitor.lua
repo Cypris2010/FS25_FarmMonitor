@@ -1071,6 +1071,7 @@ function FarmMonitor:collectFields()
 
             table.insert(result, FarmMonitor.obj(
                 "id",              farmland.name or tostring(farmland.id or 0),
+                "farmlandId",      farmland.id or 0,
                 "area",            MathUtil.round(areaHa * 100) / 100,
                 "fieldArea",       MathUtil.round(fieldAreaHa * 100) / 100,
                 "fruitType",       fruitTypeName,

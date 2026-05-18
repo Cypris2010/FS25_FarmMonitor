@@ -1520,11 +1520,14 @@
               <p>Zustand, Bewuchs und Bodenpflege deiner Felder</p>
             </div>
           </div>
-          <div class="filters" role="group" aria-label="Filter">
-            <button class="filter-btn active" data-field-filter="all">Alle</button>
-            <button class="filter-btn" data-field-filter="harvest">Erntereif</button>
-            <button class="filter-btn" data-field-filter="attention">Handlungsbedarf</button>
-            <button class="filter-btn" data-field-filter="empty">Leer</button>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="filters" role="group" aria-label="Filter">
+              <button class="filter-btn active" data-field-filter="all">Alle</button>
+              <button class="filter-btn" data-field-filter="harvest">Erntereif</button>
+              <button class="filter-btn" data-field-filter="attention">Handlungsbedarf</button>
+              <button class="filter-btn" data-field-filter="empty">Leer</button>
+            </div>
+            <button class="edit-mode-btn" id="edit-btn-fields" onclick="toggleEditMode()" aria-pressed="false">Bearbeiten</button>
           </div>
         </div>
         <div class="fields-layout">
@@ -1708,6 +1711,17 @@ function toggleVisibility(uniqueId) {
   rerenderCurrentView();
 }
 
+function isFieldVisible(farmlandId) {
+  return savegameSettings.fields?.[farmlandId]?.visible !== false;
+}
+
+function toggleFieldVisibility(farmlandId) {
+  if (!savegameSettings.fields) savegameSettings.fields = {};
+  savegameSettings.fields[farmlandId] = { visible: !isFieldVisible(farmlandId) };
+  saveSavegameSettings();
+  rerenderCurrentView();
+}
+
 async function loadSavegameSettings(id) {
   try {
     const res = await fetch(`/api/savegame/${encodeURIComponent(id)}`);
@@ -1759,6 +1773,14 @@ function visBtn(uniqueId) {
   const eyeOn  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const eyeOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
   return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleVisibility('${uniqueId}')" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
+}
+
+function visFieldBtn(farmlandId) {
+  if (!editMode || !farmlandId) return '';
+  const visible = isFieldVisible(farmlandId);
+  const eyeOn  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const eyeOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+  return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleFieldVisibility(${farmlandId})" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2161,6 +2183,7 @@ function renderFields(data) {
   }
 
   const filtered = fields.filter(f => {
+    if (!editMode && !isFieldVisible(f.farmlandId)) return false;
     if (fieldFilter === 'harvest')   return f.harvestReady || f.needsPreparation;
     if (fieldFilter === 'attention') return !f.harvestReady && !f.needsPreparation && fieldNeedsAttention(f);
     if (fieldFilter === 'empty')     return !f.fruitType;
@@ -2346,14 +2369,15 @@ function renderFields(data) {
       : '';
     const needSection = `<div class="need-section">${seedSelector}${bodenbedarfSection}</div>`;
 
+    const fieldHidden = !isFieldVisible(f.farmlandId);
     return `
-      <article id="field-card-${idx}" class="card field-card">
+      <article id="field-card-${idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
         <div class="field-card-head">
           <div class="field-id-area">
             <span class="field-num">Feld ${f.id}</span>
             <span class="field-area-label">Feld ${f.fieldArea || f.area} ha${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">Land ${f.area} ha</span>` : ''}</span>
           </div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${visFieldBtn(f.farmlandId)}${badges}</div>
         </div>
         ${cropSection}
         <div class="need-title" style="margin-top:8px">Boden</div>
@@ -2980,12 +3004,33 @@ function renderSettings() {
     + '<div id="cfg-field-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
     + '</div>';
 
+  const fieldsList = appData?.fields?.fields ?? [];
+  const fieldsSection = (() => {
+    if (!fieldsList.length) return '';
+    const rows = fieldsList.map(f => {
+      const visible = isFieldVisible(f.farmlandId);
+      return `
+        <div class="placeable-item">
+          <div class="placeable-item-info">
+            <div class="placeable-item-name">Feld ${f.id}${f.fruitTitle ? ` — ${f.fruitTitle}` : ''}</div>
+            <div class="placeable-item-uid">${f.fieldArea || f.area} ha</div>
+          </div>
+          <label class="toggle" title="${visible ? 'Ausblenden' : 'Einblenden'}">
+            <input type="checkbox" ${visible ? 'checked' : ''} onchange="toggleFieldVisibility(${f.farmlandId})">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>`;
+    }).join('');
+    return `<div class="settings-section-title" style="margin-top:24px">Felder</div><div class="placeable-list">${rows}</div>`;
+  })();
+
   el.innerHTML = serverBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
     + sgInfo
     + section('Silos', silos)
     + section('Produktionen', productions)
     + section('Tierställe', husbandries)
+    + fieldsSection
     || '<div class="state-box"><span>Keine Daten verfügbar.</span></div>';
 }
 
