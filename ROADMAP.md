@@ -20,18 +20,28 @@
 
 ## v0.3.0 — Warenübersicht & Feldübersicht
 - ✅ **Lua:** Alle Lagermengen aggregiert nach Fülltyp aus allen Quellen (Silos + Object Storages + Husbandry + Produktionen + Paletten + Ballen)
+- ✅ **Lua:** Produktions-Inputs von Warenmengen-Aggregation ausgeschlossen
+- ✅ **Lua:** UniqueId-Deduplizierung für Lagerorte mit gleichem Namen
 - ✅ **Lua:** Verkaufspreise via `g_currentMission.storageSystem:getUnloadingStations()`:
   - Aktueller Preis pro Station: `station:getEffectiveFillTypePrice(fillType)`
   - Bester aktueller Preis & beste Station
   - Preistrend: FALLING / CLIMBING / GREAT_DEMAND (`station:getCurrentPricingTrend`)
   - Nachfrage-Highlight: `station.greatDemandFillType`
-- ✅ **Lua:** Maximalpreis über alle 12 Jahresperioden: `fillType.economy.factors[period]`
+- ✅ **Lua:** Maximalpreis über alle 12 Jahresperioden inkl. Wirtschaftlichkeitsmultiplikator
 - ✅ **Lua:** Bester Verkaufsmonat pro Ware
 - ✅ **Dashboard:** View "Waren" — Tabelle mit Ware, Gesamtmenge, Aktueller/Maximaler Preis & Wert, Bester Monat, Preistrend-Indikator, farbliche Hervorhebung (Blau ≥100%, Dunkelgrün ≥95%, Gelb ≥90%)
-- ✅ **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + `field:getFieldState()`
-- ✅ **Lua:** Felddaten: Fläche, Fruchttyp & Wachstumsstufe, Erntebereit-Flag, Potenzielle Ernte, Pflug-/Dünge-/Kalk-/Unkraut-/Mulch-/Steine-Zustand, Besitz
+- ✅ **Dashboard:** Produktions-Nutzungsanzeige auf Waren-Karten
+- ✅ **Dashboard:** Klickbare Input-Links in Produktionen-View → Waren-View
+- ✅ **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + DensityMapModifier (3×3 Grid, 60s Intervall)
+- ✅ **Lua:** Felddaten: Fläche, Fruchttyp & Wachstumsstufe, Erntebereit-Flag, Pflug-/Dünge-/Kalk-/Unkraut-/Mulch-/Steine-Zustand, Besitz
 - ✅ **Lua:** Bodenzustand-Maximalwerte in `fieldMeta.json` exportiert
-- ✅ **Dashboard:** View "Felder" — Grid mit Feldzustand + Alerts für erntereife/ungepflegte Felder
+- ✅ **Dashboard:** View "Felder" — Grid mit Feldzustand (farbige Balken), Alerts für erntereife/ungepflegte Felder
+- ✅ **Dashboard:** Projizierte Ernte auf Feldkarten
+- ✅ **Dashboard:** Bedarfsrechner pro Feld — Saatgut, Kalk, Dünger, Herbizid
+- ✅ **Dashboard:** Saatgut-Selektor Dropdown auf Feldkarten (Vorauswahl aktuelle Frucht)
+- ✅ **Dashboard:** Quicknav + responsives Grid in Produktionen- und Tierhaltung-View
+- ✅ **Dashboard:** Card-Flash-Highlight bei Quicknav- und View-übergreifender Navigation
+- ✅ **Dashboard:** Safari CPU/GPU Performance-Fix (mix-blend-mode entfernt)
 - ✅ **Lua/modDesc:** Multiplayer aktiviert (`multiplayer supported="true"`)
 - ✅ **Lua:** `isServer`-Guard in `update()` — überspringt Ausführung auf Dedicated Servers
 
