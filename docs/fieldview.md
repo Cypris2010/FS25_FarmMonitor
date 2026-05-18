@@ -107,7 +107,32 @@ Oberhalb der Kacheln stehen vier Filter:
 
 | Filter | Zeigt |
 |---|---|
-| Alle | Alle eigenen Felder |
+| Alle | Alle sichtbaren Felder |
 | Erntereif | Felder mit `harvestReady` oder `needsPreparation` |
 | Handlungsbedarf | Felder mit mindestens einem Bodenwert im Warnbereich (Gelb-Schwelle) |
 | Leer | Felder ohne Frucht |
+
+Filter berücksichtigen nur sichtbare Felder. Ausgeblendete Felder erscheinen in keinem Filter.
+
+---
+
+## Felder ausblenden (Ansicht bearbeiten)
+
+Einzelne Felder können ausgeblendet werden, um die Ansicht auf relevante Felder zu reduzieren.
+
+### Aktivierung
+
+Der Button **"Ansicht bearbeiten"** (Stift-Icon) befindet sich rechts neben den Filterbuttons. Er ist identisch mit dem gleichnamigen Button in den anderen Views (Silos, Produktionen, Ställe) und aktiviert einen **globalen Edit-Mode** für alle Views gleichzeitig.
+
+Im Edit-Mode:
+- Alle Felder werden angezeigt — auch ausgeblendete (mit 38 % Deckkraft)
+- Auf jeder Feldkarte erscheint oben rechts ein **Auge-Icon**
+- Klick auf das Auge blendet das Feld aus oder wieder ein
+
+### Speicherung
+
+Die Sichtbarkeit wird **pro Savegame** gespeichert (Server-seitig unter der Savegame-ID). Basis ist die interne `farmlandId` des Spiels — nicht der angezeigte Feldname, der nicht eindeutig sein muss.
+
+### Settings → Sichtbarkeit → Felder
+
+Alternativ zum Edit-Mode können Felder auch direkt in den Einstellungen über Toggles ein- und ausgeblendet werden. Jeder Eintrag zeigt Feldnummer, aktuell angebaute Frucht und Fläche in ha.
