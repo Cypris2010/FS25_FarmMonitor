@@ -1254,22 +1254,22 @@
     margin-bottom: 2px;
   }
   .seed-select {
-    background: rgba(255,255,255,.07);
-    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.25);
+    border: 1px solid rgba(255,255,255,.07);
     border-radius: 6px;
-    color: var(--fg);
+    color: rgba(255,255,255,.6);
     font-size: 11px;
     padding: 3px 6px;
     cursor: pointer;
     width: 100%;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,.4)'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,.25)'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 7px center;
     padding-right: 22px;
   }
-  .seed-select:focus { outline: none; border-color: rgba(255,255,255,.3); }
-  .seed-select option { background: #1e2a1e; }
+  .seed-select:focus { outline: none; border-color: rgba(255,255,255,.2); }
+  .seed-select option { background: #1a1f1a; }
   .seed-result {
     grid-column: 2;
     font-size: 10px;
@@ -2127,7 +2127,11 @@ function updateSeedResult(select, fieldId, fieldAreaHa) {
   if (!ft || !ft.seedUsagePerSqm) { el.innerHTML = ''; return; }
   const lph   = ft.seedUsagePerSqm * 10000;
   const total = Math.round(lph * fieldAreaHa);
-  el.innerHTML = `<span>${lph.toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${total.toLocaleString('de-DE')} L</span>`;
+  el.innerHTML = `<div class="need-row">
+    <span class="need-label">Saatgut</span>
+    <span class="need-lph">${lph.toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha</span>
+    <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
+  </div>`;
 }
 
 function fieldNeedsAttention(f) {
@@ -2251,12 +2255,14 @@ function renderFields(data) {
         <span class="soil-bar-pct">${done.toFixed(0)}%</span>
       </div>`;
     }
-    const chips = [
-      soilBar('Pflug',   f.plowPct  ?? 0, false),
-      soilBar('Dünger',  f.fertPct  ?? 0, false),
-      soilBar('Kalk',    f.limePct  ?? 0, false),
-      soilBar('Mulch',   f.mulchPct ?? 0, false),
+    const chipsMain = [
+      soilBar('Pflug',  f.plowPct  ?? 0, false),
+      soilBar('Dünger', f.fertPct  ?? 0, false),
+      soilBar('Kalk',   f.limePct  ?? 0, false),
+      soilBar('Mulch',  f.mulchPct ?? 0, false),
       rollBar(),
+    ].join('');
+    const chipsExtra = [
       soilBar('Unkraut', f.weedPct  ?? 0, true),
       soilBar('Steine',  f.stonePct ?? 0, true),
     ].join('');
@@ -2287,17 +2293,17 @@ function renderFields(data) {
     const savedResultHtml = activeFt
       ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString('de-DE')} L</span>`
       : '';
+    const activeSeedResultHtml = activeFt
+      ? needRow('Saatgut', activeFt.seedUsagePerSqm * 10000, Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa))
+      : '';
     const seedSelector = `
+      <div class="need-title" style="margin-top:0">Saatgut</div>
       <div class="seed-row">
-        <span class="need-label">Saatgut</span>
-        <select class="seed-select" onchange="updateSeedResult(this,'${f.id}',${fieldAreaHa})">
+        <select class="seed-select" style="grid-column:1/-1" onchange="updateSeedResult(this,'${f.id}',${fieldAreaHa})">
           ${selectOpts}
         </select>
       </div>
-      <div class="seed-row">
-        <span></span>
-        <div class="seed-result" id="seed-result-${f.id}">${savedResultHtml}</div>
-      </div>`;
+      <div id="seed-result-${f.id}" style="margin-bottom:6px">${activeSeedResultHtml}</div>`;
 
     const needRows = [];
     if ((f.limePct ?? 0) < 90 && f.matLimeLph != null)
@@ -2306,7 +2312,10 @@ function renderFields(data) {
       needRows.push(needRow('Dünger', f.matFertLph, f.matFertTotal));
     if ((f.weedPct ?? 0) >= 10 && f.matHerbLph != null)
       needRows.push(needRow('Herbizid', f.matHerbLph, f.matHerbTotal));
-    const needSection = `<div class="need-section"><div class="need-title">Bedarf</div>${seedSelector}${needRows.join('')}</div>`;
+    const bodenbedarfSection = needRows.length > 0
+      ? `<div class="need-title">Bodenbedarf</div>${needRows.join('')}`
+      : '';
+    const needSection = `<div class="need-section">${seedSelector}${bodenbedarfSection}</div>`;
 
     return `
       <article id="field-card-${idx}" class="card field-card">
@@ -2319,7 +2328,8 @@ function renderFields(data) {
         </div>
         ${cropSection}
         <div class="need-title" style="margin-top:8px">Boden</div>
-        <div class="soil-bars">${chips}</div>
+        <div class="soil-bars">${chipsMain}</div>
+        <div class="soil-bars" style="margin-top:6px">${chipsExtra}</div>
         ${needSection}
       </article>`;
   }).join('');
