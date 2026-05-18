@@ -218,6 +218,8 @@ function FarmMonitor:exportFruitTypes()
                     "minForage",         ft.minForageGrowthState or -1,
                     "maxForage",         ft.maxForageGrowthState or -1,
                     "literPerSqm",       ft.literPerSqm or 0,
+                    "seedUsagePerSqm",   ft.seedUsagePerSqm or 0,
+                    "allowsSeeding",     ft.allowsSeeding == true,
                     "stages",            stages
                 ))
             end

@@ -1246,6 +1246,36 @@
   .need-label { color: var(--muted); }
   .need-lph   { color: rgba(255,255,255,.55); font-size: 10px; }
   .need-total { color: var(--fg); text-align: right; }
+  .seed-row {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .seed-select {
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px;
+    color: var(--fg);
+    font-size: 11px;
+    padding: 3px 6px;
+    cursor: pointer;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,.4)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+    padding-right: 22px;
+  }
+  .seed-select:focus { outline: none; border-color: rgba(255,255,255,.3); }
+  .seed-select option { background: #1e2a1e; }
+  .seed-result {
+    grid-column: 2;
+    font-size: 10px;
+    color: rgba(255,255,255,.55);
+    min-height: 14px;
+  }
   @media (max-width: 860px)  { .fields-quicknav { display: none; } }
   @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
 </style>
@@ -2087,6 +2117,19 @@ function renderProductions(data) {
   }).join('');
 }
 
+function updateSeedResult(select, fieldId, fieldAreaHa) {
+  const name = select.value;
+  const el = document.getElementById('seed-result-' + fieldId);
+  if (!el) return;
+  localStorage.setItem('farmmonitor_seed_' + fieldId, name);
+  if (!name) { el.innerHTML = ''; return; }
+  const ft = (appData?.fruitTypes?.fruitTypes ?? []).find(f => f.name === name);
+  if (!ft || !ft.seedUsagePerSqm) { el.innerHTML = ''; return; }
+  const lph   = ft.seedUsagePerSqm * 10000;
+  const total = Math.round(lph * fieldAreaHa);
+  el.innerHTML = `<span>${lph.toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${total.toLocaleString('de-DE')} L</span>`;
+}
+
 function fieldNeedsAttention(f) {
   return (f.weedPct ?? 0) >= 10 || (f.stonePct ?? 0) >= 0.1
       || (f.limePct ?? 0) < 100 || (f.plowPct ?? 0) < 90 || (f.fertPct ?? 0) < 100;
@@ -2218,7 +2261,7 @@ function renderFields(data) {
       soilBar('Steine',  f.stonePct ?? 0, true),
     ].join('');
 
-    // Need section: seed + missing soil treatments
+    // Need section: seed selector + missing soil treatments
     function needRow(label, lph, total) {
       return `<div class="need-row">
         <span class="need-label">${label}</span>
@@ -2226,18 +2269,42 @@ function renderFields(data) {
         <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
       </div>`;
     }
+
+    // Seed selector: all seedable fruits from fruitTypes
+    const seedableFruits = (appData?.fruitTypes?.fruitTypes ?? [])
+      .filter(ft => ft.allowsSeeding && ft.seedUsagePerSqm > 0)
+      .sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name, 'de'));
+    const fieldAreaHa = f.fieldArea || f.area || 0;
+    const seedKey = `farmmonitor_seed_${f.id}`;
+    const savedSeed = localStorage.getItem(seedKey) || '';
+    const selectOpts = [`<option value="">Frucht wählen …</option>`]
+      .concat(seedableFruits.map(ft =>
+        `<option value="${ft.name}" ${ft.name === savedSeed ? 'selected' : ''}>${ft.title || ft.name}</option>`
+      )).join('');
+    const savedFt = seedableFruits.find(ft => ft.name === savedSeed);
+    const savedResultHtml = savedFt
+      ? `<span>${(savedFt.seedUsagePerSqm * 10000).toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(savedFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString('de-DE')} L</span>`
+      : '';
+    const seedSelector = `
+      <div class="seed-row">
+        <span class="need-label">Saatgut</span>
+        <select class="seed-select" onchange="updateSeedResult(this,'${f.id}',${fieldAreaHa})">
+          ${selectOpts}
+        </select>
+      </div>
+      <div class="seed-row">
+        <span></span>
+        <div class="seed-result" id="seed-result-${f.id}">${savedResultHtml}</div>
+      </div>`;
+
     const needRows = [];
-    if (f.seedLph != null && f.seedTotal != null && f.fruitType && !f.cut && !f.withered)
-      needRows.push(needRow('Saatgut', f.seedLph, f.seedTotal));
     if ((f.limePct ?? 0) < 90 && f.matLimeLph != null)
       needRows.push(needRow('Kalk', f.matLimeLph, f.matLimeTotal));
     if ((f.fertPct ?? 0) < 90 && f.matFertLph != null)
       needRows.push(needRow('Dünger', f.matFertLph, f.matFertTotal));
     if ((f.weedPct ?? 0) >= 10 && f.matHerbLph != null)
       needRows.push(needRow('Herbizid', f.matHerbLph, f.matHerbTotal));
-    const needSection = needRows.length > 0
-      ? `<div class="need-section"><div class="need-title">Bedarf</div>${needRows.join('')}</div>`
-      : '';
+    const needSection = `<div class="need-section"><div class="need-title">Bedarf</div>${seedSelector}${needRows.join('')}</div>`;
 
     return `
       <article id="field-card-${idx}" class="card field-card">
@@ -2249,6 +2316,7 @@ function renderFields(data) {
           <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
         </div>
         ${cropSection}
+        <div class="need-title" style="margin-top:8px">Boden</div>
         <div class="soil-bars">${chips}</div>
         ${needSection}
       </article>`;
