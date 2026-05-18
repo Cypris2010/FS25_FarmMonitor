@@ -18,25 +18,22 @@
 - ✅ **Dashboard:** Balkenfarben (grün/gelb/rot) folgen demselben gewichteten Schema
 - ✅ **Dashboard:** Alle Alert-Schwellwerte (Eingänge, Ausgänge, Belegung) in den Settings konfigurierbar und persistent gespeichert
 
-## v0.3.0 — Warenübersicht
-- **Server:** DDS-Icons der Fülltypen server-seitig zu PNG konvertieren — Go-Server liest `fillTypes.json`, konvertiert alle `hudOverlayFilename`-Pfade (`.dds`) zu PNG und serviert sie unter `/icons/<filltype>.png`
-- **Dashboard:** Fülltyp-Icons aus `/icons/<filltype>.png` laden und in folgenden Views anzeigen:
-  - Warenübersicht (v0.3.0)
-  - Produktionen (Inputs & Outputs)
-  - Silos
-  - Tierhaltung (optional, wo sinnvoll)
-- **Lua:** Alle Lagermengen aggregiert nach Fülltyp aus allen Quellen (Silos + Object Storages + Husbandry + Produktionen + Paletten + Ballen)
-- **Lua:** Verkaufspreise via `g_currentMission.storageSystem:getUnloadingStations()`:
+## v0.3.0 — Warenübersicht & Feldübersicht
+- ✅ **Lua:** Alle Lagermengen aggregiert nach Fülltyp aus allen Quellen (Silos + Object Storages + Husbandry + Produktionen + Paletten + Ballen)
+- ✅ **Lua:** Verkaufspreise via `g_currentMission.storageSystem:getUnloadingStations()`:
   - Aktueller Preis pro Station: `station:getEffectiveFillTypePrice(fillType)`
   - Bester aktueller Preis & beste Station
   - Preistrend: FALLING / CLIMBING / GREAT_DEMAND (`station:getCurrentPricingTrend`)
   - Nachfrage-Highlight: `station.greatDemandFillType`
-- **Lua:** Maximalpreis über alle 12 Jahresperioden: `fillType.economy.factors[period]`
-- **Lua:** Bester Verkaufsmonat pro Ware
-- **Dashboard:** Neuer View "Waren" — Tabelle mit:
-  - Ware, Gesamtmenge, Aktueller Preis, Aktueller Wert, Maximalpreis, Maximaler Wert, Bester Monat
-  - Farbliche Hervorhebung: Blau ≥100%, Dunkelgrün ≥95%, Gelb ≥90%, Weiß <90%
-  - Preistrend-Indikator (Pfeil hoch/runter/Sondernachfrage)
+- ✅ **Lua:** Maximalpreis über alle 12 Jahresperioden: `fillType.economy.factors[period]`
+- ✅ **Lua:** Bester Verkaufsmonat pro Ware
+- ✅ **Dashboard:** View "Waren" — Tabelle mit Ware, Gesamtmenge, Aktueller/Maximaler Preis & Wert, Bester Monat, Preistrend-Indikator, farbliche Hervorhebung (Blau ≥100%, Dunkelgrün ≥95%, Gelb ≥90%)
+- ✅ **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + `field:getFieldState()`
+- ✅ **Lua:** Felddaten: Fläche, Fruchttyp & Wachstumsstufe, Erntebereit-Flag, Potenzielle Ernte, Pflug-/Dünge-/Kalk-/Unkraut-/Mulch-/Steine-Zustand, Besitz
+- ✅ **Lua:** Bodenzustand-Maximalwerte in `fieldMeta.json` exportiert
+- ✅ **Dashboard:** View "Felder" — Grid mit Feldzustand + Alerts für erntereife/ungepflegte Felder
+- ✅ **Lua/modDesc:** Multiplayer aktiviert (`multiplayer supported="true"`)
+- ✅ **Lua:** `isServer`-Guard in `update()` — überspringt Ausführung auf Dedicated Servers
 
 ## v0.4.0 — Object Storages (Paletten & Ballenlager)
 - **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
@@ -50,30 +47,11 @@
 - **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
 - **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
 
-## v0.5.0 — Multiplayer-Unterstützung
-- **Lua:** `isServer`-Guard für Dedicated-Server-Fall in `update()` und `collectAndSave()`
-- **Lua:** `getFarmId()` auf Dedicated Server konfigurierbar machen (z.B. via modSettings)
-- **Test:** MP-Test zur Bestätigung dass `io.open` auf Clients erlaubt ist (wahrscheinlich kein Problem da Spieler den Mod selbst installiert hat)
-- **Hintergrund:** Jeder Spieler hat den Mod lokal installiert und führt ihn aus; `io.open` schreibt ins lokale `getUserProfileAppPath()` des jeweiligen Clients, `getFarmId()` gibt die eigene Farm-ID zurück → jeder Spieler sieht nur seine eigene Farm lokal
 
-## v0.6.0 — Feldübersicht
-- **Lua:** Felder exportieren via `g_farmlandManager.farmlands` + `field:getFieldState()`
-- **Lua:** Basis-Felddaten (immer verfügbar):
-  - Fläche (`farmland.field.areaHa`)
-  - Fruchttyp & Wachstumsstufe (`data.lastFruitTypeIndex`, `data.lastGrowthState / fruitType.numGrowthStates`)
-  - Erntebereit-Flag (`fruitType.growthStateToName[stage] == "harvestReady"`)
-  - Potenzielle Ernte in Litern/Tonnen (`fruitType.literPerSqm * areaHa * harvestMultiplier`)
-  - Pflugzustand (`field:getFieldState().plowLevel`)
-  - Düngezustand allgemein (`field:getFieldState().sprayLevel`)
-  - Kalkzustand (`field:getFieldState().limeLevel`)
-  - Unkrautzustand (`field:getFieldState().weedState`)
-  - Mulchzustand (`field:getFieldState().stubbleShredLevel`)
-  - Steine (`field:getFieldState().stoneLevel`)
-  - Besitz (`farmland.isOwned`)
+## v0.6.0 — Feldübersicht Erweiterungen
 - **Lua:** Optional mit PrecisionFarming DLC (`g_modIsLoaded["FS25_precisionFarming"]`):
   - Bodenfeuchtigkeit
   - N/P/K Werte (Stickstoff, Phosphor, Kalium)
-- **Dashboard:** Neuer View "Felder" — Grid mit Feldzustand + Alerts für erntereife/ungepflegte Felder
 
 ## v0.7.0 — Mobile Web & Netzwerk
 - **Server:** mDNS/Bonjour — meldet sich als `farmmonitor.local` im LAN
