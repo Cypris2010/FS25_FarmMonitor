@@ -1,6 +1,6 @@
 # FS25 FarmMonitor
 
-FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightweight Lua mod continuously exports silo levels, production chains, animal husbandries and fill types as JSON, while a small Go server picks them up and pushes live updates to a dark-themed web dashboard via Server-Sent Events — no browser refresh needed. Keep an eye on your entire farm from a second monitor, a tablet on the desk, or any device on your local network.
+FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightweight Lua mod continuously exports silo levels, production chains, animal husbandries, goods, and field states as JSON, while a small Go server picks them up and pushes live updates to a dark-themed web dashboard via Server-Sent Events — no browser refresh needed. Keep an eye on your entire farm from a second monitor, a tablet on the desk, or any device on your local network.
 
 ![Silos](docs/screenshots/screenshot_silos.png)
 *Silos — Füllstände aller Silos und Lagergebäude*
@@ -19,14 +19,14 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 
 ## Features
 
-- **Live JSON export** — silos, productions, animal husbandries, goods, fields, fill types and animal food recipes written to the modSettings folder every 10 s
+- **Live JSON export** — silos, productions, animal husbandries, goods, fields, fill types, fruit types and animal food recipes written to the modSettings folder every 10 s
 - **Unique placeable IDs** — every silo, production point and husbandry carries a persistent `uniqueId` (from the savegame) and a `savegameId` (`mapId + creationDate`) for reliable cross-session identification
 - **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
-- **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Animal Husbandries, Warenübersicht, Felder, Alerts, Settings
-- **Tierställe detail page** — per-stall cards with occupancy, food, water and output progress bars, computed status (OK / Watch / Warning / Critical) and a warning band for urgent issues
-- **Smart husbandry alerts** — food group alerts are weighted by consumption share (`eatWeight`): a pig's minor food component (e.g. root vegetables at 5%) only triggers a warning when nearly empty, avoiding false alarms
+- **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Tierställe, Warenübersicht, Felder, Alerts, Settings
+- **Tierställe** — per-stall cards with occupancy, food groups, water, straw, outputs and computed status (OK / Watch / Warning / Critical); smart alerts weighted by consumption share (`eatWeight`)
 - **Warenübersicht** — aggregated stock across all storage types per fill type, with current and maximum prices, price trend indicators (rising / falling / high demand), best selling month and colour-coded value rating
-- **Felder** — per-field cards showing fruit type, growth stage, harvest-readiness, estimated yield and soil conditions (ploughing, fertiliser, lime, weed, mulch, stones)
+- **Felder** — per-field cards with fruit type, growth stage, harvest-readiness badge, projected yield, soil condition bars (plough, fertiliser, lime, mulch, roller, weeds, stones), seed requirement calculator and material need estimates (lime, fertiliser, herbicide)
+- **Seed calculator** — interactive fruit type selector per field card; shows seed requirement in L/ha and total litres; selection persists in the browser
 - **Configurable alert thresholds** — warn and critical levels for inputs (food/water/straw), outputs and occupancy are adjustable in the Settings view and stored globally
 - **Per-savegame visibility settings** — hide individual placeables from the dashboard via the edit mode button; settings are persisted per savegame on the server
 - **Multiplayer** — every player runs the mod locally; each sees their own farm's data written to their own modSettings folder
@@ -39,8 +39,9 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 | `productions.json` | Production point inputs, outputs and chain status | every 10 s |
 | `husbandries.json` | Animal counts, food/water/straw levels, health and outputs (milk, manure, …) | every 10 s |
 | `goods.json` | Aggregated fill levels per fill type across all storages, with current and max prices, price trends and best selling month | every 10 s |
-| `fields.json` | Per-field fruit type, growth stage, harvest readiness, estimated yield and soil conditions | every 10 s |
+| `fields.json` | Per-field fruit type, growth stage, harvest readiness, projected yield, soil conditions and material need estimates | every 60 s |
 | `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
+| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, yield per m² and seed usage per m² | once on map load |
 | `animalFood.json` | Food group recipes per animal type (consumption type, fill types, production and eat weights) | once on map load |
 
 All files are written to the modSettings directory:
@@ -106,14 +107,14 @@ Open **http://localhost:8080** in a browser.
 
 | View | Description |
 |---|---|
-| Overview | KPI tiles (silo count, productions, stalls, open alerts) and a prioritised alert list |
-| Silos | Fill-level bars for every silo and silo extension |
-| Productions | Input/output bars and chain status (running / inactive / stopped) per production point |
-| Tierställe | Per-stall cards with occupancy, food, water, outputs and computed status |
-| Warenübersicht | Stock table per fill type with current value, max value, price trend and best selling month; colour-coded price rating |
-| Felder | Grid of owned fields with fruit type, growth progress, harvest-ready highlights and soil condition indicators |
-| Alerts | Consolidated list of all active warnings across all categories |
-| Settings | Toggle visibility of individual placeables per savegame; configure alert thresholds for inputs, outputs and occupancy |
+| Overview | KPI tiles (silo count, active productions, stall count, open alerts) and a prioritised alert list |
+| Silos | Fill-level bars for every silo and silo extension, grouped by placeable |
+| Productions | Input/output bars and chain status (running / inactive / stopped) per production point with quicknav |
+| Tierställe | Per-stall cards with occupancy, food groups (weighted), water, straw, outputs and computed alert status |
+| Warenübersicht | Stock per fill type with current and max price, total value, price trend indicator, best selling month and colour-coded rating |
+| Felder | Per-field cards: growth bar, projected yield, soil condition bars (split into soil quality and nuisances), seed calculator dropdown, and material need estimates for lime / fertiliser / herbicide |
+| Alerts | Consolidated list of all active warnings and critical states across all categories |
+| Settings | Configure alert thresholds for inputs, outputs and occupancy; toggle placeable visibility per savegame |
 
 ### Editing the dashboard view
 
