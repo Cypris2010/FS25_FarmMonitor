@@ -307,20 +307,21 @@
   /* ── Metric row ── */
   .metric {
     display: grid;
-    grid-template-columns: 90px 1fr 60px;
+    grid-template-columns: 90px 1fr auto;
     align-items: center;
     gap: 10px;
     font-size: 13px;
     color: var(--text);
     margin: 10px 0;
   }
-  .metric.has-badge { grid-template-columns: 90px 1fr 60px auto; }
+  .metric.has-badge { grid-template-columns: 90px 1fr auto auto; }
   .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
   .output-mode-badge.red    { color: var(--red); }
   .output-mode-badge.orange { color: var(--orange); }
   .output-mode-badge.blue   { color: var(--blue); }
   .output-mode-badge.green  { color: var(--green); }
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .metric > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .metric-good-link {
     cursor: pointer;
     color: var(--text);
@@ -531,9 +532,9 @@
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--muted);
-    margin: 10px 0 4px;
+    margin: 4px 0 4px;
   }
-  .sub-label:first-child { margin-top: 0; }
+  .metric + .sub-label, .chain-row + .sub-label { margin-top: 22px; }
 
   .card-footer {
     margin-top: 16px;
