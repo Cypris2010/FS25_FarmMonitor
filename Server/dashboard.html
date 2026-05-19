@@ -2177,9 +2177,11 @@ function renderProductions(data) {
     }
     if (Array.isArray(pp.outputs) && pp.outputs.length) {
       html += '<div class="sub-label">Ausgänge</div>';
+      const goodFillTypesOut = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
       html += [...pp.outputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
         const p = pct(o.level, o.capacity);
-        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true));
+        const link = o.fillType && goodFillTypesOut.has(o.fillType) ? o.fillType : null;
+        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link);
       }).join('');
     }
     if (Array.isArray(pp.productions) && pp.productions.length) {
