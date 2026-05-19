@@ -875,6 +875,33 @@
     align-items: flex-start;
     gap: 12px;
   }
+  .silo-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .silo-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .silo-quicknav:empty { display: none; }
+  .silo-layout > .content-grid {
+    flex: 1;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+  }
+  @media (max-width: 1400px) { .silo-layout > .content-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .silo-layout > .content-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .silo-layout > .content-grid { grid-template-columns: repeat(2, 1fr); } .silo-quicknav { display: none; } }
+  @media (max-width: 480px)  { .silo-layout > .content-grid { grid-template-columns: 1fr; } }
   .hus-quicknav {
     position: sticky;
     top: 18px;
@@ -1360,8 +1387,11 @@
             Ansicht bearbeiten
           </button>
         </div>
-        <div class="content-grid" id="silos-content">
-          <div class="state-box"><span>Lade Silos …</span></div>
+        <div class="silo-layout">
+          <div class="silo-quicknav" id="silo-quicknav"></div>
+          <div class="content-grid" id="silos-content">
+            <div class="state-box"><span>Lade Silos …</span></div>
+          </div>
         </div>
       </section>
     </div>
@@ -1638,6 +1668,7 @@ function alertThresholds() {
     fieldMulchWarn: a.fieldMulchWarn ?? 90,  fieldMulchCrit: a.fieldMulchCrit ?? 50,
     fieldWeedWarn:  a.fieldWeedWarn  ?? 5,   fieldWeedCrit:  a.fieldWeedCrit  ?? 10,
     fieldStoneWarn: a.fieldStoneWarn ?? 0.5, fieldStoneCrit: a.fieldStoneCrit ?? 1,
+    siloWarn:       a.siloWarn       ?? 80,  siloCrit:       a.siloCrit       ?? 90,
   };
 }
 let editMode         = false;
@@ -2060,13 +2091,32 @@ function renderHusbandries(data) {
 }
 
 function renderSilos(data) {
-  const el = document.getElementById('silos-content');
+  const el  = document.getElementById('silos-content');
+  const nav = document.getElementById('silo-quicknav');
   if (!data || !data.silos || data.silos.length === 0) {
     el.innerHTML = '<div class="state-box"><span>Keine Silos gefunden</span></div>';
+    if (nav) nav.innerHTML = '';
     return;
   }
   const silosToShow = editMode ? data.silos : data.silos.filter(s => isVisible(s.uniqueId));
-  el.innerHTML = silosToShow.map(s => {
+
+  // Quicknav — always only visible silos, regardless of edit mode
+  if (nav) {
+    const { siloWarn, siloCrit } = alertThresholds();
+    const visibleSilos = data.silos.filter(s => isVisible(s.uniqueId));
+    nav.innerHTML = visibleSilos.map(s => {
+      const idx = silosToShow.indexOf(s);
+      const totalFill = (Array.isArray(s.contents) ? s.contents : []).reduce((sum, c) => sum + (c.level || 0), 0);
+      const fillPct   = s.capacity > 0 ? Math.min(100, totalFill / s.capacity * 100) : 0;
+      const dotClass  = fillPct >= siloCrit ? 'sell-now' : fillPct >= siloWarn ? 'falling' : 'climbing';
+      return `<button class="qnav-item" onclick="(function(){var el=document.getElementById('silo-card-${idx}');el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>flashCard(el),300);})()">
+        <span class="qnav-dot ${dotClass}"></span>
+        <span>${s.name || '—'}</span>
+      </button>`;
+    }).join('');
+  }
+
+  el.innerHTML = silosToShow.map((s, idx) => {
     const hidden = !isVisible(s.uniqueId);
     const typeBadge = s.type === 'siloExtension'
       ? '<span class="badge blue">Extension</span>'
@@ -2076,7 +2126,7 @@ function renderSilos(data) {
       return metricRow(c.title || c.fillType, c.level, s.capacity, barClass(p, false));
     }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
     return `
-      <article class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
+      <article id="silo-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
         <h3>${s.name} ${typeBadge}${visBtn(s.uniqueId)}</h3>
         ${contents}
       </article>`;
@@ -2643,7 +2693,7 @@ function renderGoodCard(g) {
   const locsHtml = locs.length > 0
     ? locs.map(l => `
         <div class="good-loc-row">
-          <span class="good-loc-name">${l.name}</span>
+          <span class="good-loc-name metric-good-link" onclick="goToStorageLocation('${(l.uniqueId || '').replace(/'/g, "\\'")}')" title="Zum Lagerort navigieren">${l.name}</span>
           <span class="good-loc-liters">${fmtLiters(l.liters)}</span>
         </div>`).join('')
     : '<span style="font-size:12px;color:var(--muted)">—</span>';
@@ -2754,6 +2804,48 @@ function goToProduction(ppName) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => flashCard(el), 300);
   }));
+}
+
+function goToStorageLocation(uniqueId) {
+  if (!uniqueId || !appData) return;
+
+  const silos       = appData.silos?.silos ?? [];
+  const productions = appData.productions?.productions ?? [];
+  const husbandries = appData.husbandries?.husbandries ?? [];
+
+  const siloIdx = (editMode ? silos : silos.filter(s => isVisible(s.uniqueId)))
+    .findIndex(s => String(s.uniqueId) === String(uniqueId));
+  if (siloIdx !== -1) {
+    showView('silos');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById('silo-card-' + siloIdx);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => flashCard(el), 300); }
+    }));
+    return;
+  }
+
+  const prodsToShow = (editMode ? productions : productions.filter(pp => isVisible(pp.uniqueId)))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+  const prodIdx = prodsToShow.findIndex(pp => String(pp.uniqueId) === String(uniqueId));
+  if (prodIdx !== -1) {
+    showView('productions');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById('prod-card-' + prodIdx);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => flashCard(el), 300); }
+    }));
+    return;
+  }
+
+  const husFiltered = editMode ? husbandries : husbandries.filter(h => isVisible(h.uniqueId));
+  const husIdx = husFiltered.findIndex(h => String(h.uniqueId) === String(uniqueId));
+  if (husIdx !== -1) {
+    showView('husbandries');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById('hus-card-' + husIdx);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => flashCard(el), 300); }
+    }));
+    return;
+  }
 }
 
 function renderGoods(data) {
@@ -2978,7 +3070,15 @@ function renderSettings() {
 
   const al2 = globalSettings.alerts || {};
 
-  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
+  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Silos</div>'
+    + '<div class="placeable-list" style="gap:18px;padding:16px">'
+    + inputPair('Quicknav-Dot Silos', 'Füllstand des Silos', 'cfg-silo-warn', al2.siloWarn ?? 80, 'cfg-silo-crit', al2.siloCrit ?? 90)
+    + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Grün = unter Warnung · Orange = ab Warnung · Rot = ab Kritisch</div>'
+    + '<div style="display:flex;align-items:center;justify-content:flex-end;margin-top:8px">'
+    + '<button onclick="saveSiloAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
+    + '<div id="cfg-silo-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '</div>'
+    + '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
     + inputPair('Eingänge', 'Futter, Wasser, Stroh', 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
     + inputPair('Ausgänge', 'Milch, Eier, Mist …', 'cfg-out-warn', al2.outWarn ?? 80, 'cfg-out-crit', al2.outCrit ?? 90)
@@ -3079,6 +3179,18 @@ async function saveFieldAlertSettings() {
   await saveGlobalSettings();
   rerenderCurrentView();
   const msg = document.getElementById('cfg-field-saved');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
+}
+
+async function saveSiloAlertSettings() {
+  const siloWarn = parseInt(document.getElementById('cfg-silo-warn').value, 10);
+  const siloCrit = parseInt(document.getElementById('cfg-silo-crit').value, 10);
+  if (isNaN(siloWarn) || isNaN(siloCrit)) return;
+  if (siloCrit <= siloWarn) return;
+  globalSettings = { ...globalSettings, alerts: { ...globalSettings.alerts, siloWarn, siloCrit } };
+  await saveGlobalSettings();
+  rerenderCurrentView();
+  const msg = document.getElementById('cfg-silo-saved');
   if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
 }
 
