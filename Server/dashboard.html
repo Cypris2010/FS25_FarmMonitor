@@ -1,8 +1,16 @@
+<!--
+  Third-party libraries used in this file:
+
+  Tabler Icons — https://tabler.io/icons
+  Copyright (c) 2020-2026 Paweł Kuna
+  MIT License — https://github.com/tabler/tabler-icons/blob/main/LICENSE
+-->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <title>FS25 FarmMonitor</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -306,6 +314,12 @@
     color: var(--text);
     margin: 10px 0;
   }
+  .metric.has-badge { grid-template-columns: 90px 1fr 60px auto; }
+  .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
+  .output-mode-badge.red    { color: var(--red); }
+  .output-mode-badge.orange { color: var(--orange); }
+  .output-mode-badge.blue   { color: var(--blue); }
+  .output-mode-badge.green  { color: var(--green); }
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
   .metric-good-link {
     cursor: pointer;
@@ -1699,17 +1713,27 @@ function barClass(p, isOutput, w = 1) {
   return 'green';
 }
 
-function metricRow(label, val, cap, colorClass, goodFillType) {
+function metricRow(label, val, cap, colorClass, goodFillType, badge = '') {
   const p = pct(val, cap);
   const labelEl = goodFillType
     ? `<span class="metric-good-link" onclick="goToGood('${goodFillType}')" title="In Warenübersicht anzeigen">${label}</span>`
     : `<span>${label}</span>`;
   return `
-    <div class="metric">
+    <div class="metric${badge ? ' has-badge' : ''}">
       ${labelEl}
       <div class="bar ${colorClass}"><i style="width:${p}%"></i></div>
       <span class="metric-val">${fmt(val)} <small>${p}%</small></span>
+      ${badge}
     </div>`;
+}
+
+const OUTPUT_MODE_ICON  = { keep: 'ti-arrow-bar-up', sell: 'ti-currency-euro', deliver: 'ti-arrow-right', store: 'ti-arrow-bar-to-down' };
+const OUTPUT_MODE_LABEL = { keep: 'Auslagern', sell: 'Verkauf', deliver: 'Liefern', store: 'Einlagern' };
+const OUTPUT_MODE_COLOR = { keep: 'red', sell: 'orange', deliver: 'blue', store: 'green' };
+function outputModeBadge(mode) {
+  const icon = OUTPUT_MODE_ICON[mode];
+  if (!icon) return '';
+  return ` <span class="output-mode-badge ${OUTPUT_MODE_COLOR[mode] ?? 'gray'}" title="${OUTPUT_MODE_LABEL[mode] ?? ''}"><i class="ti ${icon}"></i></span>`;
 }
 
 const ANIMAL_NAMES = {
@@ -2181,7 +2205,7 @@ function renderProductions(data) {
       html += [...pp.outputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
         const p = pct(o.level, o.capacity);
         const link = o.fillType && goodFillTypesOut.has(o.fillType) ? o.fillType : null;
-        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link);
+        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode));
       }).join('');
     }
     if (Array.isArray(pp.productions) && pp.productions.length) {

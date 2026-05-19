@@ -406,15 +406,26 @@ function FarmMonitor:collectProductions()
             -- Outputs: all fill types stored as output for this production point
             local outputs = FarmMonitor.arr()
             if pp.outputFillTypeIdsArray ~= nil then
+                local hasPSC = g_modIsLoaded["FS25_ProductionStorageControl"]
                 for _, fillTypeId in ipairs(pp.outputFillTypeIdsArray) do
                     local level    = pp:getFillLevel(fillTypeId)
                     local capacity = pp:getCapacity(fillTypeId)
                     if level > 0 or capacity > 0 then
+                        local mode = "keep"
+                        local m = pp:getOutputDistributionMode(fillTypeId)
+                        if m == ProductionPoint.OUTPUT_MODE.DIRECT_SELL then
+                            mode = "sell"
+                        elseif m == ProductionPoint.OUTPUT_MODE.AUTO_DELIVER then
+                            mode = "deliver"
+                        elseif hasPSC and m == ProductionPoint.OUTPUT_MODE.STORE then
+                            mode = "store"
+                        end
                         table.insert(outputs, FarmMonitor.obj(
-                            "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
-                            "title",    FarmMonitor:fillTypeTitle(fillTypeId),
-                            "level",    MathUtil.round(level),
-                            "capacity", MathUtil.round(capacity)
+                            "fillType",   g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
+                            "title",      FarmMonitor:fillTypeTitle(fillTypeId),
+                            "level",      MathUtil.round(level),
+                            "capacity",   MathUtil.round(capacity),
+                            "outputMode", mode
                         ))
                     end
                 end
