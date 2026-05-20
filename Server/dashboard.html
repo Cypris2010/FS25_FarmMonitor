@@ -536,6 +536,13 @@
     margin: 4px 0 4px;
   }
   .metric + .sub-label, .chain-row + .sub-label { margin-top: 22px; }
+  .sub-label.inactive-toggle { cursor: pointer; user-select: none; }
+  .sub-label.inactive-toggle:hover { opacity: 0.7; }
+  .chain-row { cursor: pointer; user-select: none; }
+  .chain-row:hover { opacity: 0.8; }
+  .chain-recipe { font-size: 11px; color: var(--muted); padding: 2px 0 6px 16px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .chain-recipe .cr-name { color: var(--text); }
+  .chain-recipe .cr-sep { opacity: 0.5; }
 
   .card-footer {
     margin-top: 16px;
@@ -2193,7 +2200,7 @@ function renderProductions(data) {
     const hidden = !isVisible(pp.uniqueId);
     const activeChains = (pp.productions || []).filter(c => c.status !== 'inactive');
     let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
-    const relevantInputs = (pp.inputs || []).filter(i => i.needed);
+    const relevantInputs = (pp.inputs || []).filter(i => i.level > 0 || i.needed);
     if (relevantInputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
       const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
@@ -2204,10 +2211,11 @@ function renderProductions(data) {
         return metricRow(i.title || i.fillType, i.level, i.capacity, cls, link);
       }).join('');
     }
-    if (Array.isArray(pp.outputs) && pp.outputs.length) {
+    const relevantOutputs = (pp.outputs || []).filter(o => o.level > 0 || o.needed);
+    if (relevantOutputs.length) {
       html += '<div class="sub-label">Ausgänge</div>';
       const goodFillTypesOut = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
-      html += [...pp.outputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
+      html += [...relevantOutputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
         const p = pct(o.level, o.capacity);
         const link = o.fillType && goodFillTypesOut.has(o.fillType) ? o.fillType : null;
         return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode));
@@ -2215,14 +2223,42 @@ function renderProductions(data) {
     }
     if (activeChains.length) {
       html += '<div class="sub-label">Ketten</div>';
-      html += [...activeChains].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c => {
-        let b;
-        if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
-        else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
-        else                              b = '<span class="badge red">Gestoppt</span>';
-        const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
-        return `<div class="chain-row"><span>${c.name || c.id}</span><span style="display:flex;gap:6px;align-items:center">${cy}${b}</span></div>`;
-      }).join('');
+      html += [...activeChains].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c =>
+        chainRowHtml(c, `${pp.uniqueId}:${c.id}`)
+      ).join('');
+    }
+    // Inaktiv-Sektion
+    const inactiveInputs  = (pp.inputs  || []).filter(i => i.level === 0 && !i.needed);
+    const inactiveOutputs = (pp.outputs || []).filter(o => o.level === 0 && !o.needed);
+    const inactiveChains  = (pp.productions || []).filter(c => c.status === 'inactive');
+    const inactiveCount   = inactiveInputs.length + inactiveOutputs.length + inactiveChains.length;
+    if (inactiveCount > 0) {
+      const expanded = prodInactiveExpanded.has(pp.uniqueId);
+      html += `<div class="sub-label inactive-toggle" onclick="toggleProdInactive('${pp.uniqueId}')">
+        ${expanded ? '▼' : '▶'} Inaktiv (${inactiveCount})</div>`;
+      if (expanded) {
+        const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
+        if (inactiveInputs.length) {
+          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Eingänge</div>';
+          html += [...inactiveInputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'','de')).map(i => {
+            const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
+            return metricRow(i.title || i.fillType, i.level, i.capacity, 'gray', link);
+          }).join('');
+        }
+        if (inactiveOutputs.length) {
+          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Ausgänge</div>';
+          html += [...inactiveOutputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'','de')).map(o => {
+            const link = o.fillType && goodFillTypes.has(o.fillType) ? o.fillType : null;
+            return metricRow(o.title || o.fillType, o.level, o.capacity, 'gray', link, outputModeBadge(o.outputMode));
+          }).join('');
+        }
+        if (inactiveChains.length) {
+          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Ketten</div>';
+          html += [...inactiveChains].sort((a, b) => (a.name||a.id||'').localeCompare(b.name||b.id||'','de')).map(c =>
+            chainRowHtml(c, `${pp.uniqueId}:${c.id}`)
+          ).join('');
+        }
+      }
     }
     html += '</article>';
     return html;
@@ -2610,6 +2646,8 @@ let goodsMonthFilter = 'all';
 let goodsHideWater   = true;
 let goodsSort        = 'name';
 let goodsExpandedSet = new Set();
+let prodInactiveExpanded = new Set();
+let prodChainExpanded = new Set();
 
 const PERIOD_NAMES = [
   '', 'März', 'April', 'Mai',
@@ -2674,6 +2712,39 @@ function goodRecommendation(cls, pricePct) {
                               return { label: '→ Beobachten',               badgeCls: 'blue'   };
   }
                               return { label: '⏳ Warten',                  badgeCls: 'blue'   };
+}
+
+function toggleProdChain(key) {
+  if (prodChainExpanded.has(key)) prodChainExpanded.delete(key);
+  else prodChainExpanded.add(key);
+  renderProductions(appData?.productions);
+}
+
+function chainRecipeHtml(c) {
+  const inputs  = (c.inputs  || []).map(i => `<span class="cr-name">${i.title || i.fillType}</span> <span>${fmt(i.amountPerCycle)}L</span>`).join('<span class="cr-sep"> + </span>');
+  const outputs = (c.outputs || []).map(o => `<span class="cr-name">${o.title || o.fillType}</span> <span>${fmt(o.amountPerCycle)}L</span>`).join('<span class="cr-sep"> + </span>');
+  if (!inputs && !outputs) return '';
+  return `<div class="chain-recipe">${inputs}<span class="cr-sep">→</span>${outputs}</div>`;
+}
+
+function chainRowHtml(c, key) {
+  let b;
+  if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
+  else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
+  else                              b = '<span class="badge red">Gestoppt</span>';
+  const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
+  const expanded = prodChainExpanded.has(key);
+  const arrow = (c.inputs?.length || c.outputs?.length) ? `<span style="color:var(--muted);font-size:11px">${expanded ? '▼' : '▶'}</span>` : '';
+  return `<div class="chain-row" onclick="toggleProdChain('${key}')">
+    <span style="display:flex;gap:6px;align-items:center">${arrow}${c.name || c.id}</span>
+    <span style="display:flex;gap:6px;align-items:center">${cy}${b}</span>
+  </div>${expanded ? chainRecipeHtml(c) : ''}`;
+}
+
+function toggleProdInactive(uniqueId) {
+  if (prodInactiveExpanded.has(uniqueId)) prodInactiveExpanded.delete(uniqueId);
+  else prodInactiveExpanded.add(uniqueId);
+  renderProductions(appData?.productions);
 }
 
 function toggleGoodExpanded(fillType, e) {
