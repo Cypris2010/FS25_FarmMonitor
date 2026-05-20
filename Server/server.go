@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"encoding/xml"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -193,6 +194,74 @@ func handleSavegame() http.HandlerFunc {
 // Handlers
 // ---------------------------------------------------------------------------
 
+func handleCommand(dataDir string) http.HandlerFunc {
+	type jsonCommand struct {
+		ID       string `json:"id"`
+		Cmd      string `json:"cmd"`
+		UniqueID string `json:"uniqueId,omitempty"`
+		FillType string `json:"fillType,omitempty"`
+		Mode     string `json:"mode,omitempty"`
+	}
+	type xmlCommand struct {
+		XMLName  xml.Name `xml:"command"`
+		ID       string   `xml:"id,attr"`
+		Cmd      string   `xml:"cmd,attr"`
+		UniqueID string   `xml:"uniqueId,attr"`
+		FillType string   `xml:"fillType,attr"`
+		Mode     string   `xml:"mode,attr"`
+	}
+	type xmlCommands struct {
+		XMLName  xml.Name     `xml:"commands"`
+		Count    int          `xml:"count,attr"`
+		Commands []xmlCommand `xml:"command"`
+	}
+
+	var mu sync.Mutex
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var cmd jsonCommand
+		if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		if cmd.ID == "" {
+			cmd.ID = fmt.Sprintf("%d", time.Now().UnixNano())
+		}
+
+		xmlData, err := xml.MarshalIndent(xmlCommands{
+			Count: 1,
+			Commands: []xmlCommand{{
+				ID:       cmd.ID,
+				Cmd:      cmd.Cmd,
+				UniqueID: cmd.UniqueID,
+				FillType: cmd.FillType,
+				Mode:     cmd.Mode,
+			}},
+		}, "", "  ")
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		payload := append([]byte(xml.Header), xmlData...)
+		if err := os.WriteFile(filepath.Join(dataDir, "commands.xml"), payload, 0644); err != nil {
+			http.Error(w, "write error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"id": cmd.ID})
+	}
+}
+
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -362,6 +431,7 @@ func main() {
 	mux.HandleFunc("/api/events", handleEvents(b))
 	mux.HandleFunc("/api/settings", handleSettings())
 	mux.HandleFunc("/api/savegame/{savegameId}", handleSavegame())
+	mux.HandleFunc("/api/command", handleCommand(dataDir))
 
 	log.Printf("Settings: %s", settingsPath())
 

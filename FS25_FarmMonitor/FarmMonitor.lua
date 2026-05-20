@@ -9,6 +9,8 @@ FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
 FarmMonitor.fieldInterval     = 60000  -- milliseconds between field exports
 FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires immediately
+FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
+FarmMonitor.commandTimer      = 0
 FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
@@ -27,14 +29,16 @@ function FarmMonitor:loadMap(name)
     local outputDir = getUserProfileAppPath() .. "modSettings/" .. modName .. "/"
     createFolder(outputDir)
 
-    FarmMonitor.paths.silos       = outputDir .. "silos.json"
-    FarmMonitor.paths.productions = outputDir .. "productions.json"
-    FarmMonitor.paths.husbandries = outputDir .. "husbandries.json"
-    FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
-    FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
-    FarmMonitor.paths.goods       = outputDir .. "goods.json"
-    FarmMonitor.paths.fields      = outputDir .. "fields.json"
-    FarmMonitor.paths.fruitTypes  = outputDir .. "fruitTypes.json"
+    FarmMonitor.paths.silos        = outputDir .. "silos.json"
+    FarmMonitor.paths.productions  = outputDir .. "productions.json"
+    FarmMonitor.paths.husbandries  = outputDir .. "husbandries.json"
+    FarmMonitor.paths.fillTypes    = outputDir .. "fillTypes.json"
+    FarmMonitor.paths.animalFood   = outputDir .. "animalFood.json"
+    FarmMonitor.paths.goods        = outputDir .. "goods.json"
+    FarmMonitor.paths.fields       = outputDir .. "fields.json"
+    FarmMonitor.paths.fruitTypes   = outputDir .. "fruitTypes.json"
+    FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
+    FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -89,6 +93,12 @@ function FarmMonitor:update(dt)
     if FarmMonitor.fieldTimer >= FarmMonitor.fieldInterval then
         FarmMonitor.fieldTimer = 0
         FarmMonitor:collectAndSaveFields()
+    end
+
+    FarmMonitor.commandTimer = FarmMonitor.commandTimer + dt
+    if FarmMonitor.commandTimer >= FarmMonitor.commandInterval then
+        FarmMonitor.commandTimer = 0
+        FarmMonitor:processCommands()
     end
 end
 
@@ -1303,6 +1313,88 @@ function FarmMonitor:getHealthInfo(placeable)
     end
     return MathUtil.round(health / numClusters)
 end
+
+-- ---------------------------------------------------------------------------
+-- Command processing (file-based IPC: Go server → Lua mod)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:processCommands()
+    if not fileExists(FarmMonitor.paths.commandsXml) then return end
+
+    local xmlId = loadXMLFile("FMCommands", FarmMonitor.paths.commandsXml)
+    if xmlId == nil or xmlId == 0 then return end
+
+    -- Delete file before processing (at-most-once semantics)
+    deleteFile(FarmMonitor.paths.commandsXml)
+
+    local count = getXMLInt(xmlId, "commands#count") or 0
+    local processed = {}
+
+    for i = 0, count - 1 do
+        local base = string.format("commands.command(%d)", i)
+        local cmd = {
+            id       = getXMLString(xmlId, base .. "#id")       or "",
+            cmd      = getXMLString(xmlId, base .. "#cmd")      or "",
+            uniqueId = getXMLString(xmlId, base .. "#uniqueId") or "",
+            fillType = getXMLString(xmlId, base .. "#fillType") or "",
+            mode     = getXMLString(xmlId, base .. "#mode")     or "",
+        }
+        if cmd.cmd ~= "" then
+            local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
+            if ok then
+                table.insert(processed, cmd.id)
+            else
+                print("[FarmMonitor] Command error (" .. tostring(cmd.cmd) .. "): " .. tostring(err))
+            end
+        end
+    end
+
+    local parts = {}
+    for _, id in ipairs(processed) do
+        table.insert(parts, '"' .. id .. '"')
+    end
+    local ack = io.open(FarmMonitor.paths.commandsAck, "w")
+    if ack then
+        ack:write('{"processed":[' .. table.concat(parts, ",") .. ']}')
+        ack:close()
+    end
+end
+
+function FarmMonitor:dispatchCommand(cmd)
+    local handlers = {
+        ["production.setOutputMode"] = FarmMonitor.cmdSetProductionOutputMode,
+    }
+    local handler = handlers[cmd.cmd]
+    if handler then
+        handler(FarmMonitor, cmd)
+    else
+        print("[FarmMonitor] Unknown command: " .. tostring(cmd.cmd))
+    end
+end
+
+function FarmMonitor:cmdSetProductionOutputMode(cmd)
+    local modeMap = {
+        keep    = ProductionPoint.OUTPUT_MODE.KEEP,
+        sell    = ProductionPoint.OUTPUT_MODE.DIRECT_SELL,
+        deliver = ProductionPoint.OUTPUT_MODE.AUTO_DELIVER,
+        store   = ProductionPoint.OUTPUT_MODE.STORE,
+    }
+    local mode = modeMap[cmd.mode]
+    if mode == nil then error("Unknown mode: " .. tostring(cmd.mode)) end
+
+    local placeable = g_currentMission.placeableSystem:getPlaceableByUniqueId(cmd.uniqueId)
+    if placeable == nil or placeable.spec_productionPoint == nil then
+        error("Production placeable not found: " .. tostring(cmd.uniqueId))
+    end
+
+    local pp = placeable.spec_productionPoint.productionPoint
+    local ft = g_fillTypeManager:getFillTypeByName(cmd.fillType)
+    if ft == nil then error("FillType not found: " .. tostring(cmd.fillType)) end
+
+    pp:setOutputDistributionMode(ft.index, mode)
+    ProductionPointOutputModeEvent.sendEvent(pp, ft.index, mode, true)
+end
+
 
 -- ---------------------------------------------------------------------------
 -- Generic helpers

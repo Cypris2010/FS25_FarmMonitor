@@ -1755,10 +1755,32 @@ function metricRow(label, val, cap, colorClass, goodFillType, badge = '') {
 const OUTPUT_MODE_ICON  = { keep: 'ti-arrow-bar-up', sell: 'ti-currency-euro', deliver: 'ti-arrow-right', store: 'ti-arrow-bar-to-down' };
 const OUTPUT_MODE_LABEL = { keep: 'Auslagern', sell: 'Verkauf', deliver: 'Liefern', store: 'Einlagern' };
 const OUTPUT_MODE_COLOR = { keep: 'red', sell: 'orange', deliver: 'blue', store: 'green' };
-function outputModeBadge(mode) {
+const OUTPUT_MODE_CYCLE = ['keep', 'sell', 'deliver'];
+
+function outputModeBadge(mode, ppUniqueId, fillType) {
   const icon = OUTPUT_MODE_ICON[mode];
   if (!icon) return '';
-  return ` <span class="output-mode-badge ${OUTPUT_MODE_COLOR[mode] ?? 'gray'}" title="${OUTPUT_MODE_LABEL[mode] ?? ''}"><i class="ti ${icon}"></i></span>`;
+  const cls = `output-mode-badge ${OUTPUT_MODE_COLOR[mode] ?? 'gray'}`;
+  const title = OUTPUT_MODE_LABEL[mode] ?? '';
+  if (ppUniqueId && fillType) {
+    return ` <button class="${cls}" title="${title} (klicken zum Ändern)" onclick="cycleOutputMode(event,'${ppUniqueId}','${fillType}','${mode}')"><i class="ti ${icon}"></i></button>`;
+  }
+  return ` <span class="${cls}" title="${title}"><i class="ti ${icon}"></i></span>`;
+}
+
+async function cycleOutputMode(event, ppUniqueId, fillType, currentMode) {
+  event.stopPropagation();
+  const idx = OUTPUT_MODE_CYCLE.indexOf(currentMode);
+  const nextMode = OUTPUT_MODE_CYCLE[(idx + 1) % OUTPUT_MODE_CYCLE.length];
+  try {
+    await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cmd: 'production.setOutputMode', uniqueId: ppUniqueId, fillType, mode: nextMode }),
+    });
+  } catch(e) {
+    console.error('[FarmMonitor] Command failed:', e);
+  }
 }
 
 const ANIMAL_NAMES = {
@@ -2234,7 +2256,7 @@ function renderProductions(data) {
       html += [...relevantOutputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
         const p = pct(o.level, o.capacity);
         const link = o.fillType && goodFillTypesOut.has(o.fillType) ? o.fillType : null;
-        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode));
+        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode, pp.uniqueId, o.fillType));
       }).join('');
     }
     if (activeChains.length) {
