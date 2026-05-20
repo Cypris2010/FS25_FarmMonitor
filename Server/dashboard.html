@@ -315,6 +315,7 @@
     margin: 10px 0;
   }
   .metric.has-badge { grid-template-columns: 90px 1fr auto auto; }
+  .bar.empty-needed > i { width: 100% !important; background: rgba(255,92,77,.18); }
   .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
   .output-mode-badge.red    { color: var(--red); }
   .output-mode-badge.orange { color: var(--orange); }
@@ -2190,14 +2191,17 @@ function renderProductions(data) {
   // Cards
   el.innerHTML = prodsToShow.map((pp, idx) => {
     const hidden = !isVisible(pp.uniqueId);
+    const activeChains = (pp.productions || []).filter(c => c.status !== 'inactive');
     let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
-    if (Array.isArray(pp.inputs) && pp.inputs.length) {
+    const relevantInputs = (pp.inputs || []).filter(i => i.needed);
+    if (relevantInputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
       const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
-      html += [...pp.inputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
+      html += [...relevantInputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
         const p = pct(i.level, i.capacity);
         const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
-        return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false), link);
+        const cls = i.level === 0 ? 'empty-needed' : barClass(p, false);
+        return metricRow(i.title || i.fillType, i.level, i.capacity, cls, link);
       }).join('');
     }
     if (Array.isArray(pp.outputs) && pp.outputs.length) {
@@ -2209,9 +2213,9 @@ function renderProductions(data) {
         return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode));
       }).join('');
     }
-    if (Array.isArray(pp.productions) && pp.productions.length) {
+    if (activeChains.length) {
       html += '<div class="sub-label">Ketten</div>';
-      html += [...pp.productions].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c => {
+      html += [...activeChains].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c => {
         let b;
         if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
         else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';

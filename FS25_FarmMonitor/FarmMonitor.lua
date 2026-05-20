@@ -386,18 +386,32 @@ function FarmMonitor:collectProductions()
         local spec = placeable.spec_productionPoint
         if spec ~= nil and spec.productionPoint ~= nil and placeable.ownerFarmId == farmId then
             local pp = spec.productionPoint
-            -- Inputs: all fill types stored as input for this production point
+            -- Collect fillTypes needed by active/stopped chains via prod.inputs[n].type
+            local activeInputFillTypes = {}
+            for _, prod in ipairs(pp.productions) do
+                if prod.status ~= ProductionPoint.PROD_STATUS.INACTIVE then
+                    for _, input in ipairs(prod.inputs or {}) do
+                        if input.type ~= nil then
+                            activeInputFillTypes[input.type] = true
+                        end
+                    end
+                end
+            end
+
+            -- Inputs: include entries with level=0 when needed by active chains
             local inputs = FarmMonitor.arr()
             if pp.inputFillTypeIds ~= nil then
                 for fillTypeId, _ in pairs(pp.inputFillTypeIds) do
                     local level    = pp:getFillLevel(fillTypeId)
                     local capacity = pp:getCapacity(fillTypeId)
-                    if level > 0 or capacity > 0 then
+                    local needed   = activeInputFillTypes[fillTypeId] == true
+                    if level > 0 or capacity > 0 or needed then
                         table.insert(inputs, FarmMonitor.obj(
                             "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
                             "title",    FarmMonitor:fillTypeTitle(fillTypeId),
                             "level",    MathUtil.round(level),
-                            "capacity", MathUtil.round(capacity)
+                            "capacity", MathUtil.round(capacity),
+                            "needed",   needed
                         ))
                     end
                 end
@@ -444,11 +458,21 @@ function FarmMonitor:collectProductions()
                         status = "stopped"
                     end
                 end
+                local chainInputs = FarmMonitor.arr()
+                for _, input in ipairs(prod.inputs or {}) do
+                    if input.type ~= nil then
+                        table.insert(chainInputs, FarmMonitor.obj(
+                            "fillType",       g_fillTypeManager:getFillTypeNameByIndex(input.type) or "UNKNOWN",
+                            "amountPerCycle", MathUtil.round(input.amount or 0)
+                        ))
+                    end
+                end
                 table.insert(chains, FarmMonitor.obj(
                     "id",             prod.id or "",
                     "name",           prod.name or "",
                     "status",         status,
-                    "cyclesPerMonth", MathUtil.round(prod.cyclesPerMonth or 0)
+                    "cyclesPerMonth", MathUtil.round(prod.cyclesPerMonth or 0),
+                    "inputs",         chainInputs
                 ))
             end
 
