@@ -11,6 +11,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+  @font-face {
+    font-family: "tabler-icons-filled";
+    src: url("https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/fonts/tabler-icons-filled.woff2") format("woff2");
+    font-weight: normal; font-style: normal;
+  }
+  .tif { font-family: "tabler-icons-filled" !important; font-style: normal; font-weight: normal; line-height: 1; -webkit-font-smoothing: antialiased; }
+  .tif-player-play::before   { content: "\f691"; }
+  .tif-player-pause::before  { content: "\f690"; }
+  .tif-player-stop::before   { content: "\f695"; }
+</style>
 <title>FS25 FarmMonitor</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -282,6 +293,11 @@
   .badge.yellow { color: var(--yellow); background: rgba(255,212,59,.08); }
   .badge.blue   { color: var(--blue);   background: rgba(114,168,255,.08); }
   .badge.gray   { color: var(--muted);  background: rgba(255,255,255,.06); border-color: var(--line); }
+
+  .chain-status { display: inline-flex; align-items: center; font-size: 16px; }
+  .chain-status.green  { color: var(--green); }
+  .chain-status.red    { color: var(--red); }
+  .chain-status.gray   { color: var(--muted); }
 
   /* ── Progress bar ── */
   .bar {
@@ -1064,10 +1080,10 @@
     margin-bottom: 8px;
   }
   .good-price-sub { color: var(--muted); font-size: 11px; margin-left: 2px; }
-  .trend-up   { color: var(--green); }
-  .trend-down { color: var(--orange); }
-  .trend-star { color: var(--green); }
-  .trend-flat { color: var(--blue); }
+  .trend-up   { color: var(--green); font-size: 20px; }
+  .trend-down { color: var(--orange); font-size: 20px; }
+  .trend-star { color: var(--orange); font-size: 20px; }
+  .trend-flat { color: var(--blue); font-size: 20px; }
 
   .good-footer {
     display: flex;
@@ -2694,22 +2710,22 @@ function goodVisualClass(tCls, pricePct) {
 }
 
 function trendIcon(trend) {
-  if (trend === 'GREAT_DEMAND') return '<span class="trend-star">⚡</span>';
-  if (trend === 'CLIMBING')     return '<span class="trend-up">↑</span>';
-  if (trend === 'FALLING')      return '<span class="trend-down">↓</span>';
-  return '<span class="trend-flat">→</span>';
+  if (trend === 'GREAT_DEMAND') return '<span class="trend-star"><i class="ti ti-flame"></i></span>';
+  if (trend === 'CLIMBING')     return '<span class="trend-up"><i class="ti ti-trending-up"></i></span>';
+  if (trend === 'FALLING')      return '<span class="trend-down"><i class="ti ti-trending-down"></i></span>';
+  return '<span class="trend-flat"><i class="ti ti-arrow-right"></i></span>';
 }
 
 function goodRecommendation(cls, pricePct) {
   if (cls === 'no-station')   return { label: 'Keine Verkaufsstelle',      badgeCls: 'gray'   };
-  if (cls === 'great-demand') return { label: '⚡ Sondernachfrage!',        badgeCls: 'yellow' };
+  if (cls === 'great-demand') return { label: '<i class="ti ti-flame"></i> Sondernachfrage!',        badgeCls: 'yellow' };
   if (pricePct >= 95) {
-    if (cls === 'falling')    return { label: '🔥 Jetzt verkaufen!',        badgeCls: 'red'    };
-                              return { label: '↑ Warten möglich',           badgeCls: 'green'  };
+    if (cls === 'falling')    return { label: '🔥 Jetzt verkaufen!',                                 badgeCls: 'red'    };
+                              return { label: '<i class="ti ti-trending-up"></i> Warten möglich',    badgeCls: 'green'  };
   }
   if (pricePct >= 70) {
-    if (cls === 'falling')    return { label: '↓ Verkaufen prüfen',         badgeCls: 'orange' };
-                              return { label: '→ Beobachten',               badgeCls: 'blue'   };
+    if (cls === 'falling')    return { label: '<i class="ti ti-trending-down"></i> Verkaufen prüfen',badgeCls: 'orange' };
+                              return { label: '<i class="ti ti-arrow-right"></i> Beobachten',        badgeCls: 'blue'   };
   }
                               return { label: '⏳ Warten',                  badgeCls: 'blue'   };
 }
@@ -2729,9 +2745,9 @@ function chainRecipeHtml(c) {
 
 function chainRowHtml(c, key) {
   let b;
-  if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
-  else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
-  else                              b = '<span class="badge red">Gestoppt</span>';
+  if (c.status === 'running')       b = '<span class="chain-status green"><i class="tif tif-player-play"></i></span>';
+  else if (c.status === 'inactive') b = '<span class="chain-status gray"><i class="tif tif-player-stop"></i></span>';
+  else                              b = '<span class="chain-status red"><i class="tif tif-player-pause"></i></span>';
   const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
   const expanded = prodChainExpanded.has(key);
   const arrow = (c.inputs?.length || c.outputs?.length) ? `<span style="color:var(--muted);font-size:11px">${expanded ? '▼' : '▶'}</span>` : '';
@@ -3035,9 +3051,9 @@ function renderGoods(data) {
     <article class="card goods-kpi-tile">
       <div class="goods-kpi-label">Preistrend</div>
       <div class="goods-kpi-val" style="font-size:17px">
-        <span style="color:var(--green)">↑${tUp}</span>
-        <span style="color:var(--blue);margin:0 5px">→${tFlat}</span>
-        <span style="color:var(--orange)">↓${tDown}</span>
+        <span style="color:var(--green)"><i class="ti ti-trending-up"></i>${tUp}</span>
+        <span style="color:var(--blue);margin:0 5px"><i class="ti ti-arrow-right"></i>${tFlat}</span>
+        <span style="color:var(--orange)"><i class="ti ti-trending-down"></i>${tDown}</span>
       </div>
       <div class="goods-kpi-sub">Steigend · Stabil · Fallend</div>
     </article>
