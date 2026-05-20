@@ -1,8 +1,16 @@
+<!--
+  Third-party libraries used in this file:
+
+  Tabler Icons — https://tabler.io/icons
+  Copyright (c) 2020-2026 Paweł Kuna
+  MIT License — https://github.com/tabler/tabler-icons/blob/main/LICENSE
+-->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <title>FS25 FarmMonitor</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,17 +57,7 @@
       linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
     background-size: 80px 80px;
-    mask-image: radial-gradient(circle at center, transparent 0 28%, black 80%);
-    opacity: .45;
-  }
-
-  body::after {
-    content: "";
-    position: fixed; inset: 0; pointer-events: none;
-    background-image: radial-gradient(rgba(255,255,255,.18) .7px, transparent .7px);
-    background-size: 9px 9px;
-    opacity: .08;
-    mix-blend-mode: screen;
+    opacity: .3;
   }
 
   /* ── Layout ── */
@@ -223,13 +221,23 @@
     width: 9px; height: 9px;
     border-radius: 999px;
     background: var(--green);
-    box-shadow: 0 0 12px rgba(154,227,58,.85);
+    box-shadow: 0 0 14px rgba(154,227,58,.9);
     animation: pulse 2s ease-in-out infinite;
+    will-change: opacity;
   }
 
   @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 12px rgba(154,227,58,.85); }
-    50%       { box-shadow: 0 0 22px rgba(154,227,58,1); }
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+  }
+
+  @keyframes card-flash {
+    0%   { box-shadow: inset 0 0 40px rgba(155,227,58,.5), 0 0 14px rgba(155,227,58,.9); }
+    60%  { box-shadow: inset 0 0 40px rgba(155,227,58,.5), 0 0 14px rgba(155,227,58,.9); }
+    100% { box-shadow: none; }
+  }
+  .card-flash {
+    animation: card-flash 500ms ease-out forwards;
   }
 
   .live-dot.disconnected {
@@ -299,14 +307,32 @@
   /* ── Metric row ── */
   .metric {
     display: grid;
-    grid-template-columns: 90px 1fr 60px;
+    grid-template-columns: 90px 1fr auto;
     align-items: center;
     gap: 10px;
     font-size: 13px;
     color: var(--text);
     margin: 10px 0;
   }
+  .metric.has-badge { grid-template-columns: 90px 1fr auto auto; }
+  .bar.empty-needed > i { width: 100% !important; background: rgba(255,92,77,.18); }
+  .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
+  .output-mode-badge.red    { color: var(--red); }
+  .output-mode-badge.orange { color: var(--orange); }
+  .output-mode-badge.blue   { color: var(--blue); }
+  .output-mode-badge.green  { color: var(--green); }
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .metric > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .metric-good-link {
+    cursor: pointer;
+    color: var(--text);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .metric-good-link:hover { opacity: .65; }
 
   /* ── Empty / loading / error states ── */
   .state-box {
@@ -507,9 +533,16 @@
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--muted);
-    margin: 10px 0 4px;
+    margin: 4px 0 4px;
   }
-  .sub-label:first-child { margin-top: 0; }
+  .metric + .sub-label, .chain-row + .sub-label { margin-top: 22px; }
+  .sub-label.inactive-toggle { cursor: pointer; user-select: none; }
+  .sub-label.inactive-toggle:hover { opacity: 0.7; }
+  .chain-row { cursor: pointer; user-select: none; }
+  .chain-row:hover { opacity: 0.8; }
+  .chain-recipe { font-size: 11px; color: var(--muted); padding: 2px 0 6px 16px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .chain-recipe .cr-name { color: var(--text); }
+  .chain-recipe .cr-sep { opacity: 0.5; }
 
   .card-footer {
     margin-top: 16px;
@@ -769,6 +802,532 @@
   }
   .toggle input:checked + .toggle-slider { background: rgba(154,227,58,.2); border-color: rgba(154,227,58,.5); }
   .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--green); box-shadow: 0 0 8px rgba(154,227,58,.6); }
+
+  /* ── Goods KPI bar ── */
+  .goods-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1300px) { .goods-kpi-bar { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 860px)  { .goods-kpi-bar { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .goods-kpi-bar { grid-template-columns: 1fr; } }
+
+  .goods-kpi-tile {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .goods-kpi-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .goods-kpi-val   { font-size: 20px; font-weight: 800; letter-spacing: -.04em; color: var(--green); line-height: 1.1; }
+  .goods-kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Goods search + controls ── */
+  .goods-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .goods-search {
+    flex: 1;
+    min-width: 150px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .18s;
+  }
+  .goods-search:focus { border-color: rgba(154,227,58,.5); }
+  .goods-search::placeholder { color: var(--muted); }
+
+  /* ── Goods grid ── */
+  .goods-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .goods-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .goods-quicknav:empty { display: none; }
+
+  .prod-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .prod-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .prod-quicknav:empty { display: none; }
+  .prod-layout > .content-grid {
+    flex: 1;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+  }
+  @media (max-width: 1400px) { .prod-layout > .content-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .prod-layout > .content-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .prod-layout > .content-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .prod-layout > .content-grid { grid-template-columns: 1fr; } }
+
+  .hus-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .silo-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .silo-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .silo-quicknav:empty { display: none; }
+  .silo-layout > .content-grid {
+    flex: 1;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+  }
+  @media (max-width: 1400px) { .silo-layout > .content-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .silo-layout > .content-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .silo-layout > .content-grid { grid-template-columns: repeat(2, 1fr); } .silo-quicknav { display: none; } }
+  @media (max-width: 480px)  { .silo-layout > .content-grid { grid-template-columns: 1fr; } }
+  .hus-quicknav {
+    position: sticky;
+    top: 18px;
+    width: 130px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .hus-quicknav:empty { display: none; }
+  .hus-layout > .animal-grid {
+    flex: 1;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+  }
+  @media (max-width: 1400px) { .hus-layout > .animal-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .hus-layout > .animal-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .hus-layout > .animal-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .hus-layout > .animal-grid { grid-template-columns: 1fr; } }
+
+  .qnav-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    text-align: left;
+    overflow: hidden;
+    transition: background .15s, color .15s;
+  }
+  .qnav-item span:not(.qnav-dot) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .qnav-item:hover { background: rgba(255,255,255,.07); color: var(--fg); }
+  .qnav-item.active { background: rgba(255,255,255,.1); color: var(--fg); }
+  .qnav-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--muted);
+  }
+  .qnav-dot.great-demand { background: var(--yellow); box-shadow: 0 0 6px rgba(255,212,59,.6); }
+  .qnav-dot.sell-now     { background: var(--red);    box-shadow: 0 0 6px rgba(255,92,77,.5); }
+  .qnav-dot.climbing     { background: var(--green); }
+  .qnav-dot.falling      { background: var(--orange); }
+  .qnav-dot.stable       { background: var(--blue); }
+  .qnav-dot.no-station   { background: var(--muted); }
+
+  .goods-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 1400px) { .goods-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .goods-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .goods-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .goods-grid { grid-template-columns: 1fr; } }
+
+  /* ── Good card ── */
+  .good-card {
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s ease, box-shadow .2s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .good-card:hover { border-color: rgba(255,255,255,.22); }
+  .good-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--muted);
+    opacity: .4;
+  }
+  .good-card.falling::before      { background: var(--orange); opacity: 1; }
+  .good-card.climbing::before     { background: var(--green);  opacity: 1; }
+  .good-card.great-demand::before { background: var(--yellow); opacity: 1; box-shadow: 0 0 14px rgba(255,212,59,.7); }
+  .good-card.sell-now::before     { background: var(--red);    opacity: 1; box-shadow: 0 0 14px rgba(255,92,77,.5); }
+  .good-card.stable::before       { background: var(--blue);   opacity: 1; }
+  .good-card.high-value {
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.045), 0 0 0 1px rgba(154,227,58,.2);
+  }
+
+  .good-name {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.04em;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .good-period-hint {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 400;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .good-amount {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    color: var(--muted);
+    line-height: 1;
+    margin-bottom: 7px;
+  }
+  .good-station-row {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .good-price-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .good-price-sub { color: var(--muted); font-size: 11px; margin-left: 2px; }
+  .trend-up   { color: var(--green); }
+  .trend-down { color: var(--orange); }
+  .trend-star { color: var(--green); }
+  .trend-flat { color: var(--blue); }
+
+  .good-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .good-station-count { font-size: 10px; color: var(--muted); }
+
+  /* ── Expanded detail ── */
+  .good-detail {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .good-card.expanded .good-detail { display: flex; }
+
+  .good-detail-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .good-station-row-detail {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 4px 8px;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .good-station-row-detail:last-child { border-bottom: none; }
+  .gsd-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gsd-price { color: var(--green); font-weight: 600; white-space: nowrap; }
+  .gsd-value { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  .good-loc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--line-soft);
+    gap: 8px;
+  }
+  .good-loc-row:last-child { border-bottom: none; }
+  .good-loc-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .good-loc-liters { color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+  .good-info-note {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: rgba(255,255,255,.025);
+    border-radius: 8px;
+    border: 1px solid var(--line-soft);
+    line-height: 1.5;
+  }
+  .good-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+  .good-bar-wrap .bar { flex: 1; margin-bottom: 0; }
+  .good-pct-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 30px;
+    text-align: right;
+  }
+  .good-max-line {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  /* ── Fields view ── */
+  .fields-layout {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .fields-quicknav {
+    flex: 0 0 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .fields-quicknav:empty { display: none; }
+  .fields-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(210px, 1fr));
+    gap: 12px;
+    min-width: 0;
+  }
+  @media (max-width: 1400px) { .fields-grid { grid-template-columns: repeat(3, minmax(200px, 1fr)); } }
+  @media (max-width: 1100px) { .fields-grid { grid-template-columns: repeat(2, minmax(190px, 1fr)); } }
+  @media (max-width: 860px)  { .fields-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
+  .field-card {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .field-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .field-id-area {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .field-num {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .field-area-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .field-crop-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .field-crop-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .field-growth-label {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .field-growth-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .4s ease;
+    box-shadow: 0 0 10px currentColor;
+  }
+  .field-yield {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .soil-bars {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+    margin-top: 6px;
+  }
+  .soil-bar-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 28px;
+    align-items: center;
+    gap: 5px;
+  }
+  .soil-bar-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .soil-bar-track {
+    height: 4px;
+    background: rgba(255,255,255,.09);
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+  }
+  .soil-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .4s ease;
+  }
+  .soil-bar-pct {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .need-section {
+    margin-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    padding-top: 6px;
+  }
+  .need-title {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 4px;
+  }
+  .need-row {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .need-label { color: var(--muted); }
+  .need-lph   { color: rgba(255,255,255,.55); font-size: 10px; }
+  .need-total { color: var(--fg); text-align: right; }
+  .seed-row {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .seed-select {
+    background: rgba(0,0,0,.25);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 6px;
+    color: rgba(255,255,255,.6);
+    font-size: 11px;
+    padding: 3px 6px;
+    cursor: pointer;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,.25)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+    padding-right: 22px;
+  }
+  .seed-select:focus { outline: none; border-color: rgba(255,255,255,.2); }
+  .seed-select option { background: #1a1f1a; }
+  .seed-result {
+    grid-column: 2;
+    font-size: 10px;
+    color: rgba(255,255,255,.55);
+    min-height: 14px;
+  }
+  @media (max-width: 860px)  { .fields-quicknav { display: none; } }
+  @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -788,6 +1347,12 @@
       </button>
       <button class="nav-btn" data-view="husbandries" aria-label="Tierställe">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 11h6M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
+      </button>
+      <button class="nav-btn" data-view="goods" aria-label="Warenübersicht">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      </button>
+      <button class="nav-btn" data-view="fields" aria-label="Felder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5" r="1.8"/><path d="M5.5 2.2v.8M5.5 7v.8M2.7 5h.8M7.7 5h.8M3.5 3l.6.6M7.4 3l-.6.6M3.5 7l.6-.6M7.4 7l-.6-.6"/><path d="M1 11 L1 23 L23 23 L23 11"/><path d="M1 11 Q9 12 23 13.5"/><path d="M1 11 Q9 15 23 17"/><path d="M1 11 Q7 18 23 21"/><path d="M1 11 Q5 18 13 23"/><path d="M1 11 Q3 17 6 23"/></svg>
       </button>
       <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
@@ -845,8 +1410,11 @@
             Ansicht bearbeiten
           </button>
         </div>
-        <div class="content-grid" id="silos-content">
-          <div class="state-box"><span>Lade Silos …</span></div>
+        <div class="silo-layout">
+          <div class="silo-quicknav" id="silo-quicknav"></div>
+          <div class="content-grid" id="silos-content">
+            <div class="state-box"><span>Lade Silos …</span></div>
+          </div>
         </div>
       </section>
     </div>
@@ -869,8 +1437,11 @@
             Ansicht bearbeiten
           </button>
         </div>
-        <div class="content-grid" id="productions-content">
-          <div class="state-box"><span>Lade Produktionen …</span></div>
+        <div class="prod-layout">
+          <div class="prod-quicknav" id="prod-quicknav"></div>
+          <div class="content-grid" id="productions-content">
+            <div class="state-box"><span>Lade Produktionen …</span></div>
+          </div>
         </div>
       </section>
     </div>
@@ -906,10 +1477,119 @@
         <div id="husbandry-alerts"></div>
 
         <!-- Cards grid -->
-        <div class="animal-grid" id="husbandries-content">
-          <div class="state-box" style="grid-column:1/-1">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
-            <strong>Lade Tierställe …</strong>
+        <div class="hus-layout">
+          <div class="hus-quicknav" id="hus-quicknav"></div>
+          <div class="animal-grid" id="husbandries-content">
+            <div class="state-box" style="grid-column:1/-1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
+              <strong>Lade Tierställe …</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- View: Warenübersicht -->
+    <div id="view-goods" class="view" style="display:none; flex-direction:column; gap:18px;">
+
+      <!-- KPI bar -->
+      <div class="goods-kpi-bar" id="goods-kpi-bar"></div>
+
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Warenübersicht</h2>
+              <p>Lagerbestände, Verkaufspreise und Empfehlungen</p>
+            </div>
+          </div>
+          <div class="goods-controls">
+            <input class="goods-search" type="text" placeholder="Ware suchen …" id="goods-search-input"
+              oninput="goodsSearch=this.value; renderGoods(appData?.goods)">
+            <select class="filter-btn" id="goods-trend-filter"
+              onchange="goodsTrendFilter=this.value; renderGoods(appData?.goods)">
+              <option value="all">Alle Trends</option>
+              <option value="climbing">↑ Steigend</option>
+              <option value="stable">→ Stabil</option>
+              <option value="falling">↓ Fallend</option>
+              <option value="no-station">Keine Station</option>
+            </select>
+            <select class="filter-btn" id="goods-month-filter"
+              onchange="goodsMonthFilter=this.value; renderGoods(appData?.goods)">
+              <option value="all">Alle Monate</option>
+              <option value="1">März</option>
+              <option value="2">April</option>
+              <option value="3">Mai</option>
+              <option value="4">Juni</option>
+              <option value="5">Juli</option>
+              <option value="6">August</option>
+              <option value="7">September</option>
+              <option value="8">Oktober</option>
+              <option value="9">November</option>
+              <option value="10">Dezember</option>
+              <option value="11">Januar</option>
+              <option value="12">Februar</option>
+            </select>
+            <select class="filter-btn" id="goods-sort"
+              onchange="goodsSort=this.value; renderGoods(appData?.goods)">
+              <option value="name" selected>Nach Name</option>
+              <option value="value">Nach Wert</option>
+              <option value="liters">Nach Menge</option>
+              <option value="month">Nach Monat</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)">
+              <label class="toggle">
+                <input type="checkbox" id="goods-hide-water" checked
+                  onchange="goodsHideWater=this.checked; renderGoods(appData?.goods)">
+                <span class="toggle-slider"></span>
+              </label>
+              Wasser ausblenden
+            </label>
+          </div>
+        </div>
+
+        <div class="goods-layout">
+          <div class="goods-quicknav" id="goods-quicknav"></div>
+          <div class="goods-grid" id="goods-grid">
+            <div class="state-box" style="grid-column:1/-1"><span>Lade Waren …</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- View: Felder -->
+    <div id="view-fields" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Felder</h2>
+              <p>Zustand, Bewuchs und Bodenpflege deiner Felder</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="filters" role="group" aria-label="Filter">
+              <button class="filter-btn active" data-field-filter="all">Alle</button>
+              <button class="filter-btn" data-field-filter="harvest">Erntereif</button>
+              <button class="filter-btn" data-field-filter="attention">Handlungsbedarf</button>
+              <button class="filter-btn" data-field-filter="empty">Leer</button>
+            </div>
+            <button class="edit-mode-btn" id="edit-btn-fields" onclick="toggleEditMode()" aria-pressed="false">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
+              Ansicht bearbeiten
+            </button>
+          </div>
+        </div>
+        <div class="fields-layout">
+          <div class="fields-quicknav" id="fields-quicknav"></div>
+          <div class="fields-grid" id="fields-content">
+            <div class="state-box" style="grid-column:1/-1"><span>Lade Felder …</span></div>
           </div>
         </div>
       </section>
@@ -972,6 +1652,12 @@
   <button class="nav-btn" data-view="husbandries" aria-label="Tierställe">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
   </button>
+  <button class="nav-btn" data-view="goods" aria-label="Warenübersicht">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+  </button>
+  <button class="nav-btn" data-view="fields" aria-label="Felder">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg>
+  </button>
   <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
   </button>
@@ -985,6 +1671,7 @@ let appData          = null;
 let currentView      = 'home';
 let husFilter        = 'all';
 let husTypeFilter    = 'all';
+let fieldFilter      = 'all';
 let savegameId       = null;
 let savegameSettings = { placeables: {} };
 let globalSettings   = {};
@@ -992,12 +1679,19 @@ let globalSettings   = {};
 function alertThresholds() {
   const a = globalSettings.alerts || {};
   return {
-    warn:       a.warn       ?? 40,
-    crit:       a.crit       ?? 20,
-    outWarn:    a.outWarn    ?? 80,
-    outCrit:    a.outCrit    ?? 90,
-    occWatch:   a.occWatch   ?? 95,
-    occWarn:    a.occWarn    ?? 100,
+    warn:          a.warn          ?? 40,
+    crit:          a.crit          ?? 20,
+    outWarn:       a.outWarn       ?? 80,
+    outCrit:       a.outCrit       ?? 90,
+    occWatch:      a.occWatch      ?? 95,
+    occWarn:       a.occWarn       ?? 100,
+    fieldPlowWarn:  a.fieldPlowWarn  ?? 90,  fieldPlowCrit:  a.fieldPlowCrit  ?? 50,
+    fieldFertWarn:  a.fieldFertWarn  ?? 100, fieldFertCrit:  a.fieldFertCrit  ?? 50,
+    fieldLimeWarn:  a.fieldLimeWarn  ?? 100, fieldLimeCrit:  a.fieldLimeCrit  ?? 50,
+    fieldMulchWarn: a.fieldMulchWarn ?? 90,  fieldMulchCrit: a.fieldMulchCrit ?? 50,
+    fieldWeedWarn:  a.fieldWeedWarn  ?? 5,   fieldWeedCrit:  a.fieldWeedCrit  ?? 10,
+    fieldStoneWarn: a.fieldStoneWarn ?? 0.5, fieldStoneCrit: a.fieldStoneCrit ?? 1,
+    siloWarn:       a.siloWarn       ?? 80,  siloCrit:       a.siloCrit       ?? 90,
   };
 }
 let editMode         = false;
@@ -1028,15 +1722,27 @@ function barClass(p, isOutput, w = 1) {
   return 'green';
 }
 
-function metricRow(label, val, cap, colorClass) {
+function metricRow(label, val, cap, colorClass, goodFillType, badge = '') {
   const p = pct(val, cap);
-  const capStr = cap ? ` / ${fmt(cap)}` : '';
+  const labelEl = goodFillType
+    ? `<span class="metric-good-link" onclick="goToGood('${goodFillType}')" title="In Warenübersicht anzeigen">${label}</span>`
+    : `<span>${label}</span>`;
   return `
-    <div class="metric">
-      <span>${label}</span>
+    <div class="metric${badge ? ' has-badge' : ''}">
+      ${labelEl}
       <div class="bar ${colorClass}"><i style="width:${p}%"></i></div>
-      <span class="metric-val">${fmt(val)}${capStr ? '' : ''} <small>${p}%</small></span>
+      <span class="metric-val">${fmt(val)} <small>${p}%</small></span>
+      ${badge}
     </div>`;
+}
+
+const OUTPUT_MODE_ICON  = { keep: 'ti-arrow-bar-up', sell: 'ti-currency-euro', deliver: 'ti-arrow-right', store: 'ti-arrow-bar-to-down' };
+const OUTPUT_MODE_LABEL = { keep: 'Auslagern', sell: 'Verkauf', deliver: 'Liefern', store: 'Einlagern' };
+const OUTPUT_MODE_COLOR = { keep: 'red', sell: 'orange', deliver: 'blue', store: 'green' };
+function outputModeBadge(mode) {
+  const icon = OUTPUT_MODE_ICON[mode];
+  if (!icon) return '';
+  return ` <span class="output-mode-badge ${OUTPUT_MODE_COLOR[mode] ?? 'gray'}" title="${OUTPUT_MODE_LABEL[mode] ?? ''}"><i class="ti ${icon}"></i></span>`;
 }
 
 const ANIMAL_NAMES = {
@@ -1068,6 +1774,17 @@ function toggleVisibility(uniqueId) {
     ...savegameSettings.placeables[uniqueId],
     visible: !isVisible(uniqueId),
   };
+  saveSavegameSettings();
+  rerenderCurrentView();
+}
+
+function isFieldVisible(farmlandId) {
+  return savegameSettings.fields?.[farmlandId]?.visible !== false;
+}
+
+function toggleFieldVisibility(farmlandId) {
+  if (!savegameSettings.fields) savegameSettings.fields = {};
+  savegameSettings.fields[farmlandId] = { visible: !isFieldVisible(farmlandId) };
   saveSavegameSettings();
   rerenderCurrentView();
 }
@@ -1123,6 +1840,14 @@ function visBtn(uniqueId) {
   const eyeOn  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const eyeOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
   return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleVisibility('${uniqueId}')" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
+}
+
+function visFieldBtn(farmlandId) {
+  if (!editMode || !farmlandId) return '';
+  const visible = isFieldVisible(farmlandId);
+  const eyeOn  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const eyeOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+  return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleFieldVisibility(${farmlandId})" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1202,7 +1927,7 @@ function statusBadge(level) {
 // Renderers
 // ═══════════════════════════════════════════════════════════
 
-function renderHusbandryCard(h) {
+function renderHusbandryCard(h, idx) {
   const { level, hints } = husStatus(h);
   const occPct = h.maxAnimals > 0 ? pct(h.numAnimals, h.maxAnimals) : null;
   const { warn, crit, outWarn, outCrit, occWatch, occWarn } = alertThresholds();
@@ -1272,7 +1997,7 @@ function renderHusbandryCard(h) {
 
   const husHidden = !isVisible(h.uniqueId);
   return `
-    <article class="card animal-card ${level}${editMode && husHidden ? ' card-edit-hidden' : ''}" data-status="${level}" data-type="${h.animalType}" aria-label="${h.name}">
+    <article id="hus-card-${idx}" class="card animal-card ${level}${editMode && husHidden ? ' card-edit-hidden' : ''}" data-status="${level}" data-type="${h.animalType}" aria-label="${h.name}">
       <div class="animal-head">
         <div class="animal-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
@@ -1347,9 +2072,22 @@ function renderHusbandries(data) {
     filtered = filtered.filter(h => ['warn','crit'].includes(husStatus(h).level));
   }
 
+  // Quicknav
+  const nav = document.getElementById('hus-quicknav');
+  if (nav) {
+    nav.innerHTML = filtered.map((h, idx) => {
+      const lvl = husStatus(h).level;
+      const dotClass = lvl === 'crit' ? 'sell-now' : lvl === 'warn' ? 'falling' : lvl === 'watch' ? 'great-demand' : 'climbing';
+      return `<button class="qnav-item" onclick="document.getElementById('hus-card-${idx}').scrollIntoView({behavior:'smooth',block:'start'})">
+        <span class="qnav-dot ${dotClass}"></span>
+        <span>${h.name || '—'}</span>
+      </button>`;
+    }).join('');
+  }
+
   grid.innerHTML = filtered.length === 0
     ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Tierställe entsprechen dem Filter.</span></div>`
-    : filtered.map(renderHusbandryCard).join('');
+    : filtered.map((h, idx) => renderHusbandryCard(h, idx)).join('');
 
   // Warning band — based on ALL husbandries, not filtered
   const warnings = [];
@@ -1386,13 +2124,32 @@ function renderHusbandries(data) {
 }
 
 function renderSilos(data) {
-  const el = document.getElementById('silos-content');
+  const el  = document.getElementById('silos-content');
+  const nav = document.getElementById('silo-quicknav');
   if (!data || !data.silos || data.silos.length === 0) {
     el.innerHTML = '<div class="state-box"><span>Keine Silos gefunden</span></div>';
+    if (nav) nav.innerHTML = '';
     return;
   }
   const silosToShow = editMode ? data.silos : data.silos.filter(s => isVisible(s.uniqueId));
-  el.innerHTML = silosToShow.map(s => {
+
+  // Quicknav — always only visible silos, regardless of edit mode
+  if (nav) {
+    const { siloWarn, siloCrit } = alertThresholds();
+    const visibleSilos = data.silos.filter(s => isVisible(s.uniqueId));
+    nav.innerHTML = visibleSilos.map(s => {
+      const idx = silosToShow.indexOf(s);
+      const totalFill = (Array.isArray(s.contents) ? s.contents : []).reduce((sum, c) => sum + (c.level || 0), 0);
+      const fillPct   = s.capacity > 0 ? Math.min(100, totalFill / s.capacity * 100) : 0;
+      const dotClass  = fillPct >= siloCrit ? 'sell-now' : fillPct >= siloWarn ? 'falling' : 'climbing';
+      return `<button class="qnav-item" onclick="(function(){var el=document.getElementById('silo-card-${idx}');el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>flashCard(el),300);})()">
+        <span class="qnav-dot ${dotClass}"></span>
+        <span>${s.name || '—'}</span>
+      </button>`;
+    }).join('');
+  }
+
+  el.innerHTML = silosToShow.map((s, idx) => {
     const hidden = !isVisible(s.uniqueId);
     const typeBadge = s.type === 'siloExtension'
       ? '<span class="badge blue">Extension</span>'
@@ -1402,7 +2159,7 @@ function renderSilos(data) {
       return metricRow(c.title || c.fillType, c.level, s.capacity, barClass(p, false));
     }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
     return `
-      <article class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
+      <article id="silo-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
         <h3>${s.name} ${typeBadge}${visBtn(s.uniqueId)}</h3>
         ${contents}
       </article>`;
@@ -1410,42 +2167,344 @@ function renderSilos(data) {
 }
 
 function renderProductions(data) {
-  const el = document.getElementById('productions-content');
+  const el  = document.getElementById('productions-content');
+  const nav = document.getElementById('prod-quicknav');
   if (!data || !data.productions || data.productions.length === 0) {
-    el.innerHTML = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
+    el.innerHTML  = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
+    nav.innerHTML = '';
     return;
   }
-  const prodsToShow = editMode ? data.productions : data.productions.filter(pp => isVisible(pp.uniqueId));
-  el.innerHTML = [...prodsToShow].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de')).map(pp => {
+  const prodsToShow = (editMode ? data.productions : data.productions.filter(pp => isVisible(pp.uniqueId)))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+
+  // Quicknav
+  nav.innerHTML = prodsToShow.map((pp, idx) => {
+    const chains = Array.isArray(pp.productions) ? pp.productions : [];
+    const running  = chains.filter(c => c.status === 'running').length;
+    const stopped  = chains.filter(c => c.status === 'stopped').length;
+    const inactive = chains.filter(c => c.status === 'inactive').length;
+    let dotClass = 'no-station';
+    if (chains.length === 0)                       dotClass = 'no-station';
+    else if (stopped > 0)                          dotClass = 'sell-now';
+    else if (running > 0 && inactive > 0)          dotClass = 'great-demand';
+    else if (running > 0)                          dotClass = 'climbing';
+    else                                           dotClass = 'no-station';
+    return `<button class="qnav-item" onclick="(function(){var el=document.getElementById('prod-card-${idx}');el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>flashCard(el),300);})()">
+      <span class="qnav-dot ${dotClass}"></span>
+      <span>${pp.name || '—'}</span>
+    </button>`;
+  }).join('');
+
+  // Cards
+  el.innerHTML = prodsToShow.map((pp, idx) => {
     const hidden = !isVisible(pp.uniqueId);
-    let html = `<article class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
-    if (Array.isArray(pp.inputs) && pp.inputs.length) {
+    const activeChains = (pp.productions || []).filter(c => c.status !== 'inactive');
+    let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
+    const relevantInputs = (pp.inputs || []).filter(i => i.level > 0 || i.needed);
+    if (relevantInputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
-      html += [...pp.inputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
+      const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
+      html += [...relevantInputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
         const p = pct(i.level, i.capacity);
-        return metricRow(i.title || i.fillType, i.level, i.capacity, barClass(p, false));
+        const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
+        const cls = i.level === 0 ? 'empty-needed' : barClass(p, false);
+        return metricRow(i.title || i.fillType, i.level, i.capacity, cls, link);
       }).join('');
     }
-    if (Array.isArray(pp.outputs) && pp.outputs.length) {
+    const relevantOutputs = (pp.outputs || []).filter(o => o.level > 0 || o.needed);
+    if (relevantOutputs.length) {
       html += '<div class="sub-label">Ausgänge</div>';
-      html += [...pp.outputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
+      const goodFillTypesOut = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
+      html += [...relevantOutputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
         const p = pct(o.level, o.capacity);
-        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true));
+        const link = o.fillType && goodFillTypesOut.has(o.fillType) ? o.fillType : null;
+        return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode));
       }).join('');
     }
-    if (Array.isArray(pp.productions) && pp.productions.length) {
+    if (activeChains.length) {
       html += '<div class="sub-label">Ketten</div>';
-      html += [...pp.productions].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c => {
-        let b;
-        if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
-        else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
-        else                              b = '<span class="badge red">Gestoppt</span>';
-        const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
-        return `<div class="chain-row"><span>${c.name || c.id}</span><span style="display:flex;gap:6px;align-items:center">${cy}${b}</span></div>`;
-      }).join('');
+      html += [...activeChains].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c =>
+        chainRowHtml(c, `${pp.uniqueId}:${c.id}`)
+      ).join('');
+    }
+    // Inaktiv-Sektion
+    const inactiveInputs  = (pp.inputs  || []).filter(i => i.level === 0 && !i.needed);
+    const inactiveOutputs = (pp.outputs || []).filter(o => o.level === 0 && !o.needed);
+    const inactiveChains  = (pp.productions || []).filter(c => c.status === 'inactive');
+    const inactiveCount   = inactiveInputs.length + inactiveOutputs.length + inactiveChains.length;
+    if (inactiveCount > 0) {
+      const expanded = prodInactiveExpanded.has(pp.uniqueId);
+      html += `<div class="sub-label inactive-toggle" onclick="toggleProdInactive('${pp.uniqueId}')">
+        ${expanded ? '▼' : '▶'} Inaktiv (${inactiveCount})</div>`;
+      if (expanded) {
+        const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
+        if (inactiveInputs.length) {
+          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Eingänge</div>';
+          html += [...inactiveInputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'','de')).map(i => {
+            const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
+            return metricRow(i.title || i.fillType, i.level, i.capacity, 'gray', link);
+          }).join('');
+        }
+        if (inactiveOutputs.length) {
+          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Ausgänge</div>';
+          html += [...inactiveOutputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'','de')).map(o => {
+            const link = o.fillType && goodFillTypes.has(o.fillType) ? o.fillType : null;
+            return metricRow(o.title || o.fillType, o.level, o.capacity, 'gray', link, outputModeBadge(o.outputMode));
+          }).join('');
+        }
+        if (inactiveChains.length) {
+          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Ketten</div>';
+          html += [...inactiveChains].sort((a, b) => (a.name||a.id||'').localeCompare(b.name||b.id||'','de')).map(c =>
+            chainRowHtml(c, `${pp.uniqueId}:${c.id}`)
+          ).join('');
+        }
+      }
     }
     html += '</article>';
     return html;
+  }).join('');
+}
+
+function updateSeedResult(select, fieldId, fieldAreaHa) {
+  const name = select.value;
+  const el = document.getElementById('seed-result-' + fieldId);
+  if (!el) return;
+  localStorage.setItem('farmmonitor_seed_' + fieldId, name);
+  if (!name) { el.innerHTML = ''; return; }
+  const ft = (appData?.fruitTypes?.fruitTypes ?? []).find(f => f.name === name);
+  if (!ft || !ft.seedUsagePerSqm) { el.innerHTML = ''; return; }
+  const lph   = ft.seedUsagePerSqm * 10000;
+  const total = Math.round(lph * fieldAreaHa);
+  el.innerHTML = `<div class="need-row">
+    <span class="need-label">Saatgut</span>
+    <span class="need-lph">${lph.toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha</span>
+    <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
+  </div>`;
+}
+
+function fieldNeedsAttention(f) {
+  const t = alertThresholds();
+  return (f.weedPct  ?? 0) >= t.fieldWeedWarn
+      || (f.stonePct ?? 0) >= t.fieldStoneWarn
+      || (f.limePct  ?? 0) < t.fieldLimeWarn
+      || (f.plowPct  ?? 0) < t.fieldPlowWarn
+      || (f.fertPct  ?? 0) < t.fieldFertWarn;
+}
+
+function renderFields(data) {
+  const el  = document.getElementById('fields-content');
+  const nav = document.getElementById('fields-quicknav');
+  const fields = Array.isArray(data?.fields) ? data.fields : [];
+
+  if (fields.length === 0) {
+    el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Keine eigenen Felder gefunden</span></div>';
+    nav.innerHTML = '';
+    return;
+  }
+
+  const filtered = fields.filter(f => {
+    if (!editMode && !isFieldVisible(f.farmlandId)) return false;
+    if (fieldFilter === 'harvest')   return f.harvestReady || f.needsPreparation;
+    if (fieldFilter === 'attention') return !f.harvestReady && !f.needsPreparation && fieldNeedsAttention(f);
+    if (fieldFilter === 'empty')     return !f.fruitType;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Kein Feld passt zum Filter</span></div>';
+    nav.innerHTML = '';
+    return;
+  }
+
+  // Quicknav
+  const nt = alertThresholds();
+  nav.innerHTML = filtered.map((f, idx) => {
+    // Worst soil level: 2=red, 1=yellow, 0=green
+    let worst = 0;
+    const chk = (val, warn, crit, invert) => {
+      if (invert) {
+        if (val >= crit) worst = Math.max(worst, 2);
+        else if (val >= warn) worst = Math.max(worst, 1);
+      } else {
+        if (val < crit) worst = Math.max(worst, 2);
+        else if (val < warn) worst = Math.max(worst, 1);
+      }
+    };
+    chk(f.plowPct  ?? 0, nt.fieldPlowWarn,  nt.fieldPlowCrit,  false);
+    chk(f.fertPct  ?? 0, nt.fieldFertWarn,  nt.fieldFertCrit,  false);
+    chk(f.limePct  ?? 0, nt.fieldLimeWarn,  nt.fieldLimeCrit,  false);
+    chk(f.mulchPct ?? 0, nt.fieldMulchWarn, nt.fieldMulchCrit, false);
+    chk(f.weedPct  ?? 0, nt.fieldWeedWarn,  nt.fieldWeedCrit,  true);
+    chk(f.stonePct ?? 0, nt.fieldStoneWarn, nt.fieldStoneCrit, true);
+
+    let dotClass = !f.fruitType ? 'no-station'
+                 : worst === 2  ? 'sell-now'
+                 : worst === 1  ? 'great-demand'
+                 :                'climbing';
+    return `<button class="qnav-item" data-idx="${idx}" onclick="scrollToField(${idx})">
+      <span class="qnav-dot ${dotClass}"></span>
+      <span>Feld ${f.id}</span>
+    </button>`;
+  }).join('');
+
+  // Build fruitType lookup map: name -> literPerSqm
+  const fruitTypeLookup = {};
+  (appData?.fruitTypes?.fruitTypes ?? []).forEach(ft => {
+    if (ft.name) fruitTypeLookup[ft.name] = ft;
+  });
+
+  // Cards
+  el.innerHTML = filtered.map((f, idx) => {
+    // Header badges
+    let badges = '';
+    if (f.harvestReady)       badges += '<span class="badge green">Erntereif!</span>';
+    if (f.needsPreparation)   badges += '<span class="badge green">Erntevorbereitung</span>';
+    if (f.withered)           badges += '<span class="badge red">Vertrocknet</span>';
+    if (f.cut)                badges += '<span class="badge gray">Abgeerntet</span>';
+
+    // Growth bar — use minHarvest/maxHarvest for progress
+    let cropSection = '';
+    if (f.fruitType && f.maxHarvest > 0) {
+      const growing  = !f.harvestReady && !f.needsPreparation && !f.withered && !f.cut && f.growthStage > 0;
+      const barPct   = (f.harvestReady || f.needsPreparation) ? 100
+                     : growing        ? Math.round((f.growthStage / f.maxHarvest) * 100)
+                     : f.growthStage === 0 ? 0 : 100;
+      const barColor = f.withered          ? 'var(--red)'
+                     : f.harvestReady      ? 'var(--green)'
+                     : f.needsPreparation  ? 'var(--green)'
+                     : f.cut               ? 'var(--muted)'
+                     : barPct > 60         ? 'var(--yellow)'
+                     :                       'var(--blue)';
+      const stageLabel = f.harvestReady       ? 'Erntereif'
+                       : f.needsPreparation   ? 'Erntevorbereitung'
+                       : f.withered           ? 'Vertrocknet'
+                       : f.cut                ? 'Abgeerntet'
+                       : f.growthStage === 0  ? '—'
+                       : `Stufe ${f.growthStage}/${f.maxHarvest}`;
+      const ft = fruitTypeLookup[f.fruitType];
+      const literPerSqm = ft?.literPerSqm ?? 0;
+      const fieldAreaM2 = (f.fieldArea || f.area || 0) * 10000;
+      const multiplier  = 1 + (f.yieldBonusPct ?? 0) / 100;
+      const projLiters  = literPerSqm > 0 ? Math.round(literPerSqm * fieldAreaM2 * multiplier) : null;
+
+      const yieldLine = f.yieldBonusPct != null || projLiters != null
+        ? `<div class="field-yield">${projLiters != null ? `~${projLiters.toLocaleString('de-DE')} L` : ''}${f.yieldBonusPct != null ? `<span style="margin-left:6px;opacity:.7">${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}% Bonus</span>` : ''}</div>`
+        : '';
+      cropSection = `
+        <div class="field-crop-row">
+          <span class="field-crop-name">${f.fruitTitle || f.fruitType}</span>
+          <span class="field-growth-label">${stageLabel}</span>
+        </div>
+        <div class="bar">
+          <div class="field-growth-fill" style="width:${barPct}%;background:${barColor}"></div>
+        </div>
+        ${yieldLine}`;
+    } else {
+      cropSection = '<div class="field-crop-row"><span class="field-crop-name" style="color:var(--muted)">Kein Anbau</span></div>';
+    }
+
+    // Soil bars — thin colored bars per soil metric
+    function soilBar(label, pctVal, invert, warnThresh, critThresh) {
+      const fill  = Math.min(100, Math.max(0, pctVal));
+      const color = invert
+        ? (pctVal >= critThresh ? 'var(--red)' : pctVal >= warnThresh ? 'var(--yellow)' : 'var(--green)')
+        : (pctVal >= warnThresh ? 'var(--green)' : pctVal >= critThresh ? 'var(--yellow)' : 'var(--red)');
+      const pctLabel = pctVal.toFixed(0) + '%';
+      return `<div class="soil-bar-row">
+        <span class="soil-bar-label">${label}</span>
+        <div class="soil-bar-track"><div class="soil-bar-fill" style="width:${fill}%;background:${color}"></div></div>
+        <span class="soil-bar-pct">${pctLabel}</span>
+      </div>`;
+    }
+    function rollBar() {
+      const v    = f.needsRollingPct ?? 0;
+      const done = Math.min(100, Math.max(0, 100 - v));
+      const color = done >= 90 ? 'var(--green)' : done >= 50 ? 'var(--yellow)' : 'var(--red)';
+      return `<div class="soil-bar-row">
+        <span class="soil-bar-label">Walze</span>
+        <div class="soil-bar-track"><div class="soil-bar-fill" style="width:${done}%;background:${color}"></div></div>
+        <span class="soil-bar-pct">${done.toFixed(0)}%</span>
+      </div>`;
+    }
+    const t = alertThresholds();
+    const chipsMain = [
+      soilBar('Pflug',  f.plowPct  ?? 0, false, t.fieldPlowWarn,  t.fieldPlowCrit),
+      soilBar('Dünger', f.fertPct  ?? 0, false, t.fieldFertWarn,  t.fieldFertCrit),
+      soilBar('Kalk',   f.limePct  ?? 0, false, t.fieldLimeWarn,  t.fieldLimeCrit),
+      soilBar('Mulch',  f.mulchPct ?? 0, false, t.fieldMulchWarn, t.fieldMulchCrit),
+      rollBar(),
+    ].join('');
+    const chipsExtra = [
+      soilBar('Unkraut', f.weedPct  ?? 0, true, t.fieldWeedWarn,  t.fieldWeedCrit),
+      soilBar('Steine',  f.stonePct ?? 0, true, t.fieldStoneWarn, t.fieldStoneCrit),
+    ].join('');
+
+    // Need section: seed selector + missing soil treatments
+    function needRow(label, lph, total) {
+      return `<div class="need-row">
+        <span class="need-label">${label}</span>
+        <span class="need-lph">${lph.toLocaleString('de-DE')} L/ha</span>
+        <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
+      </div>`;
+    }
+
+    // Seed selector: all seedable fruits from fruitTypes
+    const seedableFruits = (appData?.fruitTypes?.fruitTypes ?? [])
+      .filter(ft => ft.allowsSeeding && ft.seedUsagePerSqm > 0)
+      .sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name, 'de'));
+    const fieldAreaHa = f.fieldArea || f.area || 0;
+    const seedKey = `farmmonitor_seed_${f.id}`;
+    const savedSeed = localStorage.getItem(seedKey);
+    // localStorage > current fruit on field > empty
+    const activeSeed = savedSeed !== null ? savedSeed : (f.fruitType || '');
+    const selectOpts = [`<option value="">Frucht wählen …</option>`]
+      .concat(seedableFruits.map(ft =>
+        `<option value="${ft.name}" ${ft.name === activeSeed ? 'selected' : ''}>${ft.title || ft.name}</option>`
+      )).join('');
+    const activeFt = seedableFruits.find(ft => ft.name === activeSeed);
+    const savedResultHtml = activeFt
+      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString('de-DE')} L</span>`
+      : '';
+    const activeSeedResultHtml = activeFt
+      ? needRow('Saatgut', activeFt.seedUsagePerSqm * 10000, Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa))
+      : '';
+    const seedSelector = `
+      <div class="need-title" style="margin-top:0">Saatgut</div>
+      <div class="seed-row">
+        <select class="seed-select" style="grid-column:1/-1" onchange="updateSeedResult(this,'${f.id}',${fieldAreaHa})">
+          ${selectOpts}
+        </select>
+      </div>
+      <div id="seed-result-${f.id}" style="margin-bottom:6px">${activeSeedResultHtml}</div>`;
+
+    const needRows = [];
+    if ((f.limePct ?? 0) < t.fieldLimeWarn && f.matLimeLph != null)
+      needRows.push(needRow('Kalk', f.matLimeLph, f.matLimeTotal));
+    if ((f.fertPct ?? 0) < t.fieldFertWarn && f.matFertLph != null)
+      needRows.push(needRow('Dünger', f.matFertLph, f.matFertTotal));
+    if ((f.weedPct ?? 0) >= t.fieldWeedWarn && f.matHerbLph != null)
+      needRows.push(needRow('Herbizid', f.matHerbLph, f.matHerbTotal));
+    const bodenbedarfSection = needRows.length > 0
+      ? `<div class="need-title">Bodenbedarf</div>${needRows.join('')}`
+      : '';
+    const needSection = `<div class="need-section">${seedSelector}${bodenbedarfSection}</div>`;
+
+    const fieldHidden = !isFieldVisible(f.farmlandId);
+    return `
+      <article id="field-card-${idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
+        <div class="field-card-head">
+          <div class="field-id-area">
+            <span class="field-num">Feld ${f.id}</span>
+            <span class="field-area-label">Feld ${f.fieldArea || f.area} ha${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">Land ${f.area} ha</span>` : ''}</span>
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${visFieldBtn(f.farmlandId)}${badges}</div>
+        </div>
+        ${cropSection}
+        <div class="need-title" style="margin-top:8px">Boden</div>
+        <div class="soil-bars">${chipsMain}</div>
+        <div class="soil-bars" style="margin-top:6px">${chipsExtra}</div>
+        ${needSection}
+      </article>`;
   }).join('');
 }
 
@@ -1477,6 +2536,15 @@ function collectAllAlerts(data) {
       if (p < 20) alerts.push({ src: pp.name, text: `${i.title || i.fillType} kritisch niedrig (${p}%)`, level: 'crit' });
       else if (p < 40) alerts.push({ src: pp.name, text: `${i.title || i.fillType} niedrig (${p}%)`, level: 'warn' });
     });
+  });
+
+  // Fields
+  const { fieldWeedWarn: fWW, fieldStoneWarn: fSW } = alertThresholds();
+  (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
+    if (f.harvestReady)                  alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
+    if (f.needsPreparation)              alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntevorbereitung nötig (${f.area} ha)`, level: 'warn' });
+    if ((f.weedPct  ?? 0) >= fWW)        alerts.push({ src: `Feld ${f.id}`, text: `Unkraut (${(f.weedPct ?? 0).toFixed(0)}%)`, level: 'warn' });
+    if ((f.stonePct ?? 0) >= fSW)        alerts.push({ src: `Feld ${f.id}`, text: `Steine (${(f.stonePct ?? 0).toFixed(0)}%)`, level: 'warn' });
   });
 
   return alerts;
@@ -1512,13 +2580,16 @@ function renderHome(data) {
   const kpiEl = document.getElementById('home-kpis');
   const alertEl = document.getElementById('home-alerts');
 
-  const siloCount   = data?.silos?.silos?.length ?? 0;
-  const prodCount   = data?.productions?.productions?.length ?? 0;
-  const husCount    = data?.husbandries?.husbandries?.length ?? 0;
-  const animals     = (Array.isArray(data?.husbandries?.husbandries) ? data.husbandries.husbandries : []).reduce((s, h) => s + (h.numAnimals || 0), 0);
-  const allAlerts   = collectAllAlerts(data);
-  const critCount   = allAlerts.filter(a => a.level === 'crit').length;
-  const alertCount  = allAlerts.length;
+  const siloCount      = data?.silos?.silos?.length ?? 0;
+  const prodCount      = data?.productions?.productions?.length ?? 0;
+  const husCount       = data?.husbandries?.husbandries?.length ?? 0;
+  const animals        = (Array.isArray(data?.husbandries?.husbandries) ? data.husbandries.husbandries : []).reduce((s, h) => s + (h.numAnimals || 0), 0);
+  const fieldsList     = Array.isArray(data?.fields?.fields) ? data.fields.fields : [];
+  const fieldCount     = fieldsList.length;
+  const harvestCount   = fieldsList.filter(f => f.harvestReady || f.needsPreparation).length;
+  const allAlerts      = collectAllAlerts(data);
+  const critCount      = allAlerts.filter(a => a.level === 'crit').length;
+  const alertCount     = allAlerts.length;
 
   kpiEl.innerHTML = `
     <article class="card kpi-card">
@@ -1532,6 +2603,10 @@ function renderHome(data) {
     <article class="card kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg></div>
       <div><div class="kpi-label">Tierställe</div><div class="kpi-value">${husCount}</div><div class="kpi-sub">${animals} Tiere</div></div>
+    </article>
+    <article class="card kpi-card ${harvestCount > 0 ? 'warning' : ''}">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg></div>
+      <div><div class="kpi-label">Felder</div><div class="kpi-value">${fieldCount}</div><div class="kpi-sub">${harvestCount} erntereif</div></div>
     </article>
     <article class="card kpi-card ${alertCount > 0 ? 'warning' : ''}">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg></div>
@@ -1558,6 +2633,437 @@ function renderHome(data) {
       </div>`;
   } else {
     alertEl.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Goods state + helpers
+// ═══════════════════════════════════════════════════════════
+
+let goodsSearch      = '';
+let goodsTrendFilter = 'all';
+let goodsMonthFilter = 'all';
+let goodsHideWater   = true;
+let goodsSort        = 'name';
+let goodsExpandedSet = new Set();
+let prodInactiveExpanded = new Set();
+let prodChainExpanded = new Set();
+
+const PERIOD_NAMES = [
+  '', 'März', 'April', 'Mai',
+  'Juni', 'Juli', 'August',
+  'September', 'Oktober', 'November',
+  'Dezember', 'Januar', 'Februar'
+];
+
+function fmtLiters(n) {
+  if (n == null) return '—';
+  if (n >= 1e6) return (n / 1e6).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' Mio l';
+  if (n >= 1e3) return (n / 1e3).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + ' Tsd l';
+  return n.toLocaleString('de-DE') + ' l';
+}
+
+function fmtEur(n) {
+  if (n == null || n === 0) return '—';
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+}
+
+function fmtPrice(n) {
+  if (n == null || n === 0) return '—';
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' €/l';
+}
+
+function goodTrendClass(g) {
+  const stations = Array.isArray(g.sellingStations) ? g.sellingStations : [];
+  if (stations.length === 0) return 'no-station';
+  const t = stations[0].trend;
+  if (t === 'GREAT_DEMAND') return 'great-demand';
+  if (t === 'CLIMBING')     return 'climbing';
+  if (t === 'FALLING')      return 'falling';
+  return 'stable';
+}
+
+// Visual class for card stripe + quicknav dot — combines trend AND price level
+function goodVisualClass(tCls, pricePct) {
+  if (tCls === 'great-demand') return 'great-demand';
+  if (tCls === 'no-station')   return 'no-station';
+  if (pricePct >= 95 && tCls === 'falling') return 'sell-now';
+  if (pricePct >= 95)          return 'climbing';
+  if (tCls === 'falling')      return 'falling';
+  return 'stable';
+}
+
+function trendIcon(trend) {
+  if (trend === 'GREAT_DEMAND') return '<span class="trend-star">⚡</span>';
+  if (trend === 'CLIMBING')     return '<span class="trend-up">↑</span>';
+  if (trend === 'FALLING')      return '<span class="trend-down">↓</span>';
+  return '<span class="trend-flat">→</span>';
+}
+
+function goodRecommendation(cls, pricePct) {
+  if (cls === 'no-station')   return { label: 'Keine Verkaufsstelle',      badgeCls: 'gray'   };
+  if (cls === 'great-demand') return { label: '⚡ Sondernachfrage!',        badgeCls: 'yellow' };
+  if (pricePct >= 95) {
+    if (cls === 'falling')    return { label: '🔥 Jetzt verkaufen!',        badgeCls: 'red'    };
+                              return { label: '↑ Warten möglich',           badgeCls: 'green'  };
+  }
+  if (pricePct >= 70) {
+    if (cls === 'falling')    return { label: '↓ Verkaufen prüfen',         badgeCls: 'orange' };
+                              return { label: '→ Beobachten',               badgeCls: 'blue'   };
+  }
+                              return { label: '⏳ Warten',                  badgeCls: 'blue'   };
+}
+
+function toggleProdChain(key) {
+  if (prodChainExpanded.has(key)) prodChainExpanded.delete(key);
+  else prodChainExpanded.add(key);
+  renderProductions(appData?.productions);
+}
+
+function chainRecipeHtml(c) {
+  const inputs  = (c.inputs  || []).map(i => `<span class="cr-name">${i.title || i.fillType}</span> <span>${fmt(i.amountPerCycle)}L</span>`).join('<span class="cr-sep"> + </span>');
+  const outputs = (c.outputs || []).map(o => `<span class="cr-name">${o.title || o.fillType}</span> <span>${fmt(o.amountPerCycle)}L</span>`).join('<span class="cr-sep"> + </span>');
+  if (!inputs && !outputs) return '';
+  return `<div class="chain-recipe">${inputs}<span class="cr-sep">→</span>${outputs}</div>`;
+}
+
+function chainRowHtml(c, key) {
+  let b;
+  if (c.status === 'running')       b = '<span class="badge green">Läuft</span>';
+  else if (c.status === 'inactive') b = '<span class="badge gray">Inaktiv</span>';
+  else                              b = '<span class="badge red">Gestoppt</span>';
+  const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
+  const expanded = prodChainExpanded.has(key);
+  const arrow = (c.inputs?.length || c.outputs?.length) ? `<span style="color:var(--muted);font-size:11px">${expanded ? '▼' : '▶'}</span>` : '';
+  return `<div class="chain-row" onclick="toggleProdChain('${key}')">
+    <span style="display:flex;gap:6px;align-items:center">${arrow}${c.name || c.id}</span>
+    <span style="display:flex;gap:6px;align-items:center">${cy}${b}</span>
+  </div>${expanded ? chainRecipeHtml(c) : ''}`;
+}
+
+function toggleProdInactive(uniqueId) {
+  if (prodInactiveExpanded.has(uniqueId)) prodInactiveExpanded.delete(uniqueId);
+  else prodInactiveExpanded.add(uniqueId);
+  renderProductions(appData?.productions);
+}
+
+function toggleGoodExpanded(fillType, e) {
+  e.stopPropagation();
+  if (goodsExpandedSet.has(fillType)) goodsExpandedSet.delete(fillType);
+  else goodsExpandedSet.add(fillType);
+  renderGoods(appData?.goods);
+}
+
+function goodProductionUsages(fillType) {
+  const productions = appData?.productions?.productions ?? [];
+  return productions.filter(pp => {
+    const hasInput = Array.isArray(pp.inputs) && pp.inputs.some(i => i.fillType === fillType);
+    if (!hasInput) return false;
+    const hasActiveChain = Array.isArray(pp.productions) && pp.productions.some(c => c.status !== 'inactive');
+    return hasActiveChain;
+  });
+}
+
+function renderGoodCard(g) {
+  const stations   = Array.isArray(g.sellingStations) ? g.sellingStations : [];
+  const locs       = Array.isArray(g.storageLocations) ? g.storageLocations : [];
+  const best       = stations[0] || null;
+  const tCls       = goodTrendClass(g);
+  const isExpanded = true;
+  const bestVal    = best ? (best.value || 0) : 0;
+  const isHighVal  = g.maxValue > 0 && bestVal >= g.maxValue * 0.95;
+  const pricePct   = (g.maxPrice && best && best.price) ? Math.round(best.price / g.maxPrice * 100) : 0;
+  const pBarCls    = pricePct >= 100 ? 'blue' : pricePct >= 90 ? 'green' : pricePct >= 70 ? '' : 'orange';
+  const rec        = goodRecommendation(tCls, pricePct);
+  const vCls       = goodVisualClass(tCls, pricePct);
+
+  // Top 5 stations table
+  const top5Html = stations.slice(0, 5).map((s, i) => `
+    <div class="good-station-row-detail">
+      <span class="gsd-name">${i === 0 ? '<strong>' + s.name + '</strong>' : s.name}</span>
+      <span class="gsd-price">${fmtPrice(s.price)}</span>
+      <span class="gsd-value">${fmtEur(s.value)}</span>
+      <span>${trendIcon(s.trend)}</span>
+    </div>`).join('') || '<span style="font-size:12px;color:var(--muted)">Keine Stationen</span>';
+
+  // Diff between best and 2nd
+  const diffHtml = stations.length >= 2
+    ? `<div class="good-info-note">Differenz zu nächster Station: ${fmtPrice(stations[0].price - stations[1].price)} = ${fmtEur(stations[0].value - stations[1].value)}</div>`
+    : '';
+
+  // Storage locations
+  const locsHtml = locs.length > 0
+    ? locs.map(l => `
+        <div class="good-loc-row">
+          <span class="good-loc-name metric-good-link" onclick="goToStorageLocation('${(l.uniqueId || '').replace(/'/g, "\\'")}')" title="Zum Lagerort navigieren">${l.name}</span>
+          <span class="good-loc-liters">${fmtLiters(l.liters)}</span>
+        </div>`).join('')
+    : '<span style="font-size:12px;color:var(--muted)">—</span>';
+
+  // Max price note — bar with inline % label + subtle max/season line
+  const maxNoteHtml = (pricePct > 0) ? `
+    <div class="good-bar-wrap">
+      <div class="bar ${pBarCls}"><i style="width:${Math.min(pricePct,100)}%"></i></div>
+      <span class="good-pct-label">${pricePct}%</span>
+    </div>
+    <div class="good-max-line">Max: ${fmtPrice(g.maxPrice)} · ${PERIOD_NAMES[g.bestPeriod] || '—'}</div>
+  ` : '';
+
+  return `
+    <article class="card good-card ${vCls} expanded${isHighVal ? ' high-value' : ''}"
+      id="good-${g.fillType}" aria-label="${g.title}">
+      <div class="good-name">
+        <span>${g.title}</span>
+        <span class="good-period-hint">${PERIOD_NAMES[g.bestPeriod] || ''}</span>
+      </div>
+      <div class="good-amount">${fmtLiters(g.totalLiters)}</div>
+      ${best ? `
+        <div class="good-station-row">🏪 ${best.name}</div>
+        <div class="good-price-row">
+          <span>${fmtPrice(best.price)}</span>
+          ${trendIcon(best.trend)}
+          <span class="good-price-sub">${fmtEur(bestVal)}</span>
+        </div>
+        ${maxNoteHtml}
+      ` : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Keine Verkaufsstelle</div>`}
+      <div class="good-footer">
+        <span class="badge ${rec.badgeCls}" style="font-size:11px;padding:3px 8px">${rec.label}</span>
+        <span class="good-station-count">${stations.length > 1 ? stations.length + ' Stationen' : stations.length === 1 ? '1 Station' : ''}</span>
+      </div>
+      <div class="good-detail">
+        <div>
+          <div class="good-detail-label">Verkaufsstellen (Top 5)</div>
+          ${top5Html}
+          ${diffHtml}
+          ${(() => {
+            const usages = goodProductionUsages(g.fillType);
+            if (!usages.length) return '';
+            return '<div class="good-detail-label" style="margin-top:12px">Verarbeitung</div>' +
+              '<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">' +
+              usages.map(pp => {
+                const inp = pp.inputs.find(i => i.fillType === g.fillType);
+                const p = pct(inp.level, inp.capacity);
+                const cls = barClass(p, false);
+                return `<div style="display:grid;grid-template-columns:90px 80px auto;align-items:center;gap:8px;font-size:12px;color:var(--text)">
+                  <span class="metric-good-link" onclick="goToProduction('${pp.name.replace(/'/g, "\\'")}')" title="In Produktionen anzeigen" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pp.name}</span>
+                  <div class="bar ${cls}"><i style="width:${p}%"></i></div>
+                  <span style="text-align:right;color:var(--muted);white-space:nowrap">${fmtLiters(inp.level)} <small>${p}%</small></span>
+                </div>`;
+              }).join('') +
+              '</div>';
+          })()}
+        </div>
+        <div>
+          <div class="good-detail-label">Lagerorte</div>
+          ${locsHtml}
+        </div>
+      </div>
+    </article>`;
+}
+
+function flashCard(el) {
+  if (!el) return;
+  el.classList.remove('card-flash');
+  void el.offsetWidth; // reflow to restart animation
+  el.classList.add('card-flash');
+  el.addEventListener('animationend', () => el.classList.remove('card-flash'), { once: true });
+}
+
+function scrollToField(idx) {
+  const el = document.getElementById('field-card-' + idx);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => flashCard(el), 300);
+  document.querySelectorAll('#fields-quicknav .qnav-item').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`#fields-quicknav .qnav-item[data-idx="${idx}"]`);
+  if (btn) btn.classList.add('active');
+}
+
+function scrollToGood(fillType) {
+  const el = document.getElementById('good-' + fillType);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => flashCard(el), 300);
+  document.querySelectorAll('.qnav-item').forEach(b => b.classList.remove('active'));
+  const btn = [...document.querySelectorAll('.qnav-item')].find(b => b.onclick?.toString().includes(fillType));
+  if (btn) btn.classList.add('active');
+}
+
+function goToGood(fillType) {
+  showView('goods');
+  requestAnimationFrame(() => requestAnimationFrame(() => scrollToGood(fillType)));
+}
+
+function goToProduction(ppName) {
+  showView('productions');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const productions = appData?.productions?.productions ?? [];
+    const prodsToShow = (editMode ? productions : productions.filter(pp => isVisible(pp.uniqueId)))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+    const idx = prodsToShow.findIndex(pp => pp.name === ppName);
+    if (idx === -1) return;
+    const el = document.getElementById('prod-card-' + idx);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => flashCard(el), 300);
+  }));
+}
+
+function goToStorageLocation(uniqueId) {
+  if (!uniqueId || !appData) return;
+
+  const silos       = appData.silos?.silos ?? [];
+  const productions = appData.productions?.productions ?? [];
+  const husbandries = appData.husbandries?.husbandries ?? [];
+
+  const siloIdx = (editMode ? silos : silos.filter(s => isVisible(s.uniqueId)))
+    .findIndex(s => String(s.uniqueId) === String(uniqueId));
+  if (siloIdx !== -1) {
+    showView('silos');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById('silo-card-' + siloIdx);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => flashCard(el), 300); }
+    }));
+    return;
+  }
+
+  const prodsToShow = (editMode ? productions : productions.filter(pp => isVisible(pp.uniqueId)))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+  const prodIdx = prodsToShow.findIndex(pp => String(pp.uniqueId) === String(uniqueId));
+  if (prodIdx !== -1) {
+    showView('productions');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById('prod-card-' + prodIdx);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => flashCard(el), 300); }
+    }));
+    return;
+  }
+
+  const husFiltered = editMode ? husbandries : husbandries.filter(h => isVisible(h.uniqueId));
+  const husIdx = husFiltered.findIndex(h => String(h.uniqueId) === String(uniqueId));
+  if (husIdx !== -1) {
+    showView('husbandries');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById('hus-card-' + husIdx);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => flashCard(el), 300); }
+    }));
+    return;
+  }
+}
+
+function renderGoods(data) {
+  const kpiEl  = document.getElementById('goods-kpi-bar');
+  const gridEl = document.getElementById('goods-grid');
+  if (!kpiEl || !gridEl) return;
+
+  const goods = Array.isArray(data?.goods) ? data.goods : [];
+
+  if (goods.length === 0) {
+    kpiEl.innerHTML  = '';
+    gridEl.innerHTML = `<div class="state-box" style="grid-column:1/-1">
+      <strong>Keine Warendaten</strong>
+      <span>goods.json wurde noch nicht gefunden. FarmMonitor läuft?</span>
+    </div>`;
+    return;
+  }
+
+  // Base set (water optionally excluded) for KPIs
+  const base = goodsHideWater ? goods.filter(g => g.fillType !== 'WATER') : goods;
+
+  // Filter for grid
+  let filtered = base;
+  if (goodsSearch.trim()) {
+    const q = goodsSearch.trim().toLowerCase();
+    filtered = filtered.filter(g =>
+      (g.title || '').toLowerCase().includes(q) ||
+      (g.fillType || '').toLowerCase().includes(q));
+  }
+  if (goodsTrendFilter !== 'all') {
+    filtered = filtered.filter(g => {
+      const c = goodTrendClass(g);
+      if (goodsTrendFilter === 'no-station') return c === 'no-station';
+      if (goodsTrendFilter === 'climbing')   return c === 'climbing' || c === 'great-demand';
+      if (goodsTrendFilter === 'falling')    return c === 'falling';
+      if (goodsTrendFilter === 'stable')     return c === 'stable';
+      return true;
+    });
+  }
+  if (goodsMonthFilter !== 'all') {
+    const m = parseInt(goodsMonthFilter);
+    filtered = filtered.filter(g => g.bestPeriod === m);
+  }
+
+  // Sort
+  filtered = [...filtered].sort((a, b) => {
+    if (goodsSort === 'value') {
+      const av = a.sellingStations?.[0]?.value ?? 0;
+      const bv = b.sellingStations?.[0]?.value ?? 0;
+      return bv - av;
+    }
+    if (goodsSort === 'liters') return (b.totalLiters || 0) - (a.totalLiters || 0);
+    if (goodsSort === 'name')   return (a.title || '').localeCompare(b.title || '', 'de');
+    if (goodsSort === 'month')  return (a.bestPeriod || 0) - (b.bestPeriod || 0);
+    return 0;
+  });
+
+  // KPIs
+  const totalVal  = base.reduce((s, g) => s + (g.sellingStations?.[0]?.value ?? 0), 0);
+  const maxTotal  = base.reduce((s, g) => s + (g.maxValue || 0), 0);
+  const noStation = base.filter(g => !g.sellingStations?.length).length;
+  const tUp       = base.filter(g => { const c = goodTrendClass(g); return c === 'climbing' || c === 'great-demand'; }).length;
+  const tDown     = base.filter(g => goodTrendClass(g) === 'falling').length;
+  const tFlat     = base.filter(g => goodTrendClass(g) === 'stable').length;
+  const topGood   = base.reduce((top, g) =>
+    (g.sellingStations?.[0]?.value ?? 0) > (top.sellingStations?.[0]?.value ?? 0) ? g : top,
+    base[0] || {});
+
+  kpiEl.innerHTML = `
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Waren</div>
+      <div class="goods-kpi-val">${base.length}</div>
+      <div class="goods-kpi-sub">${noStation > 0 ? noStation + ' ohne Verkaufsstelle' : 'alle verkaufbar'}</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Gesamtwert aktuell</div>
+      <div class="goods-kpi-val" style="font-size:16px">${fmtEur(totalVal)}</div>
+      <div class="goods-kpi-sub">Zum besten Stationspreis</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Wertvollste Ware</div>
+      <div class="goods-kpi-val" style="font-size:15px">${topGood.title || '—'}</div>
+      <div class="goods-kpi-sub">${fmtEur(topGood.sellingStations?.[0]?.value)}</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Preistrend</div>
+      <div class="goods-kpi-val" style="font-size:17px">
+        <span style="color:var(--green)">↑${tUp}</span>
+        <span style="color:var(--blue);margin:0 5px">→${tFlat}</span>
+        <span style="color:var(--orange)">↓${tDown}</span>
+      </div>
+      <div class="goods-kpi-sub">Steigend · Stabil · Fallend</div>
+    </article>
+    <article class="card goods-kpi-tile">
+      <div class="goods-kpi-label">Max-Gesamtwert</div>
+      <div class="goods-kpi-val" style="font-size:16px">${fmtEur(maxTotal)}</div>
+      <div class="goods-kpi-sub">Zum Jahreshöchstpreis</div>
+    </article>`;
+
+  gridEl.innerHTML = filtered.length === 0
+    ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Waren entsprechen dem Filter.</span></div>`
+    : filtered.map(renderGoodCard).join('');
+
+  // Quicknav
+  const navEl = document.getElementById('goods-quicknav');
+  if (navEl) {
+    navEl.innerHTML = filtered.map(g => {
+      const tCls   = goodTrendClass(g);
+      const best   = Array.isArray(g.sellingStations) ? g.sellingStations[0] : null;
+      const pct    = (g.maxPrice && best?.price) ? Math.round(best.price / g.maxPrice * 100) : 0;
+      const vCls   = goodVisualClass(tCls, pct);
+      return `<button class="qnav-item" onclick="scrollToGood('${g.fillType}')">
+        <span class="qnav-dot ${vCls}"></span>
+        <span>${g.title}</span>
+      </button>`;
+    }).join('');
   }
 }
 
@@ -1641,18 +3147,40 @@ function renderSettings() {
   const al = globalSettings.alerts || {};
 
   function inputPair(label, hint, id1, val1, id2, val2) {
+    const dot = c => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:5px;flex-shrink:0"></span>';
     const inp = (id, val) => '<input id="' + id + '" type="number" min="1" max="100" value="' + val + '"'
       + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
     return '<div>'
       + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + ' — <span style="opacity:.7">' + hint + '</span></div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Warnung ab (%) ' + inp(id1, val1) + '</label>'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Kritisch ab (%) ' + inp(id2, val2) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--yellow)') + 'Warnung ab (%)</span>' + inp(id1, val1) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--red)') + 'Kritisch ab (%)</span>' + inp(id2, val2) + '</label>'
+      + '</div></div>';
+  }
+  function inputPairField(label, lbl1, col1, id1, val1, lbl2, col2, id2, val2, step) {
+    const s = step ?? 1;
+    const dot = c => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:5px;flex-shrink:0"></span>';
+    const inp = (id, val) => '<input id="' + id + '" type="number" min="0" max="100" step="' + s + '" value="' + val + '"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
+    return '<div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot(col1) + lbl1 + '</span>' + inp(id1, val1) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot(col2) + lbl2 + '</span>' + inp(id2, val2) + '</label>'
       + '</div></div>';
   }
 
   const al2 = globalSettings.alerts || {};
-  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
+
+  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Silos</div>'
+    + '<div class="placeable-list" style="gap:18px;padding:16px">'
+    + inputPair('Quicknav-Dot Silos', 'Füllstand des Silos', 'cfg-silo-warn', al2.siloWarn ?? 80, 'cfg-silo-crit', al2.siloCrit ?? 90)
+    + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Grün = unter Warnung · Orange = ab Warnung · Rot = ab Kritisch</div>'
+    + '<div style="display:flex;align-items:center;justify-content:flex-end;margin-top:8px">'
+    + '<button onclick="saveSiloAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
+    + '<div id="cfg-silo-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '</div>'
+    + '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
     + inputPair('Eingänge', 'Futter, Wasser, Stroh', 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
     + inputPair('Ausgänge', 'Milch, Eier, Mist …', 'cfg-out-warn', al2.outWarn ?? 80, 'cfg-out-crit', al2.outCrit ?? 90)
@@ -1667,7 +3195,39 @@ function renderSettings() {
     + '<div style="display:flex;align-items:center;justify-content:flex-end">'
     + '<button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
     + '<div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '</div>'
+    + '<div class="settings-section-title" style="margin-top:24px">Warnstufen Felder</div>'
+    + '<div class="placeable-list" style="gap:18px;padding:16px">'
+    + inputPairField('Pflug',   'Gelb unter (%)', 'var(--yellow)', 'cfg-field-plow-w',  al2.fieldPlowWarn  ?? 90,  'Rot unter (%)', 'var(--red)', 'cfg-field-plow-c',  al2.fieldPlowCrit  ?? 50)
+    + inputPairField('Dünger',  'Gelb unter (%)', 'var(--yellow)', 'cfg-field-fert-w',  al2.fieldFertWarn  ?? 100, 'Rot unter (%)', 'var(--red)', 'cfg-field-fert-c',  al2.fieldFertCrit  ?? 50)
+    + inputPairField('Kalk',    'Gelb unter (%)', 'var(--yellow)', 'cfg-field-lime-w',  al2.fieldLimeWarn  ?? 100, 'Rot unter (%)', 'var(--red)', 'cfg-field-lime-c',  al2.fieldLimeCrit  ?? 50)
+    + inputPairField('Mulch',   'Gelb unter (%)', 'var(--yellow)', 'cfg-field-mulch-w', al2.fieldMulchWarn ?? 90,  'Rot unter (%)', 'var(--red)', 'cfg-field-mulch-c', al2.fieldMulchCrit ?? 50)
+    + inputPairField('Unkraut', 'Gelb ab (%)',    'var(--yellow)', 'cfg-field-weed-w',  al2.fieldWeedWarn  ?? 5,   'Rot ab (%)',    'var(--red)', 'cfg-field-weed-c',  al2.fieldWeedCrit  ?? 10)
+    + inputPairField('Steine',  'Gelb ab (%)',    'var(--yellow)', 'cfg-field-stone-w', al2.fieldStoneWarn ?? 0.5, 'Rot ab (%)',    'var(--red)', 'cfg-field-stone-c', al2.fieldStoneCrit ?? 1, 0.1)
+    + '<div style="display:flex;align-items:center;justify-content:flex-end">'
+    + '<button onclick="saveFieldAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
+    + '<div id="cfg-field-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
     + '</div>';
+
+  const fieldsList = appData?.fields?.fields ?? [];
+  const fieldsSection = (() => {
+    if (!fieldsList.length) return '';
+    const rows = fieldsList.map(f => {
+      const visible = isFieldVisible(f.farmlandId);
+      return `
+        <div class="placeable-item">
+          <div class="placeable-item-info">
+            <div class="placeable-item-name">Feld ${f.id}${f.fruitTitle ? ` — ${f.fruitTitle}` : ''}</div>
+            <div class="placeable-item-uid">${f.fieldArea || f.area} ha</div>
+          </div>
+          <label class="toggle" title="${visible ? 'Ausblenden' : 'Einblenden'}">
+            <input type="checkbox" ${visible ? 'checked' : ''} onchange="toggleFieldVisibility(${f.farmlandId})">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>`;
+    }).join('');
+    return `<div class="settings-section-title" style="margin-top:24px">Felder</div><div class="placeable-list">${rows}</div>`;
+  })();
 
   el.innerHTML = serverBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
@@ -1675,6 +3235,7 @@ function renderSettings() {
     + section('Silos', silos)
     + section('Produktionen', productions)
     + section('Tierställe', husbandries)
+    + fieldsSection
     || '<div class="state-box"><span>Keine Daten verfügbar.</span></div>';
 }
 
@@ -1688,10 +3249,50 @@ async function saveAlertSettings() {
   if (!warn || !crit || crit >= warn) return;
   if (!outWarn || !outCrit || outWarn >= outCrit) return;
   if (!occWatch || !occWarn || occWatch >= occWarn) return;
-  globalSettings = { ...globalSettings, alerts: { warn, crit, outWarn, outCrit, occWatch, occWarn } };
+  globalSettings = { ...globalSettings, alerts: { ...globalSettings.alerts, warn, crit, outWarn, outCrit, occWatch, occWarn } };
   await saveGlobalSettings();
   rerenderCurrentView();
   const msg = document.getElementById('cfg-alert-saved');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
+}
+
+async function saveFieldAlertSettings() {
+  const g = id => parseFloat(document.getElementById(id).value);
+  const fieldPlowWarn  = g('cfg-field-plow-w');  const fieldPlowCrit  = g('cfg-field-plow-c');
+  const fieldFertWarn  = g('cfg-field-fert-w');  const fieldFertCrit  = g('cfg-field-fert-c');
+  const fieldLimeWarn  = g('cfg-field-lime-w');  const fieldLimeCrit  = g('cfg-field-lime-c');
+  const fieldMulchWarn = g('cfg-field-mulch-w'); const fieldMulchCrit = g('cfg-field-mulch-c');
+  const fieldWeedWarn  = g('cfg-field-weed-w');  const fieldWeedCrit  = g('cfg-field-weed-c');
+  const fieldStoneWarn = g('cfg-field-stone-w'); const fieldStoneCrit = g('cfg-field-stone-c');
+  const vals = [fieldPlowWarn, fieldPlowCrit, fieldFertWarn, fieldFertCrit,
+                fieldLimeWarn, fieldLimeCrit, fieldMulchWarn, fieldMulchCrit,
+                fieldWeedWarn, fieldWeedCrit, fieldStoneWarn, fieldStoneCrit];
+  if (vals.some(isNaN)) return;
+  if (fieldPlowCrit  >= fieldPlowWarn)  return;
+  if (fieldFertCrit  >= fieldFertWarn)  return;
+  if (fieldLimeCrit  >= fieldLimeWarn)  return;
+  if (fieldMulchCrit >= fieldMulchWarn) return;
+  if (fieldWeedWarn  >= fieldWeedCrit)  return;
+  if (fieldStoneWarn >= fieldStoneCrit) return;
+  globalSettings = { ...globalSettings, alerts: { ...globalSettings.alerts,
+    fieldPlowWarn, fieldPlowCrit, fieldFertWarn, fieldFertCrit,
+    fieldLimeWarn, fieldLimeCrit, fieldMulchWarn, fieldMulchCrit,
+    fieldWeedWarn, fieldWeedCrit, fieldStoneWarn, fieldStoneCrit } };
+  await saveGlobalSettings();
+  rerenderCurrentView();
+  const msg = document.getElementById('cfg-field-saved');
+  if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
+}
+
+async function saveSiloAlertSettings() {
+  const siloWarn = parseInt(document.getElementById('cfg-silo-warn').value, 10);
+  const siloCrit = parseInt(document.getElementById('cfg-silo-crit').value, 10);
+  if (isNaN(siloWarn) || isNaN(siloCrit)) return;
+  if (siloCrit <= siloWarn) return;
+  globalSettings = { ...globalSettings, alerts: { ...globalSettings.alerts, siloWarn, siloCrit } };
+  await saveGlobalSettings();
+  rerenderCurrentView();
+  const msg = document.getElementById('cfg-silo-saved');
   if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
 }
 
@@ -1713,6 +3314,8 @@ function rerenderCurrentView() {
   if (currentView === 'silos')       renderSilos(appData.silos);
   if (currentView === 'productions') renderProductions(appData.productions);
   if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
+  if (currentView === 'goods')       renderGoods(appData.goods);
+  if (currentView === 'fields')      renderFields(appData.fields);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
 }
@@ -1786,6 +3389,15 @@ document.querySelectorAll('[data-filter]').forEach(btn => {
   });
 });
 
+document.querySelectorAll('[data-field-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    fieldFilter = btn.dataset.fieldFilter;
+    document.querySelectorAll('[data-field-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFields(appData?.fields);
+  });
+});
+
 document.getElementById('animal-type-filter').addEventListener('change', e => {
   husTypeFilter = e.target.value;
   renderHusbandries(appData?.husbandries);
@@ -1796,7 +3408,14 @@ document.getElementById('animal-type-filter').addEventListener('change', e => {
 // ═══════════════════════════════════════════════════════════
 
 document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-  btn.addEventListener('click', () => showView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    if (currentView === btn.dataset.view) {
+      document.getElementById(`view-${currentView}`)?.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      showView(btn.dataset.view);
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════

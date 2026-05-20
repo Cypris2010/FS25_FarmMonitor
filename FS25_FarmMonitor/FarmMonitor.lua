@@ -7,12 +7,15 @@ local modName = g_currentModName  -- capture before it gets reset
 FarmMonitor = {}
 FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
+FarmMonitor.fieldInterval     = 60000  -- milliseconds between field exports
+FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires immediately
 FarmMonitor.paths             = {}
-FarmMonitor.fillTypesExported  = false
-FarmMonitor.animalFoodExported = false
-FarmMonitor.savegameName       = nil
-FarmMonitor.savegameId         = nil
-FarmMonitor.savegameDirectory  = nil
+FarmMonitor.fillTypesExported   = false
+FarmMonitor.animalFoodExported  = false
+FarmMonitor.fruitTypesExported  = false
+FarmMonitor.savegameName        = nil
+FarmMonitor.savegameId          = nil
+FarmMonitor.savegameDirectory   = nil
 
 addModEventListener(FarmMonitor)
 
@@ -29,6 +32,9 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.husbandries = outputDir .. "husbandries.json"
     FarmMonitor.paths.fillTypes   = outputDir .. "fillTypes.json"
     FarmMonitor.paths.animalFood  = outputDir .. "animalFood.json"
+    FarmMonitor.paths.goods       = outputDir .. "goods.json"
+    FarmMonitor.paths.fields      = outputDir .. "fields.json"
+    FarmMonitor.paths.fruitTypes  = outputDir .. "fruitTypes.json"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -39,6 +45,7 @@ function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
     end
+    if g_dedicatedServer ~= nil then return end
 
     -- Detect savegame change: reset state so files are re-exported for the new savegame
     local currentDir = g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory
@@ -48,7 +55,9 @@ function FarmMonitor:update(dt)
         FarmMonitor.savegameId         = nil
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
+        FarmMonitor.fruitTypesExported = false
         FarmMonitor.timer              = 0
+        FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval  -- trigger field export on next tick
     end
 
     if FarmMonitor.savegameName == nil then
@@ -60,6 +69,11 @@ function FarmMonitor:update(dt)
         FarmMonitor.fillTypesExported = true
     end
 
+    if not FarmMonitor.fruitTypesExported then
+        FarmMonitor:exportFruitTypes()
+        FarmMonitor.fruitTypesExported = true
+    end
+
     if not FarmMonitor.animalFoodExported then
         FarmMonitor:exportAnimalFood()
         FarmMonitor.animalFoodExported = true
@@ -69,6 +83,12 @@ function FarmMonitor:update(dt)
     if FarmMonitor.timer >= FarmMonitor.updateInterval then
         FarmMonitor.timer = 0
         FarmMonitor:collectAndSave()
+    end
+
+    FarmMonitor.fieldTimer = FarmMonitor.fieldTimer + dt
+    if FarmMonitor.fieldTimer >= FarmMonitor.fieldInterval then
+        FarmMonitor.fieldTimer = 0
+        FarmMonitor:collectAndSaveFields()
     end
 end
 
@@ -109,6 +129,10 @@ function FarmMonitor:collectAndSave()
             "timestamp",   ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
             "husbandries", FarmMonitor:collectHusbandries()
         ))
+        FarmMonitor:writeJSON(FarmMonitor.paths.goods, FarmMonitor.obj(
+            "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
+            "goods",     FarmMonitor:collectGoods()
+        ))
     end)
 
     if not ok then
@@ -147,6 +171,71 @@ function FarmMonitor:exportFillTypes()
 
     if not ok then
         print("[FarmMonitor] ERROR writing fillTypes.json: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Fruit type growth stage registry  (written once per session)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportFruitTypes()
+    local ok, err = pcall(function()
+        local entries = {}
+        local fruitTypes = g_fruitTypeManager and g_fruitTypeManager.fruitTypes
+        if fruitTypes == nil then return end
+
+        for _, ft in ipairs(fruitTypes) do
+            if ft ~= nil and ft.name ~= nil then
+                -- Collect all named growth stages from growthStateToName
+                local stages = {}
+                if ft.growthStateToName then
+                    for stageIndex, stageName in pairs(ft.growthStateToName) do
+                        table.insert(stages, FarmMonitor.obj(
+                            "index", stageIndex,
+                            "name",  stageName
+                        ))
+                    end
+                    table.sort(stages, function(a, b) return a.index < b.index end)
+                end
+
+                -- Find max cut stage across all cutStates entries
+                local maxCutStage = ft.cutState or 0
+                if ft.cutStates then
+                    for k, _ in pairs(ft.cutStates) do
+                        if k > maxCutStage then maxCutStage = k end
+                    end
+                end
+
+                table.insert(entries, FarmMonitor.obj(
+                    "name",              ft.name,
+                    "title",             (ft.fillType and ft.fillType.title) or ft.name,
+                    "numGrowthStates",   ft.numGrowthStates or 0,
+                    "minHarvest",        ft.minHarvestingGrowthState or 0,
+                    "maxHarvest",        ft.maxHarvestingGrowthState or 0,
+                    "witheredState",     ft.witheredState or -1,
+                    "cutState",          ft.cutState or -1,
+                    "maxCutStage",       maxCutStage,
+                    "minForage",         ft.minForageGrowthState or -1,
+                    "maxForage",         ft.maxForageGrowthState or -1,
+                    "literPerSqm",       ft.literPerSqm or 0,
+                    "seedUsagePerSqm",   ft.seedUsagePerSqm or 0,
+                    "allowsSeeding",     ft.allowsSeeding == true,
+                    "stages",            stages
+                ))
+            end
+        end
+
+        table.sort(entries, function(a, b) return a.name < b.name end)
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.fruitTypes, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "fruitTypes", entries
+        ))
+        print("[FarmMonitor] fruitTypes.json written (" .. #entries .. " fruit types)")
+    end)
+
+    if not ok then
+        print("[FarmMonitor] ERROR writing fruitTypes.json: " .. tostring(err))
     end
 end
 
@@ -297,35 +386,74 @@ function FarmMonitor:collectProductions()
         local spec = placeable.spec_productionPoint
         if spec ~= nil and spec.productionPoint ~= nil and placeable.ownerFarmId == farmId then
             local pp = spec.productionPoint
-            -- Inputs: all fill types stored as input for this production point
+            -- Collect fillTypes needed by active/stopped chains via prod.inputs[n].type
+            local activeInputFillTypes = {}
+            for _, prod in ipairs(pp.productions) do
+                if prod.status ~= ProductionPoint.PROD_STATUS.INACTIVE then
+                    for _, input in ipairs(prod.inputs or {}) do
+                        if input.type ~= nil then
+                            activeInputFillTypes[input.type] = true
+                        end
+                    end
+                end
+            end
+
+            -- Inputs: include entries with level=0 when needed by active chains
             local inputs = FarmMonitor.arr()
             if pp.inputFillTypeIds ~= nil then
                 for fillTypeId, _ in pairs(pp.inputFillTypeIds) do
                     local level    = pp:getFillLevel(fillTypeId)
                     local capacity = pp:getCapacity(fillTypeId)
-                    if level > 0 or capacity > 0 then
+                    local needed   = activeInputFillTypes[fillTypeId] == true
+                    if level > 0 or capacity > 0 or needed then
                         table.insert(inputs, FarmMonitor.obj(
                             "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
                             "title",    FarmMonitor:fillTypeTitle(fillTypeId),
                             "level",    MathUtil.round(level),
-                            "capacity", MathUtil.round(capacity)
+                            "capacity", MathUtil.round(capacity),
+                            "needed",   needed
                         ))
                     end
                 end
             end
 
-            -- Outputs: all fill types stored as output for this production point
+            -- Collect fillTypes produced by active/stopped chains
+            local activeOutputFillTypes = {}
+            for _, prod in ipairs(pp.productions) do
+                if prod.status ~= ProductionPoint.PROD_STATUS.INACTIVE then
+                    for _, output in ipairs(prod.outputs or {}) do
+                        if output.type ~= nil then
+                            activeOutputFillTypes[output.type] = true
+                        end
+                    end
+                end
+            end
+
+            -- Outputs: show if level>0 OR produced by an active/stopped chain
             local outputs = FarmMonitor.arr()
             if pp.outputFillTypeIdsArray ~= nil then
+                local hasPSC = g_modIsLoaded["FS25_ProductionStorageControl"]
                 for _, fillTypeId in ipairs(pp.outputFillTypeIdsArray) do
                     local level    = pp:getFillLevel(fillTypeId)
                     local capacity = pp:getCapacity(fillTypeId)
-                    if level > 0 or capacity > 0 then
+                    local needed   = activeOutputFillTypes[fillTypeId] == true
+                    if level > 0 or capacity > 0 or needed then
+                        local mode = "keep"
+                        local m = pp:getOutputDistributionMode(fillTypeId)
+                        if m == ProductionPoint.OUTPUT_MODE.DIRECT_SELL then
+                            mode = "sell"
+                        elseif m == ProductionPoint.OUTPUT_MODE.AUTO_DELIVER then
+                            mode = "deliver"
+                        elseif hasPSC and m == ProductionPoint.OUTPUT_MODE.STORE then
+                            mode = "store"
+                        end
                         table.insert(outputs, FarmMonitor.obj(
-                            "fillType", g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
-                            "title",    FarmMonitor:fillTypeTitle(fillTypeId),
-                            "level",    MathUtil.round(level),
-                            "capacity", MathUtil.round(capacity)
+                            "fillType",   g_fillTypeManager:getFillTypeNameByIndex(fillTypeId) or "UNKNOWN",
+                            "title",      FarmMonitor:fillTypeTitle(fillTypeId),
+                            "level",      MathUtil.round(level),
+                            "capacity",   MathUtil.round(capacity),
+                            "outputMode", mode,
+                            "needed",     needed
                         ))
                     end
                 end
@@ -344,11 +472,33 @@ function FarmMonitor:collectProductions()
                         status = "stopped"
                     end
                 end
+                local chainInputs = FarmMonitor.arr()
+                for _, input in ipairs(prod.inputs or {}) do
+                    if input.type ~= nil then
+                        table.insert(chainInputs, FarmMonitor.obj(
+                            "fillType",       g_fillTypeManager:getFillTypeNameByIndex(input.type) or "UNKNOWN",
+                            "title",          FarmMonitor:fillTypeTitle(input.type),
+                            "amountPerCycle", MathUtil.round(input.amount or 0)
+                        ))
+                    end
+                end
+                local chainOutputs = FarmMonitor.arr()
+                for _, output in ipairs(prod.outputs or {}) do
+                    if output.type ~= nil then
+                        table.insert(chainOutputs, FarmMonitor.obj(
+                            "fillType",       g_fillTypeManager:getFillTypeNameByIndex(output.type) or "UNKNOWN",
+                            "title",          FarmMonitor:fillTypeTitle(output.type),
+                            "amountPerCycle", MathUtil.round(output.amount or 0)
+                        ))
+                    end
+                end
                 table.insert(chains, FarmMonitor.obj(
                     "id",             prod.id or "",
                     "name",           prod.name or "",
                     "status",         status,
-                    "cyclesPerMonth", MathUtil.round(prod.cyclesPerMonth or 0)
+                    "cyclesPerMonth", MathUtil.round(prod.cyclesPerMonth or 0),
+                    "inputs",         chainInputs,
+                    "outputs",        chainOutputs
                 ))
             end
 
@@ -418,6 +568,607 @@ function FarmMonitor:collectHusbandries()
         end
     end
 
+    return result
+end
+
+-- ---------------------------------------------------------------------------
+-- Goods (aggregated fill levels + prices across all storage sources)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectGoods()
+    local farmId = g_currentMission:getFarmId()
+    local totals    = {}   -- fillTypeIndex -> total liters
+    local locations = {}   -- fillTypeIndex -> { locationName -> liters }
+    local seenBaleIds = {}
+
+    local function addAmount(fillTypeIndex, amount, locationId, locationName)
+        if fillTypeIndex == nil or amount == nil or amount <= 0 then return end
+        totals[fillTypeIndex] = (totals[fillTypeIndex] or 0) + amount
+        if locationId ~= nil then
+            if locations[fillTypeIndex] == nil then locations[fillTypeIndex] = {} end
+            local loc = locations[fillTypeIndex][locationId]
+            if loc == nil then
+                locations[fillTypeIndex][locationId] = { name = locationName or locationId, liters = amount }
+            else
+                loc.liters = loc.liters + amount
+            end
+        end
+    end
+
+    if g_currentMission.placeableSystem then
+        for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
+            local ownedByFarm = (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0)
+            local locId   = tostring(placeable:getUniqueId() or "")
+            local locName = FarmMonitor:placeableName(placeable)
+
+            -- Silos
+            if placeable.spec_silo ~= nil and ownedByFarm then
+                for _, storage in ipairs(placeable.spec_silo.storages or {}) do
+                    if storage.ownerFarmId == farmId or storage.ownerFarmId == 0 then
+                        for ftIdx, level in pairs(storage.fillLevels or {}) do
+                            addAmount(ftIdx, level, locId, locName)
+                        end
+                    end
+                end
+            end
+
+            -- Silo extensions
+            if placeable.spec_siloExtension ~= nil then
+                local storage = placeable.spec_siloExtension.storage
+                if storage ~= nil and (storage.ownerFarmId == farmId or storage.ownerFarmId == 0) then
+                    for ftIdx, level in pairs(storage.fillLevels or {}) do
+                        addAmount(ftIdx, level, locId, locName)
+                    end
+                end
+            end
+
+            -- Husbandry output storage (only accepted output fill types)
+            if placeable.spec_husbandry ~= nil and ownedByFarm then
+                local spec    = placeable.spec_husbandry
+                local storage = spec.storage
+                if storage ~= nil and storage.fillLevels ~= nil then
+                    for ftIdx, level in pairs(storage.fillLevels) do
+                        local supported = spec.loadingStation == nil
+                            or spec.loadingStation.supportedFillTypes == nil
+                            or spec.loadingStation.supportedFillTypes[ftIdx]
+                        if supported then addAmount(ftIdx, level, locId, locName) end
+                    end
+                end
+            end
+
+            -- Productions (outputs only — inputs are consumed goods, not freely sellable)
+            if placeable.spec_productionPoint ~= nil and placeable.ownerFarmId == farmId then
+                local pp = placeable.spec_productionPoint.productionPoint
+                if pp ~= nil then
+                    for _, ftIdx in ipairs(pp.outputFillTypeIdsArray or {}) do
+                        addAmount(ftIdx, pp:getFillLevel(ftIdx), locId, locName)
+                    end
+                end
+            end
+
+            -- Bunker silos
+            if placeable.spec_bunkerSilo ~= nil and ownedByFarm then
+                local bs = placeable.spec_bunkerSilo.bunkerSilo
+                if bs ~= nil and bs.fillLevel ~= nil and bs.fillLevel > 0 then
+                    local ftIdx = bs.inputFillType
+                    if bs.state == BunkerSilo.STATE_DRAIN or bs.state == BunkerSilo.STATE_FERMENTED then
+                        ftIdx = bs.outputFillType
+                    end
+                    addAmount(ftIdx, bs.fillLevel, locId, locName)
+                end
+            end
+
+            -- Giants Object Storage (vanilla pallets/bale storage)
+            if placeable.spec_objectStorage ~= nil and ownedByFarm then
+                for _, objInfo in ipairs(placeable.spec_objectStorage.objectInfos or {}) do
+                    for _, obj in ipairs(objInfo.objects or {}) do
+                        if obj.baleAttributes ~= nil then
+                            if obj.baleAttributes.uniqueId then seenBaleIds[obj.baleAttributes.uniqueId] = true end
+                            addAmount(obj.baleAttributes.fillType, obj.baleAttributes.fillLevel, locId, locName)
+                        elseif obj.baleObject ~= nil then
+                            if obj.baleObject.uniqueId then seenBaleIds[obj.baleObject.uniqueId] = true end
+                            addAmount(obj.baleObject.fillType, obj.baleObject.fillLevel, locId, locName)
+                        elseif obj.palletAttributes ~= nil then
+                            addAmount(obj.palletAttributes.fillType, obj.palletAttributes.fillLevel, locId, locName)
+                        end
+                    end
+                end
+            end
+
+            -- Object Storage Mod (e.g. bale storage mods)
+            if placeable.spec_objectStorageMod ~= nil and ownedByFarm then
+                local os = placeable.spec_objectStorageMod.objectStorage
+                if os ~= nil and os.storageAreasByFillType ~= nil then
+                    for ftIdx, areas in pairs(os.storageAreasByFillType) do
+                        for _, area in pairs(areas) do
+                            for _, obj in ipairs(area.objects or {}) do
+                                addAmount(ftIdx, obj.fillLevel, locId, locName)
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Manure heap
+            if placeable.spec_manureHeap ~= nil and ownedByFarm then
+                local heap = placeable.spec_manureHeap.manureHeap
+                if heap ~= nil then
+                    for ftIdx, level in pairs(heap.fillLevels or {}) do
+                        addAmount(ftIdx, level, locId, locName)
+                    end
+                end
+            end
+
+            -- Beehive pallet spawner (pending liters)
+            if placeable.spec_beehivePalletSpawner ~= nil and ownedByFarm then
+                local spec = placeable.spec_beehivePalletSpawner
+                addAmount(spec.fillType, spec.pendingLiters, locId, locName)
+            end
+        end
+    end
+
+    -- Loose pallets & shipping containers
+    if g_currentMission.vehicleSystem ~= nil then
+        for _, vehicle in ipairs(g_currentMission.vehicleSystem.vehicles or {}) do
+            if vehicle.isPallet and (vehicle.ownerFarmId == farmId or vehicle.ownerFarmId == 0) then
+                local spec = vehicle.spec_fillUnit
+                if spec ~= nil and spec.fillUnits ~= nil and spec.fillUnits[1] ~= nil then
+                    local fu = spec.fillUnits[1]
+                    addAmount(fu.fillType, fu.fillLevel, "Loose Pallets")
+                end
+            end
+        end
+    end
+
+    -- Loose bales (deduplicated against Object Storage)
+    if g_currentMission.itemSystem ~= nil then
+        for _, item in ipairs(g_currentMission.itemSystem.itemsToSave or {}) do
+            local bale = item.item
+            if bale ~= nil and bale.isa ~= nil and bale:isa(Bale) then
+                if bale.ownerFarmId == farmId or bale.ownerFarmId == 0 then
+                    if bale.uniqueId == nil or not seenBaleIds[bale.uniqueId] then
+                        addAmount(bale.fillType, bale.fillLevel, "Loose Bales")
+                    end
+                end
+            end
+        end
+    end
+
+    -- Collect selling stations (non-hidden, non-own)
+    local stations = {}
+    if g_currentMission.storageSystem ~= nil then
+        for _, station in pairs(g_currentMission.storageSystem:getUnloadingStations() or {}) do
+            if station:isa(SellingStation) and not station.hideFromPricesMenu then
+                table.insert(stations, station)
+            end
+        end
+    end
+
+    -- Economic difficulty multiplier — same factor used by getEffectiveFillTypePrice internally
+    -- EconomyManager.getPriceMultiplier() is a static call (matches TSStockCheck usage)
+    local priceMult = EconomyManager.getPriceMultiplier()
+
+    -- Build result: one entry per fill type with totals + price data
+    local result = FarmMonitor.arr()
+
+    for ftIdx, totalLevel in pairs(totals) do
+        if totalLevel > 0 then
+            local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+            if ft ~= nil then
+                -- All selling stations that accept this fill type
+                local sellingStationEntries = FarmMonitor.arr()
+                for _, station in ipairs(stations) do
+                    if station.acceptedFillTypes and station.acceptedFillTypes[ftIdx] then
+                        local price = station:getEffectiveFillTypePrice(ftIdx)
+                        local t     = station:getCurrentPricingTrend(ftIdx)
+                        local trend
+                        if Utils.isBitSet(t, SellingStation.PRICE_GREAT_DEMAND) then
+                            trend = "GREAT_DEMAND"
+                        elseif Utils.isBitSet(t, SellingStation.PRICE_CLIMBING) then
+                            trend = "CLIMBING"
+                        elseif Utils.isBitSet(t, SellingStation.PRICE_FALLING) then
+                            trend = "FALLING"
+                        else
+                            trend = "STABLE"
+                        end
+                        table.insert(sellingStationEntries, FarmMonitor.obj(
+                            "name",  station:getName() or "",
+                            "price", MathUtil.round(price * 10000) / 10000,
+                            "value", MathUtil.round(totalLevel * price),
+                            "trend", trend
+                        ))
+                    end
+                end
+                table.sort(sellingStationEntries, function(a, b) return (a.price or 0) > (b.price or 0) end)
+
+                -- Max theoretical price over all 12 season periods
+                -- Apply priceMult (economic difficulty) so maxPrice is comparable to
+                -- getEffectiveFillTypePrice() which already includes this factor.
+                local maxPrice   = 0
+                local bestPeriod = 1
+                if ft.economy ~= nil and ft.economy.factors ~= nil and ft.pricePerLiter ~= nil then
+                    for period = SeasonPeriod.EARLY_SPRING, SeasonPeriod.LATE_WINTER do
+                        local p = ft.pricePerLiter * (ft.economy.factors[period] or 1.0) * priceMult
+                        if p > maxPrice then
+                            maxPrice   = p
+                            bestPeriod = period
+                        end
+                    end
+                end
+
+                -- Storage locations for this fill type
+                local storageLocationEntries = FarmMonitor.arr()
+                if locations[ftIdx] ~= nil then
+                    for locId, loc in pairs(locations[ftIdx]) do
+                        table.insert(storageLocationEntries, FarmMonitor.obj(
+                            "uniqueId", locId,
+                            "name",     loc.name,
+                            "liters",   MathUtil.round(loc.liters)
+                        ))
+                    end
+                    table.sort(storageLocationEntries, function(a, b) return (a.liters or 0) > (b.liters or 0) end)
+                end
+
+                table.insert(result, FarmMonitor.obj(
+                    "fillType",        ft.name,
+                    "title",           ft.title or ft.name,
+                    "totalLiters",     MathUtil.round(totalLevel),
+                    "maxPrice",        MathUtil.round(maxPrice * 10000) / 10000,
+                    "maxValue",        MathUtil.round(totalLevel * maxPrice),
+                    "bestPeriod",      bestPeriod,
+                    "storageLocations", storageLocationEntries,
+                    "sellingStations", sellingStationEntries
+                ))
+            end
+        end
+    end
+
+    table.sort(result, function(a, b) return (a.maxValue or 0) > (b.maxValue or 0) end)
+    return result
+end
+
+-- ---------------------------------------------------------------------------
+-- Fields  (density-map approach, based on FS25_FarmlandOverview by Fetty42)
+-- ---------------------------------------------------------------------------
+
+local function buildFieldSoilSamplers()
+    local mission = g_currentMission
+    if mission == nil or mission.fieldGroundSystem == nil or FieldDensityMap == nil then
+        return nil
+    end
+
+    local fgs  = mission.fieldGroundSystem
+    local layers = {
+        mulch  = FieldDensityMap.STUBBLE_SHRED_LEVEL,
+        plow   = FieldDensityMap.PLOW_LEVEL,
+        roll   = FieldDensityMap.ROLLER_LEVEL,
+        spray  = FieldDensityMap.SPRAY_LEVEL,
+        lime   = FieldDensityMap.LIME_LEVEL,
+    }
+
+    local samplers = {}
+    for key, layerId in pairs(layers) do
+        local mapId, firstCh, numCh = fgs:getDensityMapData(layerId)
+        if mapId ~= nil then
+            local modifier = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            local filter   = DensityMapFilter.new(modifier)
+            local maxVal   = nil
+            if fgs.getMaxValue ~= nil then
+                maxVal = fgs:getMaxValue(layerId)
+            end
+            samplers[key] = { modifier = modifier, filter = filter, maxValue = maxVal }
+        end
+    end
+
+    if mission.weedSystem ~= nil and mission.weedSystem.getDensityMapData ~= nil then
+        local ok, mapId, firstCh, numCh = pcall(function()
+            return mission.weedSystem:getDensityMapData()
+        end)
+        if ok and mapId ~= nil then
+            local modifier = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            samplers.weed = { modifier = modifier, filter = DensityMapFilter.new(modifier), maxValue = 9 }
+        end
+    end
+
+    if mission.stoneSystem ~= nil and mission.stoneSystem.getDensityMapData ~= nil then
+        local ok, mapId, firstCh, numCh = pcall(function()
+            return mission.stoneSystem:getDensityMapData()
+        end)
+        if ok and mapId ~= nil then
+            local modifier = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            samplers.stone = { modifier = modifier, filter = DensityMapFilter.new(modifier) }
+        end
+    end
+
+    return samplers
+end
+
+local function applyPolygon(field, modifier)
+    local poly = field:getDensityMapPolygon()
+    if poly == nil then return false end
+    poly:applyToModifier(modifier)
+    return true
+end
+
+local function areaForValue(modifier, filter, value)
+    filter:setValueCompareParams(DensityValueCompareType.EQUAL, value)
+    local _, area, total = modifier:executeGet(filter)
+    return area or 0, total or 0
+end
+
+local function pct(area, total)
+    if total == nil or total <= 0 then return 0 end
+    return (area / total) * 100
+end
+
+local function computeSoilStatus(field, samplers)
+    if field == nil or samplers == nil then return {} end
+    local s = {}
+
+    -- Mulch: 0/1 binary; report % covered
+    if samplers.mulch then
+        local m, f = samplers.mulch.modifier, samplers.mulch.filter
+        if applyPolygon(field, m) then
+            local a, tot = areaForValue(m, f, 1)
+            s.mulchPct = pct(a, tot)
+        end
+    end
+
+    -- Plow: 0/1 binary
+    if samplers.plow then
+        local m, f = samplers.plow.modifier, samplers.plow.filter
+        if applyPolygon(field, m) then
+            local a, tot = areaForValue(m, f, 1)
+            s.plowPct = pct(a, tot)
+        end
+    end
+
+    -- Roll: 0/1 (value=1 means "needs rolling" → invert: rolled = low coverage)
+    if samplers.roll then
+        local m, f = samplers.roll.modifier, samplers.roll.filter
+        if applyPolygon(field, m) then
+            local a, tot = areaForValue(m, f, 1)
+            s.needsRollingPct = pct(a, tot)
+        end
+    end
+
+    -- Fertilizer (0/1/2): gating with 90% threshold
+    if samplers.spray then
+        local m, f   = samplers.spray.modifier, samplers.spray.filter
+        local maxVal = samplers.spray.maxValue or 2
+        if applyPolygon(field, m) then
+            local a2, tot = areaForValue(m, f, math.min(2, maxVal))
+            local a1, _   = areaForValue(m, f, math.min(1, maxVal))
+            local p2 = pct(a2, tot)
+            local p1 = pct(a1, tot)
+            if maxVal >= 2 and p2 >= 90 then
+                s.fertPct = 100
+            elseif maxVal >= 2 and p2 > 0 then
+                local a0 = math.max(0, tot - a1 - a2)
+                s.fertPct = (a1 >= a0) and 50 or 0
+            else
+                s.fertPct = (p1 >= 90) and 50 or 0
+            end
+        end
+    end
+
+    -- Lime (0/1/2/3): multi-step with 90% gating on top value
+    if samplers.lime then
+        local m, f   = samplers.lime.modifier, samplers.lime.filter
+        local maxVal = samplers.lime.maxValue or 3
+        if applyPolygon(field, m) then
+            local a3, tot = areaForValue(m, f, math.min(3, maxVal))
+            local a2, _   = areaForValue(m, f, math.min(2, maxVal))
+            local a1, _   = areaForValue(m, f, math.min(1, maxVal))
+            local p3 = pct(a3, tot)
+            if maxVal >= 3 and p3 >= 90 then
+                s.limePct = 100
+            else
+                local a0 = math.max(0, tot - a1 - a2 - a3)
+                if a2 >= a1 and a2 >= a0 then
+                    s.limePct = 66.7
+                elseif a1 >= a0 then
+                    s.limePct = 33.3
+                else
+                    s.limePct = 0
+                end
+            end
+        end
+    end
+
+    -- Weeds: penalizing if values 3/4/5 cover ≥ 10%
+    if samplers.weed then
+        local m, f = samplers.weed.modifier, samplers.weed.filter
+        if applyPolygon(field, m) then
+            local a3, tot = areaForValue(m, f, 3)
+            local a4, _   = areaForValue(m, f, 4)
+            local a5, _   = areaForValue(m, f, 5)
+            s.weedPct = pct(a3 + a4 + a5, tot)
+        end
+    end
+
+    -- Stones: any coverage > 0.1%
+    if samplers.stone then
+        local m, f = samplers.stone.modifier, samplers.stone.filter
+        if applyPolygon(field, m) then
+            local a2, tot = areaForValue(m, f, 2)
+            local a3, _   = areaForValue(m, f, 3)
+            local a4, _   = areaForValue(m, f, 4)
+            s.stonePct = pct(a2 + a3 + a4, tot)
+        end
+    end
+
+    return s
+end
+
+function FarmMonitor:collectAndSaveFields()
+    local ok, err = pcall(function()
+        local ts     = getDate("%Y-%m-%dT%H:%M:%S")
+        local farmId = g_currentMission:getFarmId()
+        FarmMonitor:writeJSON(FarmMonitor.paths.fields, FarmMonitor.obj(
+            "timestamp",  ts,
+            "farmId",     farmId,
+            "savegame",   FarmMonitor.savegameName,
+            "savegameId", FarmMonitor.savegameId,
+            "fields",     FarmMonitor:collectFields()
+        ))
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR during field collect: " .. tostring(err))
+    end
+end
+
+function FarmMonitor:collectFields()
+    local result  = FarmMonitor.arr()
+    local farmId  = g_currentMission:getFarmId()
+    local mission = g_currentMission
+    if g_farmlandManager == nil then return result end
+
+    local yieldSettings = {
+        plowingRequired = (mission.missionInfo ~= nil) and (mission.missionInfo.plowingRequiredEnabled ~= false),
+        limeRequired    = (mission.missionInfo ~= nil) and (mission.missionInfo.limeRequired ~= false),
+        weedsEnabled    = (mission.missionInfo ~= nil) and (mission.missionInfo.weedsEnabled ~= false),
+    }
+
+    local samplers = buildFieldSoilSamplers()
+
+    -- Spray type application rates (liters per hectare = litersPerSecond * 36000)
+    local function sprayLph(name)
+        if g_sprayTypeManager == nil then return 0 end
+        local st = g_sprayTypeManager:getSprayTypeByName(name)
+        if st == nil or st.litersPerSecond == nil then return 0 end
+        return st.litersPerSecond * 36000
+    end
+    local limeLph  = sprayLph("LIME")
+    local fertLph  = sprayLph("FERTILIZER")
+    local herbLph  = sprayLph("HERBICIDE")
+
+    for _, farmland in pairs(g_farmlandManager.farmlands or {}) do
+        if farmland ~= nil
+            and farmland.showOnFarmlandsScreen
+            and farmland.farmId == farmId
+            and farmland.field ~= nil
+        then
+            local field  = farmland.field
+            local areaHa      = farmland.areaInHa or 0
+            local fieldAreaHa = field.areaHa or 0
+
+            -- Fruit type & growth state via density map at field centre
+            local fruitTypeName        = ""
+            local fruitTypeTitle       = ""
+            local growthStage          = 0
+            local minHarvest           = 0
+            local maxHarvest           = 0
+            local harvestReady         = false
+            local withered             = false
+            local isCut                = false
+            local fruitTypeIndex       = nil
+            local needsPreparation     = false
+            local seedLph              = nil
+            local seedTotal            = nil
+
+            local cx, cz = field:getCenterOfFieldWorldPosition()
+            if cx ~= nil then
+                local ftIdx, gs = FSDensityMapUtil.getFruitTypeIndexAtWorldPos(cx, cz)
+                if ftIdx ~= nil and ftIdx > 0 then
+                    fruitTypeIndex = ftIdx
+                    local ft = g_fruitTypeManager:getFruitTypeByIndex(ftIdx)
+                    if ft ~= nil then
+                        fruitTypeName     = ft.name or ""
+                        fruitTypeTitle    = (ft.fillType and ft.fillType.title) or ft.name or ""
+                        growthStage       = gs or 0
+                        minHarvest        = ft.minHarvestingGrowthState or 0
+                        maxHarvest        = ft.maxHarvestingGrowthState or 0
+                        harvestReady      = ft:getIsHarvestReady(growthStage)
+                        needsPreparation  = ft:getIsPreparable(growthStage)
+                        isCut             = ft:getIsCut(growthStage)
+                        withered          = ft:getIsWithered(growthStage)
+                        -- Fallback: custom map crops may define post-harvest stages
+                        -- (e.g. tyre tracks) with isCut="false". Any stage above the
+                        -- highest known cut stage is treated as harvested.
+                        if not harvestReady and not isCut and not withered and not needsPreparation then
+                            local maxCutStage = ft.cutState or 0
+                            if ft.cutStates then
+                                for k, _ in pairs(ft.cutStates) do
+                                    if k > maxCutStage then maxCutStage = k end
+                                end
+                            end
+                            if maxCutStage > 0 and growthStage > maxCutStage then
+                                isCut = true
+                            end
+                        end
+                        -- Seed requirement for this fruit type
+                        if ft.seedUsagePerSqm ~= nil and ft.seedUsagePerSqm > 0 then
+                            local lph = ft.seedUsagePerSqm * 10000
+                            seedLph   = MathUtil.round(lph * 10) / 10
+                            seedTotal = MathUtil.round(lph * fieldAreaHa)
+                        end
+                    end
+                end
+            end
+
+            -- Soil status via density maps
+            local soil = {}
+            if samplers ~= nil and cx ~= nil then
+                soil = computeSoilStatus(field, samplers)
+            end
+
+            -- Harvest yield multiplier via engine function
+            local yieldBonus = nil
+            if fruitTypeIndex ~= nil and mission.getHarvestScaleMultiplier ~= nil then
+                local sprayF  = (soil.fertPct or 0) / 100
+                local plowF   = (not yieldSettings.plowingRequired) and 1 or (((soil.plowPct or 0) >= 90) and 1 or 0)
+                local limeF   = (not yieldSettings.limeRequired)    and 1 or ((soil.limePct or 0) / 100)
+                local weedPen = (not yieldSettings.weedsEnabled)    and 0 or ((soil.weedPct or 0) >= 10 and 1 or 0)
+                local weedBon = math.max(0, 1 - weedPen)
+                local mulchF  = (((soil.mulchPct or 0) >= 90) and 1 or 0)
+                local rollF   = (((soil.needsRollingPct or 100) <= 10) and 1 or 0)
+                local ok, m = pcall(mission.getHarvestScaleMultiplier, mission,
+                    fruitTypeIndex, sprayF, plowF, limeF, weedBon, mulchF, rollF)
+                if ok and type(m) == "number" then
+                    yieldBonus = MathUtil.round((m - 1.0) * 1000) / 10  -- % with 1 decimal
+                end
+            end
+
+            table.insert(result, FarmMonitor.obj(
+                "id",              farmland.name or tostring(farmland.id or 0),
+                "farmlandId",      farmland.id or 0,
+                "area",            MathUtil.round(areaHa * 100) / 100,
+                "fieldArea",       MathUtil.round(fieldAreaHa * 100) / 100,
+                "fruitType",       fruitTypeName,
+                "fruitTitle",      fruitTypeTitle,
+                "growthStage",     growthStage,
+                "minHarvest",      minHarvest,
+                "maxHarvest",      maxHarvest,
+                "harvestReady",       harvestReady,
+                "needsPreparation",  needsPreparation,
+                "withered",          withered,
+                "cut",               isCut,
+                "yieldBonusPct",   yieldBonus,
+                "mulchPct",        soil.mulchPct        or 0,
+                "plowPct",         soil.plowPct         or 0,
+                "needsRollingPct", soil.needsRollingPct or 0,
+                "fertPct",         soil.fertPct         or 0,
+                "limePct",         soil.limePct         or 0,
+                "weedPct",         soil.weedPct         or 0,
+                "stonePct",        soil.stonePct        or 0,
+                "seedLph",         seedLph,
+                "seedTotal",       seedTotal,
+                "matLimeLph",      limeLph > 0 and MathUtil.round(limeLph)             or nil,
+                "matLimeTotal",    limeLph > 0 and MathUtil.round(limeLph * fieldAreaHa) or nil,
+                "matFertLph",      fertLph > 0 and MathUtil.round(fertLph)             or nil,
+                "matFertTotal",    fertLph > 0 and MathUtil.round(fertLph * fieldAreaHa) or nil,
+                "matHerbLph",      herbLph > 0 and MathUtil.round(herbLph)             or nil,
+                "matHerbTotal",    herbLph > 0 and MathUtil.round(herbLph * fieldAreaHa) or nil
+            ))
+        end
+    end
+
+    table.sort(result, function(a, b)
+        local na, nb = tonumber(a.id), tonumber(b.id)
+        if na ~= nil and nb ~= nil then return na < nb end
+        return tostring(a.id) < tostring(b.id)
+    end)
     return result
 end
 

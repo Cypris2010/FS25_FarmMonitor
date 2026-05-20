@@ -2,14 +2,14 @@
 <modDesc descVersion="108">
     <iconFilename>icon_FarmMonitor.png</iconFilename>
     <author>FarmMonitor</author>
-    <version>0.2.4.0</version>
+    <version>0.3.0.48</version>
     <title>
         <en>Farm Monitor</en>
     </title>
     <description>
         <en>Exports farm data (silos, productions, animal pens) to JSON for a browser dashboard.</en>
     </description>
-    <multiplayer supported="false"/>
+    <multiplayer supported="true"/>
     <extraSourceFiles>
         <sourceFile filename="FarmMonitor.lua"/>
     </extraSourceFiles>
