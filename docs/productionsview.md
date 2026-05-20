@@ -2,7 +2,7 @@
 
 ## Übersicht
 
-Der Produktionen-View zeigt alle Produktionsanlagen der aktuellen Farm. Pro Anlage werden Eingänge, Ausgänge und Produktionsketten angezeigt. Ausgänge zeigen zusätzlich den konfigurierten Ausgangsmodus.
+Der Produktionen-View zeigt alle Produktionsanlagen der aktuellen Farm. Pro Anlage werden Eingänge, Ausgänge und Produktionsketten angezeigt. Ausgänge zeigen zusätzlich den konfigurierten Ausgangsmodus. Inaktive Einträge werden standardmäßig ausgeblendet und können pro Karte aufgeklappt werden.
 
 ---
 
@@ -16,7 +16,7 @@ Die Daten kommen aus `productions.json`, das vom Lua-Mod alle 10 Sekunden geschr
 | `name` | Anzeigename der Produktionsanlage |
 | `inputs` | Liste der Eingangswaren (Rohstoffe) |
 | `outputs` | Liste der Ausgangswaren (Produkte) |
-| `productions` | Liste der Produktionsketten mit Status |
+| `productions` | Liste der Produktionsketten mit Status und Rezept |
 
 ### Input-Objekt
 
@@ -26,6 +26,7 @@ Die Daten kommen aus `productions.json`, das vom Lua-Mod alle 10 Sekunden geschr
 | `title` | Anzeigename |
 | `level` | Aktueller Füllstand in Litern |
 | `capacity` | Kapazität in Litern |
+| `needed` | `true` wenn mind. eine aktive/gestoppte Kette diesen Input benötigt |
 
 ### Output-Objekt
 
@@ -36,6 +37,7 @@ Die Daten kommen aus `productions.json`, das vom Lua-Mod alle 10 Sekunden geschr
 | `level` | Aktueller Füllstand in Litern |
 | `capacity` | Kapazität in Litern |
 | `outputMode` | Konfigurierter Ausgangsmodus (siehe unten) |
+| `needed` | `true` wenn mind. eine aktive/gestoppte Kette diesen Output produziert |
 
 ### Produktionsketten-Objekt
 
@@ -45,6 +47,8 @@ Die Daten kommen aus `productions.json`, das vom Lua-Mod alle 10 Sekunden geschr
 | `name` | Anzeigename der Kette |
 | `status` | `running` / `stopped` / `inactive` |
 | `cyclesPerMonth` | Zyklen pro Spielmonat |
+| `inputs` | Rezept-Inputs: `[{fillType, title, amountPerCycle}]` — via `prod.inputs[n].type/.amount` |
+| `outputs` | Rezept-Outputs: `[{fillType, title, amountPerCycle}]` — via `prod.outputs[n].type/.amount` |
 
 ---
 
@@ -53,8 +57,6 @@ Die Daten kommen aus `productions.json`, das vom Lua-Mod alle 10 Sekunden geschr
 Die linke Seitenleiste listet alle sichtbaren Anlagen alphabetisch. Klick scrollt zur Karte und hebt sie kurz per Flash-Highlight hervor.
 
 ### Dot-Farbe
-
-Die Farbe des Punkts vor dem Anlagennamen spiegelt den Status der Produktionsketten:
 
 | Farbe | Bedingung |
 |---|---|
@@ -67,40 +69,55 @@ Die Farbe des Punkts vor dem Anlagennamen spiegelt den Status der Produktionsket
 
 ## Produktionskarte
 
-Jede Karte zeigt drei Sektionen:
-
 ### Eingänge
 
-Alle Eingangswaren als `metricRow` mit Füllstandsbalken. Barfarbe folgt dem Standard-Schema (grün → gelb → rot je nach Füllstand). Der Warenname ist ein klickbarer Link zum Waren-View, sofern die Ware dort gelistet ist.
+Nur Inputs mit `level > 0` oder `needed === true` werden angezeigt. Barfarbe:
+- Normal: grün → gelb → rot je nach Füllstand
+- `level === 0` + `needed`: gedämpfter roter Balken (`.bar.empty-needed`) als Warnung
+
+Der Warenname ist ein klickbarer Link zum Waren-View, sofern der `fillType` dort gelistet ist.
 
 ### Ausgänge
 
-Alle Ausgangswaren als `metricRow` mit Füllstandsbalken. Ausgabe-Balken nutzen eine invertierte Farblogik (voller Ausgang = rot). Der Warenname ist ein klickbarer Link zum Waren-View. Am Zeilenende erscheint ein farbiges Icon für den Ausgangsmodus (siehe unten).
+Nur Outputs mit `level > 0` oder `needed === true` werden angezeigt. Balken nutzen invertierte Farblogik (voller Ausgang = rot). Der Warenname ist ein klickbarer Link zum Waren-View. Am Zeilenende erscheint ein farbiges Icon für den Ausgangsmodus.
 
 ### Ketten
 
-Alle Produktionsketten mit Status-Badge und Zyklusrate:
+Nur aktive (`running`) und gestoppte (`stopped`) Ketten werden angezeigt. Jede Ketten-Zeile ist klickbar und klappt eine Rezept-Zeile auf:
+
+```
+▼ Mehl                          48×/Mo  [Läuft]
+    Weizen 1.000L + Wasser 500L  →  Mehl 800L + Schweinefutter 50L
+```
 
 | Status | Badge |
 |---|---|
 | `running` | Grünes Badge „Läuft" |
-| `inactive` | Graues Badge „Inaktiv" |
 | `stopped` | Rotes Badge „Gestoppt" |
 
 Zyklusrate (`cyclesPerMonth`) erscheint als gedämmter Text vor dem Badge.
+
+### Inaktiv-Sektion
+
+Am Ende jeder Karte erscheint `▶ Inaktiv (N)` wenn es ausgeblendete Einträge gibt. Klick klappt auf:
+- Inputs mit `level === 0` und `needed === false`
+- Outputs mit `level === 0` und `needed === false`
+- Ketten mit `status === 'inactive'` (ebenfalls mit aufklappbarer Rezept-Zeile)
+
+Alle inaktiven Einträge werden in gedämpftem Grau dargestellt.
 
 ---
 
 ## Ausgangsmodus-Icons
 
-Jeder Ausgang zeigt am Zeilenende ein Tabler-Icon, das den in-game konfigurierten Ausgangsmodus widerspiegelt. Hover zeigt einen Tooltip mit dem Modus-Namen.
+Jeder Ausgang zeigt am Zeilenende ein Tabler-Icon. Hover zeigt einen Tooltip mit dem Modus-Namen.
 
 | Modus | Icon | Farbe | Bedeutung |
 |---|---|---|---|
-| `keep` | `ti-arrow-bar-up` (↥) | Rot | Auslagern — Ware wird als Palette gespawnt |
-| `sell` | `ti-currency-euro` (€) | Orange | Direktverkauf |
-| `deliver` | `ti-arrow-right` (→) | Blau | Automatisch liefern |
-| `store` | `ti-arrow-bar-to-down` (⤓) | Grün | Einlagern ins Silo (nur mit Mod FS25_ProductionStorageControl) |
+| `keep` | `ti-arrow-bar-up` | Rot | Auslagern — Ware wird als Palette gespawnt |
+| `sell` | `ti-currency-euro` | Orange | Direktverkauf |
+| `deliver` | `ti-arrow-right` | Blau | Automatisch liefern |
+| `store` | `ti-arrow-bar-to-down` | Grün | Einlagern ins Silo (nur mit Mod FS25_ProductionStorageControl) |
 
 Der `store`-Modus wird nur exportiert wenn `g_modIsLoaded["FS25_ProductionStorageControl"]` aktiv ist.
 
@@ -122,13 +139,13 @@ Anlagen können ausgeblendet werden — sie erscheinen dann weder im Grid noch i
 
 ### Produktionen → Waren
 
-Input- und Output-Namen sind klickbare Links zum Waren-View, sofern der `fillType` in `goods.json` vorhanden ist. Klick wechselt den View und scrollt zur entsprechenden Warenkarte.
+Input- und Output-Namen sind klickbare Links zum Waren-View, sofern der `fillType` in `goods.json` vorhanden ist.
 
 **Funktion:** `goToGood(fillType)`
 
 ### Waren → Produktionen
 
-Im aufgeklappten Bereich einer Warenkarte erscheint eine „Verarbeitung"-Sektion wenn die Ware als Input in einer aktiven Produktionsanlage verwendet wird. Klick auf den Anlagennamen navigiert zurück in den Produktionen-View.
+Im aufgeklappten Bereich einer Warenkarte erscheint eine „Verarbeitung"-Sektion wenn die Ware als Input in einer aktiven Produktionsanlage verwendet wird. Klick navigiert zurück in den Produktionen-View.
 
 **Funktion:** `goToProduction(name)`
 
@@ -143,5 +160,16 @@ Im aufgeklappten Bereich einer Warenkarte erscheint eine „Verarbeitung"-Sektio
 | Funktion | Beschreibung |
 |---|---|
 | `renderProductions(data)` | Hauptfunktion — rendert Quicknav und Karten-Grid |
+| `chainRowHtml(c, key)` | Rendert eine Ketten-Zeile mit Toggle-Pfeil und Status-Badge |
+| `chainRecipeHtml(c)` | Rendert die aufgeklappte Rezept-Zeile (Inputs → Outputs) |
 | `outputModeBadge(mode)` | Gibt HTML-Span mit Tabler-Icon für den Ausgangsmodus zurück |
+| `toggleProdChain(key)` | Klappt die Rezept-Zeile einer Kette auf/zu |
+| `toggleProdInactive(uniqueId)` | Klappt die Inaktiv-Sektion einer Karte auf/zu |
 | `goToProduction(name)` | Wechselt zum Produktionen-View und scrollt zur Anlage mit diesem Namen |
+
+## Zustandsvariablen
+
+| Variable | Typ | Bedeutung |
+|---|---|---|
+| `prodChainExpanded` | Set | Keys (`uniqueId:chainId`) aufgeklappter Ketten-Rezepte |
+| `prodInactiveExpanded` | Set | `uniqueId`-Werte von Karten mit aufgeklappter Inaktiv-Sektion |
