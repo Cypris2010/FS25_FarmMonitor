@@ -333,10 +333,25 @@
   .metric.has-badge { grid-template-columns: 90px 1fr auto auto; }
   .bar.empty-needed > i { width: 100% !important; background: rgba(255,92,77,.18); }
   .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
+  button.output-mode-badge { cursor: pointer; width:32px; height:32px; border-radius:50%; border:2.5px solid currentColor !important; display:inline-flex; align-items:center; justify-content:center; opacity:.85; transition:opacity .15s, transform .15s; }
+  button.output-mode-badge:hover { opacity:1; transform:scale(1.1); }
+  @keyframes mode-pending { 0%,100% { background:transparent; } 50% { background:color-mix(in srgb, currentColor 30%, transparent); } }
+  button.output-mode-badge.pending { animation:mode-pending 1.2s ease-in-out infinite; }
   .output-mode-badge.red    { color: var(--red); }
   .output-mode-badge.orange { color: var(--orange); }
   .output-mode-badge.blue   { color: var(--blue); }
   .output-mode-badge.green  { color: var(--green); }
+  #output-mode-backdrop { display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,.6); }
+  #output-mode-backdrop.open { display:block; }
+  #output-mode-popover { display:none; position:fixed; z-index:1000; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:0; box-shadow:0 8px 32px rgba(0,0,0,.7); flex-direction:column; min-width:220px; overflow:hidden; }
+  #output-mode-popover.open { display:flex; }
+  #output-mode-popover .pop-header { padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+  #output-mode-popover .pop-body { padding:8px; display:flex; flex-direction:column; gap:2px; }
+  #output-mode-popover button { padding:10px 14px; border:none; border-radius:8px; background:none; cursor:pointer; font-size:16px; display:flex; flex-direction:row; align-items:center; gap:12px; color:var(--fg); transition:background .12s; width:100%; text-align:left; }
+  #output-mode-popover button i { font-size:18px; -webkit-text-stroke:0.5px currentColor; }
+  #output-mode-popover button span { font-size:13px; }
+  #output-mode-popover button:hover { background:var(--hover); }
+  #output-mode-popover button.active { background:var(--hover); font-weight:700; }
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
   .metric > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .metric-good-link {
@@ -1755,7 +1770,7 @@ function metricRow(label, val, cap, colorClass, goodFillType, badge = '') {
 const OUTPUT_MODE_ICON  = { keep: 'ti-arrow-bar-up', sell: 'ti-currency-euro', deliver: 'ti-arrow-right', store: 'ti-arrow-bar-to-down' };
 const OUTPUT_MODE_LABEL = { keep: 'Auslagern', sell: 'Verkauf', deliver: 'Liefern', store: 'Einlagern' };
 const OUTPUT_MODE_COLOR = { keep: 'red', sell: 'orange', deliver: 'blue', store: 'green' };
-const OUTPUT_MODE_CYCLE = ['keep', 'sell', 'deliver'];
+const OUTPUT_MODE_ALL   = ['keep', 'sell', 'deliver', 'store'];
 
 function outputModeBadge(mode, ppUniqueId, fillType) {
   const icon = OUTPUT_MODE_ICON[mode];
@@ -1763,20 +1778,68 @@ function outputModeBadge(mode, ppUniqueId, fillType) {
   const cls = `output-mode-badge ${OUTPUT_MODE_COLOR[mode] ?? 'gray'}`;
   const title = OUTPUT_MODE_LABEL[mode] ?? '';
   if (ppUniqueId && fillType) {
-    return ` <button class="${cls}" title="${title} (klicken zum Ändern)" onclick="cycleOutputMode(event,'${ppUniqueId}','${fillType}','${mode}')"><i class="ti ${icon}"></i></button>`;
+    return ` <button class="${cls}" title="${title}" onclick="openOutputModePopover(event,'${ppUniqueId}','${fillType}','${mode}')"><i class="ti ${icon}"></i></button>`;
   }
   return ` <span class="${cls}" title="${title}"><i class="ti ${icon}"></i></span>`;
 }
 
-async function cycleOutputMode(event, ppUniqueId, fillType, currentMode) {
+let _popoverClose = null;
+let _popoverTrigger = null;
+function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
   event.stopPropagation();
-  const idx = OUTPUT_MODE_CYCLE.indexOf(currentMode);
-  const nextMode = OUTPUT_MODE_CYCLE[(idx + 1) % OUTPUT_MODE_CYCLE.length];
+  _popoverTrigger = event.currentTarget;
+  const pop = document.getElementById('output-mode-popover');
+
+  // position near the clicked button
+  const rect = event.currentTarget.getBoundingClientRect();
+  pop.style.top  = (rect.bottom + 6) + 'px';
+  pop.style.left = (rect.left - 60) + 'px';
+
+  // build window
+  const ftTitle = (appData?.fillTypes?.[fillType]?.title) || fillType;
+  pop.innerHTML = `
+    <div class="pop-header">Ausgangsmodus — ${ftTitle}</div>
+    <div class="pop-body">
+      ${OUTPUT_MODE_ALL.map(m => `
+        <button class="${m === currentMode ? 'active' : ''}" onclick="selectOutputMode(event,'${ppUniqueId}','${fillType}','${m}')">
+          <i class="ti ${OUTPUT_MODE_ICON[m]}" style="color:var(--${OUTPUT_MODE_COLOR[m] ?? 'muted'})"></i>
+          <span>${OUTPUT_MODE_LABEL[m]}</span>
+        </button>`).join('')}
+    </div>`;
+
+  pop.classList.add('open');
+
+  const backdrop = document.getElementById('output-mode-backdrop');
+  backdrop.classList.add('open');
+  if (_popoverClose) { backdrop.removeEventListener('click', _popoverClose); }
+  _popoverClose = () => {
+    pop.classList.remove('open');
+    backdrop.classList.remove('open');
+    backdrop.removeEventListener('click', _popoverClose);
+  };
+  backdrop.addEventListener('click', _popoverClose);
+}
+
+async function selectOutputMode(event, ppUniqueId, fillType, mode) {
+  event.stopPropagation();
+  document.getElementById('output-mode-popover').classList.remove('open');
+  document.getElementById('output-mode-backdrop').classList.remove('open');
+
+  // Optimistic update: show new icon + pending glow immediately
+  if (_popoverTrigger) {
+    const btn = _popoverTrigger;
+    const color = OUTPUT_MODE_COLOR[mode] ?? 'gray';
+    btn.className = `output-mode-badge ${color} pending`;
+    btn.innerHTML = `<i class="ti ${OUTPUT_MODE_ICON[mode]}" style="color:var(--${color})"></i>`;
+    btn.setAttribute('onclick', `openOutputModePopover(event,'${ppUniqueId}','${fillType}','${mode}')`);
+    _popoverTrigger = null;
+  }
+
   try {
     await fetch('/api/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cmd: 'production.setOutputMode', uniqueId: ppUniqueId, fillType, mode: nextMode }),
+      body: JSON.stringify({ cmd: 'production.setOutputMode', uniqueId: ppUniqueId, fillType, mode }),
     });
   } catch(e) {
     console.error('[FarmMonitor] Command failed:', e);
@@ -3465,5 +3528,7 @@ loadGlobalSettings();
 loadData();
 connect();
 </script>
+<div id="output-mode-backdrop"></div>
+<div id="output-mode-popover"></div>
 </body>
 </html>
