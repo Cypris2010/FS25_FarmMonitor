@@ -25,7 +25,8 @@ echo "Binary moved to: $SCRIPT_DIR/farmmonitor"
 cd "$SCRIPT_DIR"
 BASE=$(grep -m1 '<version>' "$MOD_SOURCE/modDesc.xml" | sed 's/.*<version>\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
 COMMITS=$(git rev-list --count HEAD)
-BUILD=$(printf "0%d" "$COMMITS")
+TIME=$(date +%H%M)
+BUILD="${COMMITS}0${TIME}"
 VERSION="${BASE}.${BUILD}"
 sed -i '' "s|<version>.*</version>|<version>${VERSION}</version>|" "$MOD_SOURCE/modDesc.xml"
 echo "modDesc version set to: ${VERSION}"

@@ -330,6 +330,44 @@ function FarmMonitor:readSavegameInfo()
 end
 
 -- ---------------------------------------------------------------------------
+-- Helper: Placeable-Ankerliste für Paletten-Gruppierung
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:buildPlaceableAnchors(farmId)
+    local anchors = {}
+    if g_currentMission.placeableSystem == nil then return anchors end
+    for _, placeable in ipairs(g_currentMission.placeableSystem.placeables) do
+        if (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0) and placeable.rootNode ~= nil then
+            local x, _, z = getWorldTranslation(placeable.rootNode)
+            table.insert(anchors, {
+                id   = placeable:getUniqueId() or "",
+                name = FarmMonitor:placeableName(placeable),
+                x    = x,
+                z    = z,
+            })
+        end
+    end
+    return anchors
+end
+
+function FarmMonitor:nearestAnchor(anchors, px, pz, radius2)
+    local bestId   = "outside"
+    local bestName = "Außenbereich"
+    local bestDist = math.huge
+    for _, anchor in ipairs(anchors) do
+        local dx = px - anchor.x
+        local dz = pz - anchor.z
+        local d2 = dx*dx + dz*dz
+        if d2 < radius2 and d2 < bestDist then
+            bestDist = d2
+            bestId   = anchor.id
+            bestName = anchor.name
+        end
+    end
+    return bestId, bestName
+end
+
+-- ---------------------------------------------------------------------------
 -- Silos
 -- ---------------------------------------------------------------------------
 
@@ -376,6 +414,160 @@ function FarmMonitor:collectSilos()
                     })
                 end
             end
+        end
+
+        -- Bunker Silo (Fahrsilo / Keilsilo)
+        if placeable.spec_bunkerSilo ~= nil and (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0) then
+            local bs = placeable.spec_bunkerSilo.bunkerSilo
+            if bs ~= nil and bs.fillLevel ~= nil and bs.fillLevel > 0 then
+                local ftIdx = bs.inputFillType
+                if bs.state == BunkerSilo.STATE_DRAIN or bs.state == BunkerSilo.STATE_FERMENTED then
+                    ftIdx = bs.outputFillType
+                end
+                local stateStr = "FILL"
+                if     bs.state == BunkerSilo.STATE_CLOSED     then stateStr = "CLOSED"
+                elseif bs.state == BunkerSilo.STATE_DRAIN      then stateStr = "DRAIN"
+                elseif bs.state == BunkerSilo.STATE_FERMENTED  then stateStr = "FERMENTED"
+                end
+                table.insert(result, {
+                    uniqueId          = placeable:getUniqueId() or "",
+                    name              = FarmMonitor:placeableName(placeable),
+                    type              = "bunkerSilo",
+                    fillLevel         = MathUtil.round(bs.fillLevel),
+                    fillType          = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN",
+                    fillTypeTitle     = FarmMonitor:fillTypeTitle(ftIdx),
+                    fermentingPercent = bs.fermentingPercent or 0,
+                    compactedPercent  = bs.compactedPercent or 0,
+                    state             = stateStr,
+                })
+            end
+        end
+
+        -- Object Storage (vanilla pallets / bale storage)
+        if placeable.spec_objectStorage ~= nil and (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0) then
+            local byFillType = {}
+            for _, objInfo in ipairs(placeable.spec_objectStorage.objectInfos or {}) do
+                for _, obj in ipairs(objInfo.objects or {}) do
+                    local ftIdx, level
+                    if obj.baleAttributes ~= nil then
+                        ftIdx = obj.baleAttributes.fillType
+                        level = obj.baleAttributes.fillLevel
+                    elseif obj.baleObject ~= nil then
+                        ftIdx = obj.baleObject.fillType
+                        level = obj.baleObject.fillLevel
+                    elseif obj.palletAttributes ~= nil then
+                        ftIdx = obj.palletAttributes.fillType
+                        level = obj.palletAttributes.fillLevel
+                    end
+                    if ftIdx ~= nil and level ~= nil and level > 0 then
+                        if byFillType[ftIdx] == nil then byFillType[ftIdx] = { level = 0, count = 0 } end
+                        byFillType[ftIdx].level = byFillType[ftIdx].level + level
+                        byFillType[ftIdx].count = byFillType[ftIdx].count + 1
+                    end
+                end
+            end
+            local contents = FarmMonitor.arr()
+            for ftIdx, d in pairs(byFillType) do
+                table.insert(contents, {
+                    fillType = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN",
+                    title    = FarmMonitor:fillTypeTitle(ftIdx),
+                    level    = MathUtil.round(d.level),
+                    count    = d.count,
+                })
+            end
+            if #contents > 0 then
+                table.insert(result, {
+                    uniqueId = placeable:getUniqueId() or "",
+                    name     = FarmMonitor:placeableName(placeable),
+                    type     = "objectStorage",
+                    contents = contents,
+                })
+            end
+        end
+
+        -- Object Storage Mod (e.g. bale storage mods)
+        if placeable.spec_objectStorageMod ~= nil and (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0) then
+            local os = placeable.spec_objectStorageMod.objectStorage
+            if os ~= nil and os.storageAreasByFillType ~= nil then
+                local byFillType = {}
+                for ftIdx, areas in pairs(os.storageAreasByFillType) do
+                    for _, area in pairs(areas) do
+                        for _, obj in ipairs(area.objects or {}) do
+                            if obj.fillLevel ~= nil and obj.fillLevel > 0 then
+                                if byFillType[ftIdx] == nil then byFillType[ftIdx] = { level = 0, count = 0 } end
+                                byFillType[ftIdx].level = byFillType[ftIdx].level + obj.fillLevel
+                                byFillType[ftIdx].count = byFillType[ftIdx].count + 1
+                            end
+                        end
+                    end
+                end
+                local contents = FarmMonitor.arr()
+                for ftIdx, d in pairs(byFillType) do
+                    table.insert(contents, {
+                        fillType = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN",
+                        title    = FarmMonitor:fillTypeTitle(ftIdx),
+                        level    = MathUtil.round(d.level),
+                        count    = d.count,
+                    })
+                end
+                if #contents > 0 then
+                    table.insert(result, {
+                        uniqueId = placeable:getUniqueId() or "",
+                        name     = FarmMonitor:placeableName(placeable),
+                        type     = "objectStorageMod",
+                        contents = contents,
+                    })
+                end
+            end
+        end
+    end
+
+    -- Loose Paletten: gruppiert nach nächstem eigenem Placeable (Radius 75m)
+    local anchors = FarmMonitor:buildPlaceableAnchors(farmId)
+    local RADIUS2 = 75 * 75
+    local groups  = {}
+
+    if g_currentMission.vehicleSystem ~= nil then
+        for _, vehicle in ipairs(g_currentMission.vehicleSystem.vehicles or {}) do
+            if vehicle.isPallet and (vehicle.ownerFarmId == farmId or vehicle.ownerFarmId == 0) then
+                local spec = vehicle.spec_fillUnit
+                if spec ~= nil and spec.fillUnits ~= nil and spec.fillUnits[1] ~= nil then
+                    local fu = spec.fillUnits[1]
+                    if fu.fillType ~= nil and fu.fillLevel ~= nil and fu.fillLevel > 0 then
+                        local px, _, pz = getWorldTranslation(vehicle.rootNode)
+                        local bestId, bestName = FarmMonitor:nearestAnchor(anchors, px, pz, RADIUS2)
+                        if groups[bestId] == nil then
+                            groups[bestId] = { name = bestName, byFillType = {} }
+                        end
+                        local ftIdx = fu.fillType
+                        if groups[bestId].byFillType[ftIdx] == nil then
+                            groups[bestId].byFillType[ftIdx] = { level = 0, count = 0 }
+                        end
+                        groups[bestId].byFillType[ftIdx].level = groups[bestId].byFillType[ftIdx].level + fu.fillLevel
+                        groups[bestId].byFillType[ftIdx].count = groups[bestId].byFillType[ftIdx].count + 1
+                    end
+                end
+            end
+        end
+    end
+
+    for groupId, group in pairs(groups) do
+        local contents = FarmMonitor.arr()
+        for ftIdx, d in pairs(group.byFillType) do
+            table.insert(contents, {
+                fillType = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN",
+                title    = FarmMonitor:fillTypeTitle(ftIdx),
+                level    = MathUtil.round(d.level),
+                count    = d.count,
+            })
+        end
+        if #contents > 0 then
+            table.insert(result, {
+                uniqueId = "pallets_" .. groupId,
+                name     = group.name,
+                type     = "loosePallets",
+                contents = contents,
+            })
         end
     end
 
@@ -717,14 +909,20 @@ function FarmMonitor:collectGoods()
         end
     end
 
-    -- Loose pallets & shipping containers
+    -- Loose pallets & shipping containers — gruppiert nach nächstem Placeable
     if g_currentMission.vehicleSystem ~= nil then
+        local anchors = FarmMonitor:buildPlaceableAnchors(farmId)
+        local RADIUS2 = 75 * 75
         for _, vehicle in ipairs(g_currentMission.vehicleSystem.vehicles or {}) do
             if vehicle.isPallet and (vehicle.ownerFarmId == farmId or vehicle.ownerFarmId == 0) then
                 local spec = vehicle.spec_fillUnit
                 if spec ~= nil and spec.fillUnits ~= nil and spec.fillUnits[1] ~= nil then
                     local fu = spec.fillUnits[1]
-                    addAmount(fu.fillType, fu.fillLevel, "Loose Pallets")
+                    if fu.fillType ~= nil and fu.fillLevel ~= nil and fu.fillLevel > 0 then
+                        local px, _, pz = getWorldTranslation(vehicle.rootNode)
+                        local bestId, bestName = FarmMonitor:nearestAnchor(anchors, px, pz, RADIUS2)
+                        addAmount(fu.fillType, fu.fillLevel, "pallets_" .. bestId, "Paletten: " .. bestName)
+                    end
                 end
             end
         end

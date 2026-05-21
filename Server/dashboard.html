@@ -1432,14 +1432,21 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Silos</h2>
-              <p>Füllstände aller Silos und Lagerkapazitäten</p>
+              <h2>Silos & Lager</h2>
+              <p>Füllstände aller Silos, Fahrsilos, Paletten- und Ballenlager</p>
             </div>
           </div>
-          <button class="edit-mode-btn" id="edit-btn-silos" onclick="toggleEditMode()" aria-pressed="false">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
-            Ansicht bearbeiten
-          </button>
+          <div class="filters" role="group" aria-label="Filter">
+            <button class="filter-btn active" data-silo-filter="all">Alle</button>
+            <button class="filter-btn" data-silo-filter="silos">Silos</button>
+            <button class="filter-btn" data-silo-filter="bunker">Fahrsilos</button>
+            <button class="filter-btn" data-silo-filter="lager">Lager</button>
+            <button class="filter-btn" data-silo-filter="pallets">Paletten</button>
+            <button class="edit-mode-btn" id="edit-btn-silos" onclick="toggleEditMode()" aria-pressed="false">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
+              Ansicht bearbeiten
+            </button>
+          </div>
         </div>
         <div class="silo-layout">
           <div class="silo-quicknav" id="silo-quicknav"></div>
@@ -1700,6 +1707,7 @@
 // ═══════════════════════════════════════════════════════════
 let appData          = null;
 let currentView      = 'home';
+let siloFilter       = 'all';
 let husFilter        = 'all';
 let husTypeFilter    = 'all';
 let fieldFilter      = 'all';
@@ -2232,12 +2240,23 @@ function renderSilos(data) {
     if (nav) nav.innerHTML = '';
     return;
   }
-  const silosToShow = editMode ? data.silos : data.silos.filter(s => isVisible(s.uniqueId));
+  const SILO_TYPE_GROUPS = {
+    silos:  ['silo', 'siloExtension'],
+    bunker: ['bunkerSilo'],
+    lager:  ['objectStorage', 'objectStorageMod'],
+    pallets: ['loosePallets'],
+  };
+  const silosToShow = (editMode ? data.silos : data.silos.filter(s => isVisible(s.uniqueId)))
+    .filter(s => siloFilter === 'all' || (SILO_TYPE_GROUPS[siloFilter] || []).includes(s.type))
+    .slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
 
   // Quicknav — always only visible silos, regardless of edit mode
   if (nav) {
     const { siloWarn, siloCrit } = alertThresholds();
-    const visibleSilos = data.silos.filter(s => isVisible(s.uniqueId));
+    const visibleSilos = data.silos
+      .filter(s => isVisible(s.uniqueId))
+      .filter(s => siloFilter === 'all' || (SILO_TYPE_GROUPS[siloFilter] || []).includes(s.type))
+      .slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
     nav.innerHTML = visibleSilos.map(s => {
       const idx = silosToShow.indexOf(s);
       const totalFill = (Array.isArray(s.contents) ? s.contents : []).reduce((sum, c) => sum + (c.level || 0), 0);
@@ -2250,15 +2269,48 @@ function renderSilos(data) {
     }).join('');
   }
 
+  const STATE_LABELS = { FILL: 'Füllen', CLOSED: 'Geschlossen', DRAIN: 'Ausgabe', FERMENTED: 'Fermentiert' };
+
   el.innerHTML = silosToShow.map((s, idx) => {
     const hidden = !isVisible(s.uniqueId);
-    const typeBadge = s.type === 'siloExtension'
-      ? '<span class="badge blue">Extension</span>'
-      : '<span class="badge gray">Silo</span>';
-    const contents = (Array.isArray(s.contents) ? s.contents : []).map(c => {
-      const p = pct(c.level, s.capacity);
-      return metricRow(c.title || c.fillType, c.level, s.capacity, barClass(p, false));
-    }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
+    const typeBadge = {
+      silo:             '<span class="badge gray">Silo</span>',
+      siloExtension:    '<span class="badge gray">Extension</span>',
+      bunkerSilo:       '<span class="badge gray">Fahrsilo</span>',
+      objectStorage:    '<span class="badge gray">Lager</span>',
+      objectStorageMod: '<span class="badge gray">Lager</span>',
+      loosePallets:     '<span class="badge gray">Paletten</span>',
+    }[s.type] || '<span class="badge gray">Lager</span>';
+
+    let contents;
+    if (s.type === 'bunkerSilo') {
+      const stateLabel = STATE_LABELS[s.state] || s.state || '—';
+      const ferPct  = Math.round((s.fermentingPercent || 0) * 100);
+      const compPct = Math.round((s.compactedPercent  || 0) * 100);
+      contents = `
+        <div class="metric">
+          <span>${s.fillTypeTitle || s.fillType || '—'}</span>
+          <div class="bar gray"><i style="width:0%"></i></div>
+          <span class="metric-val">${fmt(s.fillLevel)} L</span>
+        </div>
+        <div class="metric">
+          <span>Zustand</span>
+          <span class="metric-val" style="font-size:11px">${stateLabel}</span>
+        </div>` +
+        `<div class="metric"><span>Verdichtung</span><div class="bar gray"><i style="width:${compPct}%"></i></div><span class="metric-val">${compPct}%</span></div>` +
+        (ferPct  > 0 ? `<div class="metric"><span>Fermentierung</span><div class="bar gray"><i style="width:${ferPct}%"></i></div><span class="metric-val">${ferPct}%</span></div>` : '');
+    } else {
+      contents = (Array.isArray(s.contents) ? s.contents : []).map(c => {
+        const countSuffix = c.count ? ` <small>${c.count} Stk.</small>` : '';
+        const p = pct(c.level, s.capacity || 0);
+        const row = metricRow(c.title || c.fillType, c.level, s.capacity || 0, barClass(p, false));
+        return c.count ? row.replace(
+          `${fmt(c.level)} <small>${p}%</small>`,
+          `${fmt(c.level)}${countSuffix}`
+        ) : row;
+      }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
+    }
+
     return `
       <article id="silo-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
         <h3>${s.name} ${typeBadge}${visBtn(s.uniqueId)}</h3>
@@ -3480,6 +3532,15 @@ function connect() {
 // ═══════════════════════════════════════════════════════════
 // Filter wiring
 // ═══════════════════════════════════════════════════════════
+
+document.querySelectorAll('[data-silo-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    siloFilter = btn.dataset.siloFilter;
+    document.querySelectorAll('[data-silo-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderSilos(appData?.silos);
+  });
+});
 
 document.querySelectorAll('[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
