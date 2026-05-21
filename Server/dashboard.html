@@ -347,6 +347,19 @@
   #output-mode-popover.open { display:flex; }
   #output-mode-popover .pop-header { padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
   #output-mode-popover .pop-body { padding:8px; display:flex; flex-direction:column; gap:2px; }
+  #output-mode-popover .pop-col-label { padding:4px 6px 6px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  #output-mode-popover .pop-columns { display:flex; flex-direction:row; align-items:stretch; }
+  #output-mode-popover .pop-divider-v { width:1px; background:var(--border); flex-shrink:0; margin:8px 0; }
+  #output-mode-popover .pop-spawn { padding:8px 12px 12px; display:flex; flex-direction:column; gap:8px; min-width:300px; }
+  #output-mode-popover .pop-spawn .spawn-info { font-size:12px; color:var(--fg); font-weight:600; }
+  #output-mode-popover .pop-spawn .spawn-info-sub { font-size:13px; color:var(--muted); }
+  #output-mode-popover .pop-spawn .spawn-controls { display:flex; gap:8px; align-items:center; }
+  #output-mode-popover .pop-spawn .spawn-controls input[type="range"] { flex:1; cursor:pointer; -webkit-appearance:none; appearance:none; background:none; height:36px; }
+  #output-mode-popover .pop-spawn .spawn-controls input[type="range"]::-webkit-slider-runnable-track { height:10px; border-radius:5px; background:#444; }
+  #output-mode-popover .pop-spawn .spawn-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:36px; height:36px; border-radius:50%; background:var(--green); margin-top:-13px; box-shadow:0 1px 4px rgba(0,0,0,.5); }
+  #output-mode-popover .pop-spawn .spawn-controls input[type="number"] { width:52px; padding:4px 6px; background:var(--card); border:1px solid var(--border); border-radius:6px; color:var(--fg); font-size:13px; text-align:center; }
+  #output-mode-popover .pop-spawn .spawn-btn { padding:8px; background:rgba(154,227,58,.08); border:1px solid rgba(154,227,58,.3); border-radius:8px; color:var(--green); font-weight:600; font-size:13px; cursor:pointer; transition:.15s ease; width:100%; }
+  #output-mode-popover .pop-spawn .spawn-btn:hover { background:rgba(154,227,58,.18); border-color:rgba(154,227,58,.6); }
   #output-mode-popover button { padding:10px 14px; border:none; border-radius:8px; background:none; cursor:pointer; font-size:16px; display:flex; flex-direction:row; align-items:center; gap:12px; color:var(--fg); transition:background .12s; width:100%; text-align:left; }
   #output-mode-popover button i { font-size:18px; -webkit-text-stroke:0.5px currentColor; }
   #output-mode-popover button span { font-size:13px; }
@@ -1804,18 +1817,40 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
   pop.style.left = (rect.left - 60) + 'px';
 
   // build window
-  const ftTitle = (appData?.fillTypes?.[fillType]?.title) || fillType;
+  const ftTitle = (appData?.fillTypesByName?.[fillType]?.title) || fillType;
+  const spawnOpts = (() => {
+    const pp = (appData?.productions?.productions || []).find(p => String(p.uniqueId) === String(ppUniqueId));
+    const out = (pp?.outputs || []).find(o => o.fillType === fillType);
+    return out?.spawnOptions || null;
+  })();
+  const spawnSection = spawnOpts && spawnOpts.max > 0 ? `
+    <div class="pop-spawn">
+      <div class="pop-col-label">Auslagern</div>
+      <div class="spawn-info-sub">Max: ${spawnOpts.max} Stk. · ${fmt(spawnOpts.capacity)} L</div>
+      <div class="spawn-controls">
+        <input type="range" id="spawn-slider" min="1" max="${spawnOpts.max}" value="1"
+               oninput="document.getElementById('spawn-count').value=this.value">
+        <input type="number" id="spawn-count" min="1" max="${spawnOpts.max}" value="1"
+               oninput="document.getElementById('spawn-slider').value=Math.min(Math.max(parseInt(this.value)||1,1),${spawnOpts.max})">
+      </div>
+      <button class="spawn-btn" onclick="spawnPallets('${ppUniqueId}','${fillType}',${spawnOpts.max})">Auslagern</button>
+    </div>` : '';
   pop.innerHTML = `
-    <div class="pop-header">Ausgangsmodus — ${ftTitle}</div>
-    <div class="pop-body">
-      ${OUTPUT_MODE_ALL.map(m => `
-        <button class="${m === currentMode ? 'active' : ''}" onclick="selectOutputMode(event,'${ppUniqueId}','${fillType}','${m}')">
-          <i class="ti ${OUTPUT_MODE_ICON[m]}" style="color:var(--${OUTPUT_MODE_COLOR[m] ?? 'muted'})"></i>
-          <span>${OUTPUT_MODE_LABEL[m]}</span>
-        </button>`).join('')}
+    <div class="pop-header">${ftTitle}</div>
+    <div class="pop-columns">
+      <div class="pop-body">
+        <div class="pop-col-label">Ausgangsmodus</div>
+        ${OUTPUT_MODE_ALL.map(m => `
+          <button class="${m === currentMode ? 'active' : ''}" onclick="selectOutputMode(event,'${ppUniqueId}','${fillType}','${m}')">
+            <i class="ti ${OUTPUT_MODE_ICON[m]}" style="color:var(--${OUTPUT_MODE_COLOR[m] ?? 'muted'})"></i>
+            <span>${OUTPUT_MODE_LABEL[m]}</span>
+          </button>`).join('')}
+      </div>
+      ${spawnSection ? `<div class="pop-divider-v"></div>${spawnSection}` : ''}
     </div>`;
 
   pop.classList.add('open');
+  document.body.style.overflow = 'hidden';
 
   const backdrop = document.getElementById('output-mode-backdrop');
   backdrop.classList.add('open');
@@ -1823,9 +1858,25 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
   _popoverClose = () => {
     pop.classList.remove('open');
     backdrop.classList.remove('open');
+    document.body.style.overflow = '';
     backdrop.removeEventListener('click', _popoverClose);
   };
   backdrop.addEventListener('click', _popoverClose);
+}
+
+async function spawnPallets(ppUniqueId, fillType, max) {
+  const count = Math.min(Math.max(parseInt(document.getElementById('spawn-count').value) || 1, 1), max);
+  document.getElementById('output-mode-popover').classList.remove('open');
+  document.getElementById('output-mode-backdrop').classList.remove('open');
+  try {
+    await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cmd: 'production.spawnPallets', uniqueId: ppUniqueId, fillType, amount: String(count) }),
+    });
+  } catch(e) {
+    console.error('[FarmMonitor] Spawn command failed:', e);
+  }
 }
 
 async function selectOutputMode(event, ppUniqueId, fillType, mode) {
@@ -2264,7 +2315,7 @@ function renderSilos(data) {
       const dotClass  = fillPct >= siloCrit ? 'sell-now' : fillPct >= siloWarn ? 'falling' : 'climbing';
       return `<button class="qnav-item" onclick="(function(){var el=document.getElementById('silo-card-${idx}');el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>flashCard(el),300);})()">
         <span class="qnav-dot ${dotClass}"></span>
-        <span>${s.name || '—'}</span>
+        <span>${s.type === 'loosePallets' ? 'Paletten: ' + (s.name || '—') : (s.name || '—')}</span>
       </button>`;
     }).join('');
   }
@@ -2299,6 +2350,13 @@ function renderSilos(data) {
         </div>` +
         `<div class="metric"><span>Verdichtung</span><div class="bar gray"><i style="width:${compPct}%"></i></div><span class="metric-val">${compPct}%</span></div>` +
         (ferPct  > 0 ? `<div class="metric"><span>Fermentierung</span><div class="bar gray"><i style="width:${ferPct}%"></i></div><span class="metric-val">${ferPct}%</span></div>` : '');
+    } else if (s.type === 'loosePallets') {
+      contents = (Array.isArray(s.contents) ? s.contents : []).map(c =>
+        `<div class="metric">
+          <span>${c.title || c.fillType}</span>
+          <span class="metric-val">${fmt(c.level)} L <small>${c.count} Stk.</small></span>
+        </div>`
+      ).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
     } else {
       contents = (Array.isArray(s.contents) ? s.contents : []).map(c => {
         const countSuffix = c.count ? ` <small>${c.count} Stk.</small>` : '';
@@ -2313,7 +2371,7 @@ function renderSilos(data) {
 
     return `
       <article id="silo-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
-        <h3>${s.name} ${typeBadge}${visBtn(s.uniqueId)}</h3>
+        <h3>${s.type === 'loosePallets' ? 'Paletten: ' + s.name : s.name} ${typeBadge}${visBtn(s.uniqueId)}</h3>
         ${contents}
       </article>`;
   }).join('');
@@ -3483,6 +3541,11 @@ async function loadData() {
     if (!res.ok) throw new Error(res.status);
     const d = await res.json();
     appData = d;
+    // Build name→title lookup for fill types (fillTypes is an array)
+    appData.fillTypesByName = {};
+    for (const ft of (d.fillTypes?.fillTypes || [])) {
+      if (ft.name) appData.fillTypesByName[ft.name] = ft;
+    }
 
     // Load savegame settings once when savegameId changes
     const newId = d.silos?.savegameId || d.productions?.savegameId || d.husbandries?.savegameId;

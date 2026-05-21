@@ -201,6 +201,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		UniqueID string `json:"uniqueId,omitempty"`
 		FillType string `json:"fillType,omitempty"`
 		Mode     string `json:"mode,omitempty"`
+		Amount   string `json:"amount,omitempty"`
 	}
 	type xmlCommand struct {
 		XMLName  xml.Name `xml:"command"`
@@ -209,6 +210,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		UniqueID string   `xml:"uniqueId,attr"`
 		FillType string   `xml:"fillType,attr"`
 		Mode     string   `xml:"mode,attr"`
+		Amount   string   `xml:"amount,attr"`
 	}
 	type xmlCommands struct {
 		XMLName  xml.Name     `xml:"commands"`
@@ -241,6 +243,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 				UniqueID: cmd.UniqueID,
 				FillType: cmd.FillType,
 				Mode:     cmd.Mode,
+				Amount:   cmd.Amount,
 			}},
 		}, "", "  ")
 		if err != nil {

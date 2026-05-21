@@ -18,6 +18,7 @@ FarmMonitor.fruitTypesExported  = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
+FarmMonitor.palletInfoCache     = nil  -- built once per session by buildPalletInfoCache()
 
 addModEventListener(FarmMonitor)
 
@@ -575,6 +576,41 @@ function FarmMonitor:collectSilos()
 end
 
 -- ---------------------------------------------------------------------------
+-- PSC Pallet Info Cache (built once per session)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:buildPalletInfoCache()
+    FarmMonitor.palletInfoCache = {}
+    local fillTypes = g_fillTypeManager.fillTypes or {}
+    for _, ft in ipairs(fillTypes) do
+        if ft ~= nil and ft.index ~= nil and ft.pallets ~= nil then
+            -- Prefer VANILLA, fall back to first available environment
+            local palletFile = ft.pallets["VANILLA"]
+            if palletFile == nil then
+                for _, f in pairs(ft.pallets) do palletFile = f; break end
+            end
+            if palletFile ~= nil then
+                local ok, xmlFile = pcall(XMLFile.load, "PSC_PalletCache_" .. ft.index, palletFile, Vehicle.xmlSchema)
+                if ok and xmlFile ~= nil then
+                    local capacity = FillUnit.getCapacityFromXml(xmlFile)
+                    local size     = StoreItemUtil.getSizeValues(palletFile, "vehicle", 0, {})
+                    xmlFile:delete()
+                    if capacity ~= nil and capacity > 0 then
+                        FarmMonitor.palletInfoCache[ft.index] = {
+                            capacity          = capacity,
+                            width             = (size and size.width)  or 1,
+                            height            = (size and size.height) or 1,
+                            length            = (size and size.length) or 1,
+                            customEnvironment = ft.pallets["VANILLA"] ~= nil and "VANILLA" or "VANILLA",
+                        }
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Productions
 -- ---------------------------------------------------------------------------
 
@@ -657,6 +693,28 @@ function FarmMonitor:collectProductions()
                             "outputMode", mode,
                             "needed",     needed
                         ))
+                    end
+                end
+            end
+
+            -- PSC: annotate outputs with spawn options (vanilla pallets)
+            if g_modIsLoaded["FS25_ProductionStorageControl"] and pp.palletSpawner ~= nil then
+                if FarmMonitor.palletInfoCache == nil then FarmMonitor:buildPalletInfoCache() end
+                local ftToPallet = pp.palletSpawner.fillTypeIdToPallet
+                for _, output in ipairs(outputs) do
+                    local ft = g_fillTypeManager:getFillTypeByName(output.fillType)
+                    if ft ~= nil then
+                        local spawnerSupports = ftToPallet ~= nil and ftToPallet[ft.index] ~= nil
+                        local info = FarmMonitor.palletInfoCache[ft.index]
+                        if spawnerSupports and info ~= nil and output.level > 0 then
+                            local maxP = math.floor(output.level / info.capacity)
+                            if (output.level - maxP * info.capacity) >= 1 then maxP = maxP + 1 end
+                            output.spawnOptions = FarmMonitor.obj(
+                                "capacity", info.capacity,
+                                "max",      maxP
+                            )
+                            table.insert(output.__order, "spawnOptions")
+                        end
                     end
                 end
             end
@@ -1536,6 +1594,7 @@ function FarmMonitor:processCommands()
             uniqueId = getXMLString(xmlId, base .. "#uniqueId") or "",
             fillType = getXMLString(xmlId, base .. "#fillType") or "",
             mode     = getXMLString(xmlId, base .. "#mode")     or "",
+            amount   = getXMLString(xmlId, base .. "#amount")   or "",
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -1561,6 +1620,7 @@ end
 function FarmMonitor:dispatchCommand(cmd)
     local handlers = {
         ["production.setOutputMode"] = FarmMonitor.cmdSetProductionOutputMode,
+        ["production.spawnPallets"]  = FarmMonitor.cmdSpawnPallets,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -1591,6 +1651,47 @@ function FarmMonitor:cmdSetProductionOutputMode(cmd)
 
     pp:setOutputDistributionMode(ft.index, mode)
     ProductionPointOutputModeEvent.sendEvent(pp, ft.index, mode, true)
+end
+
+function FarmMonitor:cmdSpawnPallets(cmd)
+    if not g_modIsLoaded["FS25_ProductionStorageControl"] then
+        error("FS25_ProductionStorageControl not loaded")
+    end
+
+    local placeable = g_currentMission.placeableSystem:getPlaceableByUniqueId(cmd.uniqueId)
+    if placeable == nil or placeable.spec_productionPoint == nil then
+        error("Production not found: " .. tostring(cmd.uniqueId))
+    end
+
+    local pp = placeable.spec_productionPoint.productionPoint
+    if pp.palletSpawner == nil then error("No pallet spawner on production") end
+
+    local ft = g_fillTypeManager:getFillTypeByName(cmd.fillType)
+    if ft == nil then error("FillType not found: " .. tostring(cmd.fillType)) end
+
+    if FarmMonitor.palletInfoCache == nil then FarmMonitor:buildPalletInfoCache() end
+    local info = FarmMonitor.palletInfoCache[ft.index]
+    if info == nil then error("No pallet info for fillType: " .. tostring(cmd.fillType)) end
+
+    local amount = math.max(1, math.floor(tonumber(cmd.amount) or 1))
+    local available = pp:getFillLevel(ft.index)
+    local maxP = math.floor(available / info.capacity)
+    if (available - maxP * info.capacity) >= 1 then maxP = maxP + 1 end
+    amount = math.min(amount, maxP)
+    if amount <= 0 then error("Nothing to spawn for fillType: " .. tostring(cmd.fillType)) end
+
+    pp:ReceiveSpawnEvent(
+        g_currentMission:getFarmId(),
+        ft.index,
+        info.capacity * amount,  -- pendingLiters: Gesamtmenge für alle Paletten
+        info.width, info.height, info.length,
+        info.capacity,
+        1,
+        info.customEnvironment,
+        nil,
+        amount,
+        0, 0, 0
+    )
 end
 
 
