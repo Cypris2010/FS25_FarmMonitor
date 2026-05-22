@@ -1562,6 +1562,9 @@
       <button class="nav-btn" data-view="home" aria-label="Übersicht">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.2V21h13V10.2"/><path d="M9.5 21v-6h5v6"/></svg>
       </button>
+      <button class="nav-btn" data-view="map" aria-label="Karte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 20l-6-3V4l6 3"/><path d="M9 20l6-3V4l-6 3"/><path d="M15 17l6 3V7l-6-3"/></svg>
+      </button>
       <button class="nav-btn" data-view="silos" aria-label="Silos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/><path d="M9 5.5h6"/></svg>
       </button>
@@ -1579,9 +1582,6 @@
       </button>
       <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
-      </button>
-      <button class="nav-btn" data-view="map" aria-label="Karte">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 20l-6-3V4l6 3"/><path d="M9 20l6-3V4l-6 3"/><path d="M15 17l6 3V7l-6-3"/></svg>
       </button>
     </nav>
     <div class="nav-spacer"></div>
@@ -1907,6 +1907,9 @@
   <button class="nav-btn" data-view="home" aria-label="Übersicht">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.2V21h13V10.2"/><path d="M9.5 21v-6h5v6"/></svg>
   </button>
+  <button class="nav-btn" data-view="map" aria-label="Karte">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 20l-6-3V4l6 3"/><path d="M9 20l6-3V4l-6 3"/><path d="M15 17l6 3V7l-6-3"/></svg>
+  </button>
   <button class="nav-btn" data-view="silos" aria-label="Silos">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/></svg>
   </button>
@@ -1925,8 +1928,8 @@
   <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
   </button>
-  <button class="nav-btn" data-view="map" aria-label="Karte">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 20l-6-3V4l6 3"/><path d="M9 20l6-3V4l-6 3"/><path d="M15 17l6 3V7l-6-3"/></svg>
+  <button class="nav-btn" data-view="settings" aria-label="Einstellungen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.36a1.7 1.7 0 0 0-1 .58V20a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-.58 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-.58-1H4a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 .58-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64a1.7 1.7 0 0 0 1-.58V4a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 .58 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9c.18.36.37.7.58 1H20a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-.52 1Z"/></svg>
   </button>
 </nav>
 
@@ -3864,7 +3867,7 @@ function applyMapTransform() {
   document.querySelectorAll('.vehicle-rot-scale').forEach(el => {
     el.style.transform = `rotate(${el.dataset.deg}deg) scale(${iconS})`;
   });
-  document.querySelectorAll('.hotspot-pin').forEach(el => {
+  document.querySelectorAll('.hotspot-pin, .field-label').forEach(el => {
     el.style.transform = `translate(${el.dataset.x}px,${el.dataset.y}px) scale(${iconS})`;
   });
 }
@@ -3917,6 +3920,50 @@ function initMapInteraction() {
   document.getElementById('map-zoom-in') .addEventListener('click', () => { mapZoom = Math.min(mapZoom * 1.3, 30); applyMapTransform(); });
   document.getElementById('map-zoom-out').addEventListener('click', () => { mapZoom = Math.max(mapZoom * 0.77, 0.15); applyMapTransform(); });
   document.getElementById('map-center')  .addEventListener('click', centerMap);
+
+  // Touch: one-finger pan, two-finger pinch-zoom
+  let touchPanX0, touchPanY0, touchStartX, touchStartY, pinchDist0, pinchZoom0, pinchMidX, pinchMidY;
+
+  function touchDist(a, b) {
+    const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+  function touchMid(a, b, r) {
+    return { x: (a.clientX + b.clientX) / 2 - r.left,
+             y: (a.clientY + b.clientY) / 2 - r.top };
+  }
+
+  container.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = container.getBoundingClientRect();
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+      touchPanX0 = mapPanX; touchPanY0 = mapPanY;
+    } else if (e.touches.length === 2) {
+      pinchDist0  = touchDist(e.touches[0], e.touches[1]);
+      pinchZoom0  = mapZoom;
+      const mid   = touchMid(e.touches[0], e.touches[1], r);
+      pinchMidX   = mid.x; pinchMidY = mid.y;
+      touchPanX0  = mapPanX; touchPanY0 = mapPanY;
+    }
+  }, { passive: false });
+
+  container.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const r = container.getBoundingClientRect();
+    if (e.touches.length === 1) {
+      mapPanX = touchPanX0 + e.touches[0].clientX - touchStartX;
+      mapPanY = touchPanY0 + e.touches[0].clientY - touchStartY;
+      applyMapTransform();
+    } else if (e.touches.length === 2) {
+      const dist = touchDist(e.touches[0], e.touches[1]);
+      const nz   = Math.min(Math.max(pinchZoom0 * (dist / pinchDist0), 0.15), 30);
+      mapPanX    = pinchMidX - (pinchMidX - touchPanX0) * (nz / pinchZoom0);
+      mapPanY    = pinchMidY - (pinchMidY - touchPanY0) * (nz / pinchZoom0);
+      mapZoom    = nz;
+      applyMapTransform();
+    }
+  }, { passive: false });
 }
 
 function renderFieldPolygons(fieldsData, terrainSize) {
@@ -3924,10 +3971,8 @@ function renderFieldPolygons(fieldsData, terrainSize) {
   layer.innerHTML = '';
   for (const f of (fieldsData?.fields || [])) {
     if (!f.polygon?.x?.length) continue;
-    const pts = f.polygon.x.map((x, i) => {
-      const p = worldToMap(x, f.polygon.z[i], terrainSize);
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-    }).join(' ');
+    const svgPts = f.polygon.x.map((x, i) => worldToMap(x, f.polygon.z[i], terrainSize));
+    const pts = svgPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
     let fill = 'rgba(34,197,94,0.22)';
     let stroke = 'rgba(255,255,255,0.18)';
     if (f.harvestReady)     { fill = 'rgba(245,158,11,0.45)'; stroke = 'rgba(245,158,11,0.6)'; }
@@ -3942,6 +3987,28 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     title.textContent = `Feld ${f.id}${f.fruitTitle ? ' – ' + f.fruitTitle : ''}`;
     el.appendChild(title);
     layer.appendChild(el);
+
+    // Field number label at polygon centroid
+    const cx = svgPts.reduce((s, p) => s + p.x, 0) / svgPts.length;
+    const cy = svgPts.reduce((s, p) => s + p.y, 0) / svgPts.length;
+    const lg = document.createElementNS('http://www.w3.org/2000/svg','g');
+    lg.classList.add('field-label');
+    lg.dataset.x = cx.toFixed(2);
+    lg.dataset.y = cy.toFixed(2);
+    lg.style.transform = `translate(${cx.toFixed(2)}px,${cy.toFixed(2)}px) scale(${(1/mapZoom).toFixed(4)})`;
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'middle');
+    txt.setAttribute('fill', 'rgba(255,255,255,0.9)');
+    txt.setAttribute('stroke', 'rgba(0,0,0,0.6)');
+    txt.setAttribute('stroke-width', '3');
+    txt.setAttribute('paint-order', 'stroke');
+    txt.setAttribute('font-size', '11');
+    txt.setAttribute('font-weight', '600');
+    txt.setAttribute('font-family', 'system-ui, sans-serif');
+    txt.textContent = f.id;
+    lg.appendChild(txt);
+    layer.appendChild(lg);
   }
 }
 
