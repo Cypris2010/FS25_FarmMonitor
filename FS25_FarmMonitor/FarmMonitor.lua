@@ -142,6 +142,7 @@ function FarmMonitor:collectAndSave()
         ))
         FarmMonitor:writeJSON(FarmMonitor.paths.goods, FarmMonitor.obj(
             "timestamp", ts, "farmId", farmId, "savegame", savegameName, "savegameId", savegameId,
+            "hasPSC",    g_modIsLoaded["FS25_ProductionStorageControl"] and true or false,
             "goods",     FarmMonitor:collectGoods()
         ))
     end)
@@ -900,8 +901,23 @@ function FarmMonitor:collectGoods()
             if placeable.spec_productionPoint ~= nil and placeable.ownerFarmId == farmId then
                 local pp = placeable.spec_productionPoint.productionPoint
                 if pp ~= nil then
+                    local hasPSC = g_modIsLoaded["FS25_ProductionStorageControl"]
                     for _, ftIdx in ipairs(pp.outputFillTypeIdsArray or {}) do
                         addAmount(ftIdx, pp:getFillLevel(ftIdx), locId, locName)
+                        -- Annotate with production output metadata for Waren-View
+                        if locations[ftIdx] ~= nil and locations[ftIdx][locId] ~= nil then
+                            local m = pp:getOutputDistributionMode(ftIdx)
+                            local mode = "keep"
+                            if m == ProductionPoint.OUTPUT_MODE.DIRECT_SELL then mode = "sell"
+                            elseif m == ProductionPoint.OUTPUT_MODE.AUTO_DELIVER then mode = "deliver"
+                            elseif hasPSC and m == ProductionPoint.OUTPUT_MODE.STORE then mode = "store"
+                            end
+                            local loc = locations[ftIdx][locId]
+                            loc.sourceType   = "production"
+                            loc.ppUniqueId   = locId
+                            loc.fillTypeName = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN"
+                            loc.outputMode   = mode
+                        end
                     end
                 end
             end
@@ -1066,11 +1082,25 @@ function FarmMonitor:collectGoods()
                 local storageLocationEntries = FarmMonitor.arr()
                 if locations[ftIdx] ~= nil then
                     for locId, loc in pairs(locations[ftIdx]) do
-                        table.insert(storageLocationEntries, FarmMonitor.obj(
-                            "uniqueId", locId,
-                            "name",     loc.name,
-                            "liters",   MathUtil.round(loc.liters)
-                        ))
+                        local entry
+                        if loc.sourceType == "production" then
+                            entry = FarmMonitor.obj(
+                                "uniqueId",   locId,
+                                "name",       loc.name,
+                                "liters",     MathUtil.round(loc.liters),
+                                "sourceType", loc.sourceType,
+                                "ppUniqueId", loc.ppUniqueId,
+                                "fillType",   loc.fillTypeName,
+                                "outputMode", loc.outputMode
+                            )
+                        else
+                            entry = FarmMonitor.obj(
+                                "uniqueId", locId,
+                                "name",     loc.name,
+                                "liters",   MathUtil.round(loc.liters)
+                            )
+                        end
+                        table.insert(storageLocationEntries, entry)
                     end
                     table.sort(storageLocationEntries, function(a, b) return (a.liters or 0) > (b.liters or 0) end)
                 end

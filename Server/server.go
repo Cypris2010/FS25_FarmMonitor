@@ -235,27 +235,49 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			cmd.ID = fmt.Sprintf("%d", time.Now().UnixNano())
 		}
 
+		newCmd := xmlCommand{
+			ID:       cmd.ID,
+			Cmd:      cmd.Cmd,
+			UniqueID: cmd.UniqueID,
+			FillType: cmd.FillType,
+			Mode:     cmd.Mode,
+			Amount:   cmd.Amount,
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		// Read existing commands.xml (if present) and append — prevents overwrite when
+		// multiple commands arrive before Lua has had a chance to poll the file.
+		cmdPath := filepath.Join(dataDir, "commands.xml")
+		var allCmds []xmlCommand
+		if existing, err := os.ReadFile(cmdPath); err == nil {
+			var existingXML xmlCommands
+			if err2 := xml.Unmarshal(existing, &existingXML); err2 == nil {
+				allCmds = existingXML.Commands
+			}
+		}
+		allCmds = append(allCmds, newCmd)
+
 		xmlData, err := xml.MarshalIndent(xmlCommands{
-			Count: 1,
-			Commands: []xmlCommand{{
-				ID:       cmd.ID,
-				Cmd:      cmd.Cmd,
-				UniqueID: cmd.UniqueID,
-				FillType: cmd.FillType,
-				Mode:     cmd.Mode,
-				Amount:   cmd.Amount,
-			}},
+			Count:    len(allCmds),
+			Commands: allCmds,
 		}, "", "  ")
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
-		mu.Lock()
-		defer mu.Unlock()
-
+		// Write to a temp file first, then rename atomically — ensures Lua never
+		// reads a partially-written file (os.Rename is atomic on POSIX).
 		payload := append([]byte(xml.Header), xmlData...)
-		if err := os.WriteFile(filepath.Join(dataDir, "commands.xml"), payload, 0644); err != nil {
+		tmpPath := cmdPath + ".tmp"
+		if err := os.WriteFile(tmpPath, payload, 0644); err != nil {
+			http.Error(w, "write error", http.StatusInternalServerError)
+			return
+		}
+		if err := os.Rename(tmpPath, cmdPath); err != nil {
+			_ = os.Remove(tmpPath)
 			http.Error(w, "write error", http.StatusInternalServerError)
 			return
 		}
