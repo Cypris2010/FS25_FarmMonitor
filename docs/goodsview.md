@@ -19,7 +19,8 @@ Die Warendaten kommen aus `goods.json`, das vom Lua-Mod alle 10 Sekunden geschri
 | `maxValue` | `totalLiters × maxPrice` |
 | `bestPeriod` | Periode mit höchstem Preis (0–11) |
 | `sellingStations` | Verkaufsstationen, sortiert nach aktuellem Wert |
-| `storageLocations` | Lagerorte mit Name, uniqueId und Litern |
+| `storageLocations` | Lagerorte mit Name, uniqueId und Litern (Produktions-Ausgänge enthalten zusätzliche Felder, siehe unten) |
+| `hasPSC` | `true` wenn der Mod `FS25_ProductionStorageControl` aktiv ist (Root-Feld, nicht pro Ware) |
 
 Wasser (`WATER`) wird standardmäßig aus der Anzeige herausgefiltert (konfigurierbar über den Toggle in der Toolbar).
 
@@ -117,6 +118,53 @@ Leitet aus Trend-Klasse und Preisprozent eine Handlungsempfehlung ab:
 
 ---
 
+## Lagerorte — Ausgangsmodus-Anzeige & Bulk-Änderung
+
+### Erweiterte storageLocation-Felder (nur für Produktions-Ausgänge)
+
+Wenn ein Lagerort der Ausgang einer Produktionsanlage ist, enthält der Eintrag zusätzliche Felder:
+
+| Feld | Bedeutung |
+|---|---|
+| `sourceType` | `"production"` — kennzeichnet den Eintrag als Produktionsausgang |
+| `ppUniqueId` | `uniqueId` des Placeables (identisch mit `uniqueId` des Lagerorts) |
+| `fillType` | Interner Fülltyp-Name (z.B. `"BUTTER"`) — wird für den IPC-Command benötigt |
+| `outputMode` | Aktueller Modus: `"keep"` / `"sell"` / `"deliver"` / `"store"` |
+
+Nicht-Produktions-Lagerorte (Silos, Ställe, Paletten, …) haben diese Felder nicht.
+
+### Modus-Icon in der Lagerort-Zeile
+
+Hat ein Lagerort `sourceType === 'production'`, erscheint am Zeilenende ein kleines, farbiges Tabler-Icon, das den aktuellen Ausgangsmodus anzeigt:
+
+- Kein Kreis, nicht klickbar (`<span>` statt `<button>`)
+- Gleiche Icons und Farben wie im Produktionen-View (siehe `OUTPUT_MODE_ICON`, `OUTPUT_MODE_COLOR`)
+- Identifizierbar über `data-loc-uid` und `data-loc-ft`-Attribute (für optimistischen Update)
+
+### „Ausgangsmodus wählen"-Button
+
+Unterhalb der Lagerort-Liste erscheint ein Button, wenn mindestens ein Lagerort `sourceType === 'production'` hat.
+
+Klick öffnet das **Ausgangsmodus-Modal** (`openOutputModeModal(fillType, title)`).
+
+### Ausgangsmodus-Modal
+
+Ein zentriertes Modal (eigener Backdrop `#omm-backdrop`, Container `#omm-modal`), unabhängig vom Popover des Produktionen-Views.
+
+**Aufbau:**
+- **Produktionen** — Checkbox-Liste aller Produktions-Lagerorte dieser Ware mit aktuellem Modus-Icon
+- **Neuer Modus für Auswahl** — 2×2-Grid mit Radio-Buttons (STORE nur wenn `hasPSC === true`)
+- **Footer** — Abbrechen / Bestätigen
+
+**Bestätigen-Logik:**
+1. Modal schließt sofort
+2. Optimistischer Update: Icon jeder bestätigten Zeile wechselt auf neuen Modus + Abdunkel-Animation (`pending`-Klasse, `mode-pending-icon`-Keyframe)
+3. Für jede gecheckte Produktion: `POST /api/command { cmd: "production.setOutputMode", uniqueId, fillType, mode }`
+4. Befehle werden akkumuliert in `commands.xml` (nicht überschrieben) — der Go-Server nutzt atomares Rename via tmp-Datei
+5. ~10s-SSE-Update re-rendert die Karten mit den echten Daten — Abdunkel-Animation stoppt
+
+---
+
 ## Lagerorte — Navigation
 
 Jeder Lagerort in der Detailansicht einer Warenkarte ist ein klickbarer Link. Ein Klick navigiert automatisch zur entsprechenden Karte im richtigen View:
@@ -173,6 +221,9 @@ Jede Zeile zeigt Name der Anlage, aktuellen Füllstand des Inputs als Balken und
 | `scrollToGood(fillType)` | Scrollt zur Karte einer Ware und setzt aktiven Quicknav-Button |
 | `goToGood(fillType)` | Wechselt zum Waren-View und scrollt zur Ware (für externe Navigation) |
 | `goToStorageLocation(uniqueId)` | Navigiert von Lagerort-Links zum passenden View (Silos / Produktionen / Ställe) |
+| `openOutputModeModal(fillType, title)` | Öffnet das Ausgangsmodus-Modal für eine Ware |
+| `closeOutputModeModal()` | Schließt das Modal und gibt `body.overflow` frei |
+| `confirmOutputModes()` | Liest Auswahl, führt optimistischen Update durch, sendet IPC-Commands |
 | `fmtLiters(n)` | Formatiert Liter-Wert als lokalisierte Zahl mit `l`-Suffix |
 | `fmtEur(n)` | Formatiert Geldbetrag in `€` mit deutschem Format |
 | `fmtPrice(n)` | Formatiert Preis pro Liter auf 4 Nachkommastellen |
