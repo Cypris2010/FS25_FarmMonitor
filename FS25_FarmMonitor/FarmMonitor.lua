@@ -9,12 +9,16 @@ FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
 FarmMonitor.fieldInterval     = 60000  -- milliseconds between field exports
 FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires immediately
+FarmMonitor.vehicleInterval   = 2000   -- milliseconds between vehicle exports
+FarmMonitor.vehicleTimer      = 0
 FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
 FarmMonitor.commandTimer      = 0
 FarmMonitor.paths             = {}
 FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
 FarmMonitor.fruitTypesExported  = false
+FarmMonitor.mapMetaExported     = false
+FarmMonitor.hotspotsExported    = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
@@ -38,6 +42,9 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.goods        = outputDir .. "goods.json"
     FarmMonitor.paths.fields       = outputDir .. "fields.json"
     FarmMonitor.paths.fruitTypes   = outputDir .. "fruitTypes.json"
+    FarmMonitor.paths.mapMeta      = outputDir .. "mapMeta.json"
+    FarmMonitor.paths.hotspots     = outputDir .. "hotspots.json"
+    FarmMonitor.paths.vehicles     = outputDir .. "vehicles.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
@@ -61,6 +68,8 @@ function FarmMonitor:update(dt)
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
         FarmMonitor.fruitTypesExported = false
+        FarmMonitor.mapMetaExported    = false
+        FarmMonitor.hotspotsExported   = false
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval  -- trigger field export on next tick
     end
@@ -84,6 +93,16 @@ function FarmMonitor:update(dt)
         FarmMonitor.animalFoodExported = true
     end
 
+    if not FarmMonitor.mapMetaExported then
+        FarmMonitor:exportMapMeta()
+        FarmMonitor.mapMetaExported = true
+    end
+
+    if not FarmMonitor.hotspotsExported then
+        FarmMonitor:exportHotspots()
+        FarmMonitor.hotspotsExported = true
+    end
+
     FarmMonitor.timer = FarmMonitor.timer + dt
     if FarmMonitor.timer >= FarmMonitor.updateInterval then
         FarmMonitor.timer = 0
@@ -94,6 +113,12 @@ function FarmMonitor:update(dt)
     if FarmMonitor.fieldTimer >= FarmMonitor.fieldInterval then
         FarmMonitor.fieldTimer = 0
         FarmMonitor:collectAndSaveFields()
+    end
+
+    FarmMonitor.vehicleTimer = FarmMonitor.vehicleTimer + dt
+    if FarmMonitor.vehicleTimer >= FarmMonitor.vehicleInterval then
+        FarmMonitor.vehicleTimer = 0
+        FarmMonitor:collectAndSaveVehicles()
     end
 
     FarmMonitor.commandTimer = FarmMonitor.commandTimer + dt
@@ -307,6 +332,96 @@ function FarmMonitor:exportAnimalFood()
 end
 
 -- ---------------------------------------------------------------------------
+-- Map metadata  (written once per session)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportMapMeta()
+    local ok, err = pcall(function()
+        local mission     = g_currentMission
+        local missionInfo = mission and mission.missionInfo
+        if missionInfo == nil then return end
+
+        local terrainSize = mission.terrainSize or 2048
+
+        local mapName = ""
+        if g_mapManager ~= nil and missionInfo.mapId ~= nil then
+            local mapEntry = g_mapManager:getMapById(missionInfo.mapId)
+            if mapEntry ~= nil then mapName = mapEntry.title or "" end
+        end
+
+        local overviewDdsPath = ""
+        if missionInfo.baseDirectory ~= nil then
+            overviewDdsPath = missionInfo.baseDirectory .. "overview.dds"
+        end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.mapMeta, FarmMonitor.obj(
+            "savegameId",      FarmMonitor.savegameId,
+            "terrainSize",     terrainSize,
+            "mapName",         mapName,
+            "overviewDdsPath", overviewDdsPath,
+            "savegameDir",     missionInfo.savegameDirectory or ""
+        ))
+        print("[FarmMonitor] mapMeta.json written")
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR writing mapMeta.json: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Hotspots  (written once per session)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportHotspots()
+    local ok, err = pcall(function()
+        local result = FarmMonitor.arr()
+
+        local function placeableType(placeable)
+            if placeable.spec_sellingStation  ~= nil then return "SELLING_STATION"  end
+            if placeable.spec_productionPoint ~= nil then return "PRODUCTION_POINT" end
+            if placeable.spec_shopConfiguration ~= nil then return "SHOP"           end
+            if placeable.spec_fuelStation     ~= nil then return "FUEL"             end
+            if placeable.spec_beehivePalletSpawner ~= nil then return "BEE"         end
+            if placeable.spec_husbandry       ~= nil then
+                return FarmMonitor:getAnimalType(placeable)
+            end
+            return "MISC"
+        end
+
+        for _, placeable in pairs(g_currentMission.placeableSystem.placeables) do
+            if placeable.spec_hotspots ~= nil and placeable.spec_hotspots.mapHotspots ~= nil then
+                local pType = placeableType(placeable)
+                for _, hotspot in pairs(placeable.spec_hotspots.mapHotspots) do
+                    local x = hotspot.worldX
+                    local z = hotspot.worldZ
+                    if (x == nil or z == nil) and hotspot.getWorldPosition ~= nil then
+                        local ok2, wx, _, wz = pcall(hotspot.getWorldPosition, hotspot)
+                        if ok2 then x, z = wx, wz end
+                    end
+                    if x ~= nil and z ~= nil then
+                        table.insert(result, FarmMonitor.obj(
+                            "name", FarmMonitor:placeableName(placeable),
+                            "type", pType,
+                            "x",    MathUtil.round(x * 10) / 10,
+                            "z",    MathUtil.round(z * 10) / 10
+                        ))
+                    end
+                end
+            end
+        end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.hotspots, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "hotspots",   result
+        ))
+        print("[FarmMonitor] hotspots.json written (" .. #result .. " entries)")
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR writing hotspots.json: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Savegame name  (read once, cached in FarmMonitor.savegameName)
 -- ---------------------------------------------------------------------------
 
@@ -329,6 +444,98 @@ function FarmMonitor:readSavegameInfo()
         print("[FarmMonitor] WARNING: Could not read savegame info: " .. tostring(err))
     end
     return name, savegameId
+end
+
+-- ---------------------------------------------------------------------------
+-- Vehicles & Players
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectVehicles()
+    local result = FarmMonitor.arr()
+    local farmId = g_currentMission:getFarmId()
+
+    -- Raw hotspot type numbers from FS25 (vehicle subclasses)
+    local hotspotTypeNames = {}
+    if MapHotspot then
+        -- Collect all HOTSPOT_TYPE_* constants by brute-force iteration
+        for k, v in pairs(MapHotspot) do
+            if type(k) == "string" and type(v) == "number" then
+                hotspotTypeNames[v] = k
+            end
+        end
+    end
+
+    local function vehicleTypeName(v)
+        local t = v.mapHotspotType
+        if t == nil then return "VEHICLE" end
+        local constName = hotspotTypeNames[t] or ""
+        if constName:find("COMBINE") then return "HARVESTER" end
+        if constName:find("TRAILER") then return "TRAILER"   end
+        if constName:find("TRUCK")   then return "TRUCK"     end
+        if constName:find("CAR")     then return "CAR"       end
+        if constName:find("TOOL")    then return "TOOL"      end
+        if constName:find("TRACTOR") then return "TRACTOR"   end
+        -- fallback: mapHotspotType set but unknown → likely a tractor/self-propelled
+        return "TRACTOR"
+    end
+
+    for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
+        -- skip pallets, bales, shipping containers — only real machines
+        if vehicle.isPallet or vehicle.isShippingContainer then
+        elseif vehicle.mapHotspotType == nil then
+        elseif vehicle.rootNode == nil then
+        elseif vehicle.getOwnerFarmId == nil or vehicle:getOwnerFarmId() ~= farmId then
+        else
+            local x, _, z = getWorldTranslation(vehicle.rootNode)
+            local dx, _, dz = localDirectionToWorld(vehicle.rootNode, 0, 0, 1)
+            local rot = MathUtil.getYRotationFromDirection(dx, dz) + math.pi
+
+            local fillPct = nil
+            if vehicle.spec_fillUnit ~= nil and vehicle.spec_fillUnit.fillUnits ~= nil then
+                local totalLevel, totalCap = 0, 0
+                for _, fu in ipairs(vehicle.spec_fillUnit.fillUnits) do
+                    totalLevel = totalLevel + (fu.fillLevel or 0)
+                    totalCap   = totalCap   + (fu.capacity or 0)
+                end
+                if totalCap > 0 then
+                    fillPct = MathUtil.round(totalLevel / totalCap * 100)
+                end
+            end
+
+            local name = ""
+            if vehicle.getName ~= nil then name = vehicle:getName() or "" end
+
+            table.insert(result, FarmMonitor.obj(
+                "id",      tostring(vehicle.rootNode),
+                "name",    name,
+                "type",    vehicleTypeName(vehicle),
+                "x",       MathUtil.round(x * 10) / 10,
+                "z",       MathUtil.round(z * 10) / 10,
+                "rot",     MathUtil.round(rot * 1000) / 1000,
+                "fillPct", fillPct
+            ))
+        end
+    end
+
+    if g_currentMission.playerSystem ~= nil then
+        for _, player in pairs(g_currentMission.playerSystem.players) do
+            if player ~= nil and player.rootNode ~= nil then
+                local x, _, z = getWorldTranslation(player.rootNode)
+                local playerName = (player.networkInformation and player.networkInformation.playerName) or "Player"
+                table.insert(result, FarmMonitor.obj(
+                    "id",      "player_" .. tostring(player.rootNode),
+                    "name",    playerName,
+                    "type",    "PLAYER",
+                    "x",       MathUtil.round(x * 10) / 10,
+                    "z",       MathUtil.round(z * 10) / 10,
+                    "rot",     0,
+                    "fillPct", nil
+                ))
+            end
+        end
+    end
+
+    return result
 end
 
 -- ---------------------------------------------------------------------------
@@ -1325,6 +1532,22 @@ function FarmMonitor:collectAndSaveFields()
     end
 end
 
+function FarmMonitor:collectAndSaveVehicles()
+    local ok, err = pcall(function()
+        local ts     = getDate("%Y-%m-%dT%H:%M:%S")
+        local farmId = g_currentMission:getFarmId()
+        FarmMonitor:writeJSON(FarmMonitor.paths.vehicles, FarmMonitor.obj(
+            "timestamp",  ts,
+            "farmId",     farmId,
+            "savegameId", FarmMonitor.savegameId,
+            "vehicles",   FarmMonitor:collectVehicles()
+        ))
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR during vehicle collect: " .. tostring(err))
+    end
+end
+
 function FarmMonitor:collectFields()
     local result  = FarmMonitor.arr()
     local farmId  = g_currentMission:getFarmId()
@@ -1420,6 +1643,23 @@ function FarmMonitor:collectFields()
                 soil = computeSoilStatus(field, samplers)
             end
 
+            -- Field polygon
+            local polygon = nil
+            if field.densityMapPolygon ~= nil then
+                local pxArr = FarmMonitor.arr()
+                local pzArr = FarmMonitor.arr()
+                local pts = field.densityMapPolygon
+                if pts.pointsX ~= nil then
+                    for i, v in ipairs(pts.pointsX) do
+                        table.insert(pxArr, MathUtil.round(v * 10) / 10)
+                        table.insert(pzArr, MathUtil.round((pts.pointsZ[i] or 0) * 10) / 10)
+                    end
+                end
+                if #pxArr > 0 then
+                    polygon = FarmMonitor.obj("x", pxArr, "z", pzArr)
+                end
+            end
+
             -- Harvest yield multiplier via engine function
             local yieldBonus = nil
             if fruitTypeIndex ~= nil and mission.getHarvestScaleMultiplier ~= nil then
@@ -1440,6 +1680,9 @@ function FarmMonitor:collectFields()
             table.insert(result, FarmMonitor.obj(
                 "id",              farmland.name or tostring(farmland.id or 0),
                 "farmlandId",      farmland.id or 0,
+                "cx",              cx ~= nil and (MathUtil.round(cx * 10) / 10) or nil,
+                "cz",              cz ~= nil and (MathUtil.round(cz * 10) / 10) or nil,
+                "polygon",         polygon,
                 "area",            MathUtil.round(areaHa * 100) / 100,
                 "fieldArea",       MathUtil.round(fieldAreaHa * 100) / 100,
                 "fruitType",       fruitTypeName,

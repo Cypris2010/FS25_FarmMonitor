@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"encoding/xml"
 	_ "embed"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
 	"net/http"
 	"os"
@@ -61,7 +66,7 @@ func (b *broker) broadcast() {
 // File watcher
 // ---------------------------------------------------------------------------
 
-func watchFiles(files []string, b *broker) {
+func watchFiles(files []string, interval time.Duration, b *broker) {
 	modTimes := make(map[string]time.Time, len(files))
 	for _, f := range files {
 		if info, err := os.Stat(f); err == nil {
@@ -69,7 +74,7 @@ func watchFiles(files []string, b *broker) {
 		}
 	}
 
-	for range time.Tick(2 * time.Second) {
+	for range time.Tick(interval) {
 		changed := false
 		for _, f := range files {
 			info, err := os.Stat(f)
@@ -296,6 +301,291 @@ func handleCommand(dataDir string) http.HandlerFunc {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// DDS decoder (DXT1 / DXT5 / BC7)
+// ---------------------------------------------------------------------------
+
+func rgb565(v uint16) (r, g, b uint8) {
+	r5, g6, b5 := uint8(v>>11), uint8((v>>5)&0x3F), uint8(v&0x1F)
+	return (r5 << 3) | (r5 >> 2), (g6 << 2) | (g6 >> 4), (b5 << 3) | (b5 >> 2)
+}
+
+func dxt1Colors(v0, v1 uint16, force4 bool) [4]color.RGBA {
+	r0, g0, b0 := rgb565(v0)
+	r1, g1, b1 := rgb565(v1)
+	var c [4]color.RGBA
+	c[0] = color.RGBA{r0, g0, b0, 255}
+	c[1] = color.RGBA{r1, g1, b1, 255}
+	if v0 > v1 || force4 {
+		c[2] = color.RGBA{uint8((2*int(r0) + int(r1) + 1) / 3), uint8((2*int(g0) + int(g1) + 1) / 3), uint8((2*int(b0) + int(b1) + 1) / 3), 255}
+		c[3] = color.RGBA{uint8((int(r0) + 2*int(r1) + 1) / 3), uint8((int(g0) + 2*int(g1) + 1) / 3), uint8((int(b0) + 2*int(b1) + 1) / 3), 255}
+	} else {
+		c[2] = color.RGBA{uint8((int(r0) + int(r1)) / 2), uint8((int(g0) + int(g1)) / 2), uint8((int(b0) + int(b1)) / 2), 255}
+		c[3] = color.RGBA{0, 0, 0, 0}
+	}
+	return c
+}
+
+func writeDXT1Block(block []byte, img *image.RGBA, bx, by, imgW, imgH int, force4 bool) {
+	v0 := binary.LittleEndian.Uint16(block[0:2])
+	v1 := binary.LittleEndian.Uint16(block[2:4])
+	colors := dxt1Colors(v0, v1, force4)
+	bits := binary.LittleEndian.Uint32(block[4:8])
+	for py := 0; py < 4; py++ {
+		for px := 0; px < 4; px++ {
+			x, y := bx+px, by+py
+			if x >= imgW || y >= imgH {
+				continue
+			}
+			img.SetRGBA(x, y, colors[(bits>>(uint(py*4+px)*2))&3])
+		}
+	}
+}
+
+func writeDXT5Block(block []byte, img *image.RGBA, bx, by, imgW, imgH int) {
+	a0, a1 := block[0], block[1]
+	var alphas [8]uint8
+	alphas[0], alphas[1] = a0, a1
+	if a0 > a1 {
+		for i := 2; i < 8; i++ {
+			alphas[i] = uint8((int(a0)*(8-i) + int(a1)*(i-1)) / 7)
+		}
+	} else {
+		for i := 2; i < 6; i++ {
+			alphas[i] = uint8((int(a0)*(6-i) + int(a1)*(i-1)) / 5)
+		}
+		alphas[6], alphas[7] = 0, 255
+	}
+	abits := uint64(block[2]) | uint64(block[3])<<8 | uint64(block[4])<<16 |
+		uint64(block[5])<<24 | uint64(block[6])<<32 | uint64(block[7])<<40
+	writeDXT1Block(block[8:16], img, bx, by, imgW, imgH, true)
+	for py := 0; py < 4; py++ {
+		for px := 0; px < 4; px++ {
+			x, y := bx+px, by+py
+			if x >= imgW || y >= imgH {
+				continue
+			}
+			c := img.RGBAAt(x, y)
+			c.A = alphas[(abits>>(uint(py*4+px)*3))&7]
+			img.SetRGBA(x, y, c)
+		}
+	}
+}
+
+func decodeDDS(data []byte) (image.Image, error) {
+	if len(data) < 128 || string(data[0:4]) != "DDS " {
+		return nil, fmt.Errorf("not a DDS file")
+	}
+	imgH := int(binary.LittleEndian.Uint32(data[12:16]))
+	imgW := int(binary.LittleEndian.Uint32(data[16:20]))
+	if imgW <= 0 || imgH <= 0 || imgW > 8192 || imgH > 8192 {
+		return nil, fmt.Errorf("invalid dimensions %dx%d", imgW, imgH)
+	}
+	fourCC := string(data[84:88])
+	img := image.NewRGBA(image.Rect(0, 0, imgW, imgH))
+	numBX, numBY := (imgW+3)/4, (imgH+3)/4
+	off := 128
+	switch fourCC {
+	case "DXT1":
+		for y := 0; y < numBY; y++ {
+			for x := 0; x < numBX; x++ {
+				if off+8 > len(data) {
+					return img, nil
+				}
+				writeDXT1Block(data[off:off+8], img, x*4, y*4, imgW, imgH, false)
+				off += 8
+			}
+		}
+	case "DXT5":
+		for y := 0; y < numBY; y++ {
+			for x := 0; x < numBX; x++ {
+				if off+16 > len(data) {
+					return img, nil
+				}
+				writeDXT5Block(data[off:off+16], img, x*4, y*4, imgW, imgH)
+				off += 16
+			}
+		}
+	case "DX10":
+		if len(data) < 148 {
+			return nil, fmt.Errorf("DDS DX10 header too short")
+		}
+		dxgi := binary.LittleEndian.Uint32(data[128:132])
+		if dxgi != 98 && dxgi != 99 {
+			return nil, fmt.Errorf("unsupported DXGI format %d", dxgi)
+		}
+		off = 148
+		for y := 0; y < numBY; y++ {
+			for x := 0; x < numBX; x++ {
+				if off+16 > len(data) {
+					return img, nil
+				}
+				writeBC7Block(data[off:off+16], img, x*4, y*4, imgW, imgH)
+				off += 16
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported DDS format %q", fourCC)
+	}
+	return img, nil
+}
+
+// ---------------------------------------------------------------------------
+// Map image cache
+// ---------------------------------------------------------------------------
+
+type mapCache struct {
+	mu          sync.RWMutex
+	overviewPNG []byte
+	lastMeta    string // overviewDdsPath from last successful load
+}
+
+func newMapCache() *mapCache { return &mapCache{} }
+
+func (c *mapCache) getPNG() []byte {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.overviewPNG
+}
+
+func (c *mapCache) rebuild(metaPath string) {
+	raw, err := os.ReadFile(metaPath)
+	if err != nil {
+		return
+	}
+	var meta struct {
+		OverviewDdsPath string `json:"overviewDdsPath"`
+	}
+	if err := json.Unmarshal(raw, &meta); err != nil || meta.OverviewDdsPath == "" {
+		return
+	}
+	c.mu.RLock()
+	same := c.lastMeta == meta.OverviewDdsPath
+	c.mu.RUnlock()
+	if same {
+		return
+	}
+	ddsData, err := os.ReadFile(meta.OverviewDdsPath)
+	if err != nil {
+		log.Printf("[map] cannot read overview.dds: %v", err)
+		return
+	}
+	img, err := decodeDDS(ddsData)
+	if err != nil {
+		log.Printf("[map] DDS decode failed: %v", err)
+		return
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		log.Printf("[map] PNG encode failed: %v", err)
+		return
+	}
+	c.mu.Lock()
+	c.overviewPNG = buf.Bytes()
+	c.lastMeta = meta.OverviewDdsPath
+	c.mu.Unlock()
+	log.Printf("[map] overview.dds loaded and cached (%d bytes PNG)", buf.Len())
+}
+
+func watchAndRebuildMap(metaPath string, cache *mapCache) {
+	var lastMod time.Time
+	if info, err := os.Stat(metaPath); err == nil {
+		lastMod = info.ModTime()
+		cache.rebuild(metaPath)
+	}
+	for range time.Tick(5 * time.Second) {
+		info, err := os.Stat(metaPath)
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(lastMod) {
+			lastMod = info.ModTime()
+			go cache.rebuild(metaPath)
+		}
+	}
+}
+
+func handleVehicles(dataDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Cache-Control", "no-store")
+		data, err := os.ReadFile(filepath.Join(dataDir, "vehicles.json"))
+		if err != nil {
+			w.Write([]byte("null"))
+			return
+		}
+		w.Write(data)
+	}
+}
+
+func handleVehicleEvents(b *broker) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "SSE not supported", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		fmt.Fprintf(w, "data: connected\n\n")
+		flusher.Flush()
+		ch := b.subscribe()
+		defer b.unsubscribe(ch)
+		for {
+			select {
+			case <-ch:
+				fmt.Fprintf(w, "data: update\n\n")
+				flusher.Flush()
+			case <-r.Context().Done():
+				return
+			}
+		}
+	}
+}
+
+func handleMapOverview(cache *mapCache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data := cache.getPNG()
+		if data == nil {
+			http.Error(w, "overview not available yet", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		w.Write(data)
+	}
+}
+
+func handleMapHeightmap(dataDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metaPath := filepath.Join(dataDir, "mapMeta.json")
+		raw, err := os.ReadFile(metaPath)
+		if err != nil {
+			http.Error(w, "mapMeta.json not found", http.StatusNotFound)
+			return
+		}
+		var meta struct {
+			SavegameDir string `json:"savegameDir"`
+		}
+		if err := json.Unmarshal(raw, &meta); err != nil || meta.SavegameDir == "" {
+			http.Error(w, "savegameDir not set", http.StatusNotFound)
+			return
+		}
+		hmPath := filepath.Join(meta.SavegameDir, "terrain.heightmap.png")
+		data, err := os.ReadFile(hmPath)
+		if err != nil {
+			http.Error(w, "heightmap not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Write(data)
+	}
+}
+
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -315,6 +605,9 @@ func handleData(dataDir string) http.HandlerFunc {
 		Goods       json.RawMessage `json:"goods"`
 		Fields      json.RawMessage `json:"fields"`
 		FruitTypes  json.RawMessage `json:"fruitTypes"`
+		MapMeta     json.RawMessage `json:"mapMeta"`
+		Hotspots    json.RawMessage `json:"hotspots"`
+		Vehicles    json.RawMessage `json:"vehicles"`
 	}
 
 	readFile := func(name string) json.RawMessage {
@@ -337,6 +630,9 @@ func handleData(dataDir string) http.HandlerFunc {
 			Goods:       readFile("goods.json"),
 			Fields:      readFile("fields.json"),
 			FruitTypes:  readFile("fruitTypes.json"),
+			MapMeta:     readFile("mapMeta.json"),
+			Hotspots:    readFile("hotspots.json"),
+			Vehicles:    readFile("vehicles.json"),
 		})
 	}
 }
@@ -445,7 +741,8 @@ func main() {
 		log.Fatal("Cannot determine data directory. Use -data to specify it manually.")
 	}
 
-	jsonFiles := []string{
+	// Slow-changing files: 2s poll interval
+	slowFiles := []string{
 		filepath.Join(dataDir, "silos.json"),
 		filepath.Join(dataDir, "productions.json"),
 		filepath.Join(dataDir, "husbandries.json"),
@@ -454,18 +751,31 @@ func main() {
 		filepath.Join(dataDir, "goods.json"),
 		filepath.Join(dataDir, "fields.json"),
 		filepath.Join(dataDir, "fruitTypes.json"),
+		filepath.Join(dataDir, "mapMeta.json"),
+		filepath.Join(dataDir, "hotspots.json"),
 	}
 
 	b := newBroker()
-	go watchFiles(jsonFiles, b)
+	go watchFiles(slowFiles, 2*time.Second, b)
+
+	// Fast-changing file: 500ms poll interval
+	vb := newBroker()
+	go watchFiles([]string{filepath.Join(dataDir, "vehicles.json")}, 500*time.Millisecond, vb)
+
+	mc := newMapCache()
+	go watchAndRebuildMap(filepath.Join(dataDir, "mapMeta.json"), mc)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleDashboard)
 	mux.HandleFunc("/api/data", handleData(dataDir))
 	mux.HandleFunc("/api/events", handleEvents(b))
+	mux.HandleFunc("/api/vehicles", handleVehicles(dataDir))
+	mux.HandleFunc("/api/vehicle-events", handleVehicleEvents(vb))
 	mux.HandleFunc("/api/settings", handleSettings())
 	mux.HandleFunc("/api/savegame/{savegameId}", handleSavegame())
 	mux.HandleFunc("/api/command", handleCommand(dataDir))
+	mux.HandleFunc("/api/map/overview", handleMapOverview(mc))
+	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
 
 	log.Printf("Settings: %s", settingsPath())
 

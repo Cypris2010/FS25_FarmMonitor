@@ -1447,6 +1447,110 @@
   }
   @media (max-width: 860px)  { .fields-quicknav { display: none; } }
   @media (max-width: 480px)  { .fields-grid { grid-template-columns: 1fr; } }
+
+  /* ── Map view ── */
+  #view-map {
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    background: #080e08;
+    height: calc(100vh - 136px); /* 100vh - app-top(18) - app-bottom(22) - topbar(78) - gap(18) */
+    min-height: 300px;
+    flex-shrink: 0;
+  }
+  @media (max-width: 860px) {
+    #view-map { height: calc(100vh - 186px); } /* mobile: pad-top(12)+pad-bottom(82)+topbar(78)+gap(14) */
+  }
+  .map-container {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    user-select: none;
+  }
+  .map-container.dragging { cursor: grabbing; }
+  .map-inner {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+  }
+  #map-overview {
+    display: block;
+    width: 1024px;
+    height: 1024px;
+    image-rendering: auto;
+    pointer-events: none;
+  }
+  #map-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1024px;
+    height: 1024px;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .vehicle-pos {
+    pointer-events: all;
+    cursor: pointer;
+    transition: transform 2s linear;
+  }
+  .vehicle-rot-scale {
+    pointer-events: all;
+  }
+  .map-controls {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 10;
+  }
+  .map-btn {
+    width: 36px; height: 36px;
+    background: rgba(30,40,30,.85);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px;
+    color: var(--fg);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .map-btn:hover { background: rgba(50,70,50,.9); }
+  .map-legend {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(20,28,20,.85);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.4);
+  }
+  .map-status {
+    position: absolute;
+    top: 16px; left: 16px;
+    background: rgba(20,28,20,.85);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    z-index: 10;
+  }
+  .map-status strong { color: var(--fg); }
 </style>
 </head>
 <body>
@@ -1475,6 +1579,9 @@
       </button>
       <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+      </button>
+      <button class="nav-btn" data-view="map" aria-label="Karte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 20l-6-3V4l6 3"/><path d="M9 20l6-3V4l-6 3"/><path d="M15 17l6 3V7l-6-3"/></svg>
       </button>
     </nav>
     <div class="nav-spacer"></div>
@@ -1761,6 +1868,37 @@
       </section>
     </div>
 
+    <!-- View: Karte -->
+    <div id="view-map" class="view" style="display:none; flex-direction:column;">
+      <div class="map-container" id="map-container">
+        <div class="map-inner" id="map-inner">
+          <img id="map-overview" alt="Kartenübersicht" />
+          <svg id="map-svg" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+            <g id="layer-fields"></g>
+            <g id="layer-hotspots"></g>
+            <g id="layer-vehicles"></g>
+          </svg>
+        </div>
+      </div>
+      <div class="map-status" id="map-status">Lade Karte …</div>
+      <div class="map-controls">
+        <button class="map-btn" id="map-zoom-in"  title="Rein">+</button>
+        <button class="map-btn" id="map-zoom-out" title="Raus">−</button>
+        <button class="map-btn" id="map-center"   title="Zentrieren">⌖</button>
+      </div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Erntereif</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Wächst</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Vertrocknet</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Leer</div>
+        <div style="border-top:1px solid rgba(255,255,255,.1);margin:3px 0"></div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Traktor</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Mähdrescher</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Anhänger/Gerät</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1786,6 +1924,9 @@
   </button>
   <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
+  </button>
+  <button class="nav-btn" data-view="map" aria-label="Karte">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 20l-6-3V4l6 3"/><path d="M9 20l6-3V4l-6 3"/><path d="M15 17l6 3V7l-6-3"/></svg>
   </button>
 </nav>
 
@@ -3460,6 +3601,7 @@ function renderGoods(data) {
 // ═══════════════════════════════════════════════════════════
 
 function showView(name) {
+  if (currentView === 'map' && name !== 'map') stopVehicleTracking();
   currentView = name;
   document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
   const el = document.getElementById(`view-${name}`);
@@ -3470,6 +3612,7 @@ function showView(name) {
   });
 
   if (appData) rerenderCurrentView();
+  if (name === 'map') startVehicleTracking();
 }
 
 function renderSettings() {
@@ -3696,6 +3839,262 @@ async function saveServerSettings() {
   if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000); }
 }
 
+// ═══════════════════════════════════════════════════════════
+// Map view
+// ═══════════════════════════════════════════════════════════
+
+const MAP_PX = 1024;
+let mapZoom = 1, mapPanX = 0, mapPanY = 0;
+let mapInitialized = false;
+let vehicleEventSource = null;
+
+function worldToMap(wx, wz, terrainSize) {
+  // overview.dds covers 2× terrainSize (terrain + decorative border around it)
+  const s = terrainSize * 2;
+  return {
+    x: (wx / s + 0.5) * MAP_PX,
+    y: (wz / s + 0.5) * MAP_PX,
+  };
+}
+
+function applyMapTransform() {
+  document.getElementById('map-inner').style.transform =
+    `translate(${mapPanX}px,${mapPanY}px) scale(${mapZoom})`;
+  const iconS = (1 / mapZoom).toFixed(4);
+  document.querySelectorAll('.vehicle-rot-scale').forEach(el => {
+    el.style.transform = `rotate(${el.dataset.deg}deg) scale(${iconS})`;
+  });
+  document.querySelectorAll('.hotspot-pin').forEach(el => {
+    el.style.transform = `translate(${el.dataset.x}px,${el.dataset.y}px) scale(${iconS})`;
+  });
+}
+
+function centerMap() {
+  const c = document.getElementById('map-container');
+  // overview.dds convention: playable terrain = center 50% of image (SVG px 256–768)
+  const PLAY_PX  = MAP_PX * 0.5;    // 512px playable area in SVG space
+  const PLAY_OFF = MAP_PX * 0.25;   // 256px offset to left/top edge of playable area
+  mapZoom = Math.min(c.clientWidth, c.clientHeight) / PLAY_PX * 0.92;
+  mapPanX = (c.clientWidth  - PLAY_PX * mapZoom) / 2 - PLAY_OFF * mapZoom;
+  mapPanY = (c.clientHeight - PLAY_PX * mapZoom) / 2 - PLAY_OFF * mapZoom;
+  applyMapTransform();
+}
+
+function initMapInteraction() {
+  const container = document.getElementById('map-container');
+  let dragging = false, dragX, dragY, panX0, panY0;
+
+  container.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r   = container.getBoundingClientRect();
+    const mx  = e.clientX - r.left;
+    const my  = e.clientY - r.top;
+    const d   = e.deltaY > 0 ? 0.85 : 1.18;
+    const nz  = Math.min(Math.max(mapZoom * d, 0.15), 30);
+    mapPanX   = mx - (mx - mapPanX) * (nz / mapZoom);
+    mapPanY   = my - (my - mapPanY) * (nz / mapZoom);
+    mapZoom   = nz;
+    applyMapTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    dragging = true; dragX = e.clientX; dragY = e.clientY;
+    panX0 = mapPanX; panY0 = mapPanY;
+    container.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    mapPanX = panX0 + e.clientX - dragX;
+    mapPanY = panY0 + e.clientY - dragY;
+    applyMapTransform();
+  });
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    document.getElementById('map-container').classList.remove('dragging');
+  });
+
+  document.getElementById('map-zoom-in') .addEventListener('click', () => { mapZoom = Math.min(mapZoom * 1.3, 30); applyMapTransform(); });
+  document.getElementById('map-zoom-out').addEventListener('click', () => { mapZoom = Math.max(mapZoom * 0.77, 0.15); applyMapTransform(); });
+  document.getElementById('map-center')  .addEventListener('click', centerMap);
+}
+
+function renderFieldPolygons(fieldsData, terrainSize) {
+  const layer = document.getElementById('layer-fields');
+  layer.innerHTML = '';
+  for (const f of (fieldsData?.fields || [])) {
+    if (!f.polygon?.x?.length) continue;
+    const pts = f.polygon.x.map((x, i) => {
+      const p = worldToMap(x, f.polygon.z[i], terrainSize);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ');
+    let fill = 'rgba(34,197,94,0.22)';
+    let stroke = 'rgba(255,255,255,0.18)';
+    if (f.harvestReady)     { fill = 'rgba(245,158,11,0.45)'; stroke = 'rgba(245,158,11,0.6)'; }
+    else if (f.withered)    { fill = 'rgba(239,68,68,0.45)';  stroke = 'rgba(239,68,68,0.5)'; }
+    else if (!f.fruitType)  { fill = 'rgba(100,100,100,0.18)'; }
+    const el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    el.setAttribute('points', pts);
+    el.setAttribute('fill', fill);
+    el.setAttribute('stroke', stroke);
+    el.setAttribute('stroke-width', '1.5');
+    const title = document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent = `Feld ${f.id}${f.fruitTitle ? ' – ' + f.fruitTitle : ''}`;
+    el.appendChild(title);
+    layer.appendChild(el);
+  }
+}
+
+function renderHotspotPins(hotspotsData, terrainSize) {
+  const layer = document.getElementById('layer-hotspots');
+  layer.innerHTML = '';
+  const colors = {
+    SELLING_STATION:'#22c55e', PRODUCTION_POINT:'#3b82f6',
+    COW:'#a78058', PIG:'#f97316', SHEEP:'#d1d5db',
+    CHICKEN:'#fde68a', HORSE:'#b45309', GOOSE:'#94a3b8',
+    RABBIT:'#c084fc', BEE:'#fbbf24',
+  };
+  for (const hs of (hotspotsData?.hotspots || [])) {
+    if (hs.type === 'MISC') continue;
+    const p = worldToMap(hs.x, hs.z, terrainSize);
+    const color = colors[hs.type] || 'rgba(255,255,255,0.5)';
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.classList.add('hotspot-pin');
+    g.dataset.x = p.x.toFixed(1);
+    g.dataset.y = p.y.toFixed(1);
+    g.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px) scale(${(1/mapZoom).toFixed(4)})`;
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', '0');
+    c.setAttribute('cy', '0');
+    c.setAttribute('r', '7');
+    c.setAttribute('fill', color);
+    c.setAttribute('stroke', 'rgba(0,0,0,0.5)');
+    c.setAttribute('stroke-width', '1');
+    const t = document.createElementNS('http://www.w3.org/2000/svg','title');
+    t.textContent = `${hs.name} (${hs.type})`;
+    g.appendChild(c); g.appendChild(t);
+    layer.appendChild(g);
+  }
+}
+
+function updateVehicles(vehiclesData, terrainSize) {
+  const layer = document.getElementById('layer-vehicles');
+  const vehicles = vehiclesData?.vehicles || [];
+  const seen = new Set();
+  const typeColor = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
+                      TOOL:'#6b7280', TRUCK:'#92400e', PLAYER:'#3b82f6', VEHICLE:'#22c55e' };
+  const typeSize  = { TRACTOR:8, HARVESTER:10, TRAILER:6, TOOL:4, TRUCK:8, PLAYER:10, VEHICLE:7 };
+
+  for (const v of vehicles) {
+    seen.add(String(v.id));
+    const p   = worldToMap(v.x, v.z, terrainSize);
+    const deg = ((v.rot || 0) * 180 / Math.PI).toFixed(1);
+    const tx  = p.x.toFixed(1);
+    const ty  = p.y.toFixed(1);
+
+    let el = document.getElementById('vm-' + v.id);
+    if (!el) {
+      const color  = typeColor[v.type] || '#22c55e';
+      const r      = typeSize[v.type]  || 5;
+      const iconS  = (1 / mapZoom).toFixed(4);
+
+      // Outer: translate only, smooth movement transition
+      el = document.createElementNS('http://www.w3.org/2000/svg','g');
+      el.id = 'vm-' + v.id;
+      el.classList.add('vehicle-pos');
+
+      // Inner: rotate + scale (no transition — zoom updates this instantly)
+      const inner = document.createElementNS('http://www.w3.org/2000/svg','g');
+      inner.classList.add('vehicle-rot-scale');
+      inner.dataset.deg = deg;
+      inner.style.transform = `rotate(${deg}deg) scale(${iconS})`;
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('r', r);
+      circle.setAttribute('fill', color);
+      circle.setAttribute('stroke', '#000');
+      circle.setAttribute('stroke-width', '1');
+      inner.appendChild(circle);
+
+      if (v.type !== 'TOOL' && v.type !== 'TRAILER') {
+        const arrow = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+        arrow.setAttribute('points', `0,${-(r+6)} -3,${-(r)} 3,${-(r)}`);
+        arrow.setAttribute('fill', color);
+        arrow.setAttribute('stroke','#000');
+        arrow.setAttribute('stroke-width','0.5');
+        inner.appendChild(arrow);
+      }
+
+      const title = document.createElementNS('http://www.w3.org/2000/svg','title');
+      inner.appendChild(title);
+      el.appendChild(inner);
+
+      el.style.transition = 'none';
+      el.style.transform  = `translate(${tx}px,${ty}px)`;
+      layer.appendChild(el);
+      requestAnimationFrame(() => { el.style.transition = 'transform 2s linear'; });
+    } else {
+      el.style.transform = `translate(${tx}px,${ty}px)`;
+      const inner = el.querySelector('.vehicle-rot-scale');
+      if (inner) {
+        inner.dataset.deg = deg;
+        inner.style.transform = `rotate(${deg}deg) scale(${(1/mapZoom).toFixed(4)})`;
+      }
+    }
+
+    const title = el.querySelector('title');
+    if (title) {
+      let txt = v.name || v.type;
+      if (v.fillPct != null) txt += ` (${v.fillPct}%)`;
+      title.textContent = txt;
+    }
+  }
+
+  layer.querySelectorAll('[id^="vm-"]').forEach(el => {
+    if (!seen.has(el.id.slice(3))) el.remove();
+  });
+
+  const n = vehicles.filter(v => v.type !== 'TOOL' && v.type !== 'TRAILER').length;
+  document.getElementById('map-status').innerHTML =
+    `<strong>${appData?.mapMeta?.mapName || 'Karte'}</strong> &nbsp;·&nbsp; ${n} Fahrzeuge`;
+}
+
+function renderMap(data) {
+  if (!data?.mapMeta) return;
+  const terrainSize = data.mapMeta.terrainSize || 2048;
+
+  if (!mapInitialized) {
+    mapInitialized = true;
+    const img = document.getElementById('map-overview');
+    img.src = '/api/map/overview?' + Date.now();
+    initMapInteraction();
+    renderFieldPolygons(data.fields, terrainSize);
+    renderHotspotPins(data.hotspots, terrainSize);
+    centerMap();
+  }
+
+  updateVehicles(data.vehicles, terrainSize);
+}
+
+function startVehicleTracking() {
+  if (vehicleEventSource) return;
+  vehicleEventSource = new EventSource('/api/vehicle-events');
+  vehicleEventSource.onmessage = async () => {
+    try {
+      const res  = await fetch('/api/vehicles');
+      const data = await res.json();
+      if (data && appData?.mapMeta) {
+        appData.vehicles = data;
+        updateVehicles(data, appData.mapMeta.terrainSize || 2048);
+      }
+    } catch (e) {}
+  };
+}
+
+function stopVehicleTracking() {
+  if (vehicleEventSource) { vehicleEventSource.close(); vehicleEventSource = null; }
+}
+
 function rerenderCurrentView() {
   if (!appData) return;
   if (currentView === 'home')        renderHome(appData);
@@ -3706,6 +4105,7 @@ function rerenderCurrentView() {
   if (currentView === 'fields')      renderFields(appData.fields);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
+  if (currentView === 'map')         renderMap(appData);
 }
 
 // ═══════════════════════════════════════════════════════════
