@@ -536,11 +536,15 @@ function FarmMonitor:collectSilos()
                 if spec ~= nil and spec.fillUnits ~= nil and spec.fillUnits[1] ~= nil then
                     local fu = spec.fillUnits[1]
                     if fu.fillType ~= nil and fu.fillLevel ~= nil and fu.fillLevel > 0 then
-                        local px, _, pz = getWorldTranslation(vehicle.rootNode)
+                        local px, py, pz = getWorldTranslation(vehicle.rootNode)
                         local bestId, bestName = FarmMonitor:nearestAnchor(anchors, px, pz, RADIUS2)
                         if groups[bestId] == nil then
-                            groups[bestId] = { name = bestName, byFillType = {} }
+                            groups[bestId] = { name = bestName, byFillType = {}, sumX = 0, sumY = 0, sumZ = 0, palletCount = 0 }
                         end
+                        groups[bestId].sumX = groups[bestId].sumX + px
+                        groups[bestId].sumY = groups[bestId].sumY + py
+                        groups[bestId].sumZ = groups[bestId].sumZ + pz
+                        groups[bestId].palletCount = groups[bestId].palletCount + 1
                         local ftIdx = fu.fillType
                         if groups[bestId].byFillType[ftIdx] == nil then
                             groups[bestId].byFillType[ftIdx] = { level = 0, count = 0 }
@@ -564,10 +568,17 @@ function FarmMonitor:collectSilos()
             })
         end
         if #contents > 0 then
+            local n  = group.palletCount
+            local cx = MathUtil.round(group.sumX / n * 100) / 100
+            local cy = MathUtil.round(group.sumY / n * 100) / 100
+            local cz = MathUtil.round(group.sumZ / n * 100) / 100
             table.insert(result, {
                 uniqueId = "pallets_" .. groupId,
                 name     = group.name,
                 type     = "loosePallets",
+                posX     = cx,
+                posY     = cy,
+                posZ     = cz,
                 contents = contents,
             })
         end
@@ -1625,6 +1636,9 @@ function FarmMonitor:processCommands()
             fillType = getXMLString(xmlId, base .. "#fillType") or "",
             mode     = getXMLString(xmlId, base .. "#mode")     or "",
             amount   = getXMLString(xmlId, base .. "#amount")   or "",
+            x        = getXMLString(xmlId, base .. "#x")        or "",
+            y        = getXMLString(xmlId, base .. "#y")        or "",
+            z        = getXMLString(xmlId, base .. "#z")        or "",
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -1649,8 +1663,9 @@ end
 
 function FarmMonitor:dispatchCommand(cmd)
     local handlers = {
-        ["production.setOutputMode"] = FarmMonitor.cmdSetProductionOutputMode,
-        ["production.spawnPallets"]  = FarmMonitor.cmdSpawnPallets,
+        ["production.setOutputMode"]      = FarmMonitor.cmdSetProductionOutputMode,
+        ["production.spawnPallets"]       = FarmMonitor.cmdSpawnPallets,
+        ["player.teleportToPlaceable"]    = FarmMonitor.cmdTeleportToPlaceable,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -1681,6 +1696,40 @@ function FarmMonitor:cmdSetProductionOutputMode(cmd)
 
     pp:setOutputDistributionMode(ft.index, mode)
     ProductionPointOutputModeEvent.sendEvent(pp, ft.index, mode, true)
+end
+
+function FarmMonitor:cmdTeleportToPlaceable(cmd)
+    if g_localPlayer == nil then error("No local player (dedicated server?)") end
+
+    local x, y, z
+
+    -- Loose pallets: coordinates sent directly in the command
+    if cmd.x ~= "" and cmd.y ~= "" and cmd.z ~= "" then
+        x = tonumber(cmd.x)
+        y = tonumber(cmd.y)
+        z = tonumber(cmd.z)
+    else
+        local placeable = g_currentMission.placeableSystem:getPlaceableByUniqueId(cmd.uniqueId)
+        if placeable == nil then error("Placeable not found: " .. tostring(cmd.uniqueId)) end
+
+        -- Use the in-game teleport node defined in the placeable's XML (entry point)
+        if placeable.getHotspot ~= nil then
+            local hotspot = placeable:getHotspot(1)
+            if hotspot ~= nil and hotspot.getTeleportWorldPosition ~= nil then
+                x, y, z = hotspot:getTeleportWorldPosition()
+            end
+        end
+
+        -- Fallback: rootNode position + terrain height
+        if x == nil and placeable.rootNode ~= nil then
+            x, _, z = getWorldTranslation(placeable.rootNode)
+            y = getTerrainHeightAtWorldPos(g_terrainNode, x, 0, z)
+        end
+    end
+
+    if x == nil then error("Cannot determine teleport position for: " .. tostring(cmd.uniqueId)) end
+
+    g_localPlayer:teleportTo(x, (y or 0) + 0.2, z)
 end
 
 function FarmMonitor:cmdSpawnPallets(cmd)

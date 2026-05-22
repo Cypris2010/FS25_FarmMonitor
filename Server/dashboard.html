@@ -796,6 +796,23 @@
   .vis-btn.is-visible { color: var(--green); }
   .vis-btn.is-hidden  { color: var(--muted); }
   .vis-btn:hover { opacity: .7; }
+  .tp-btn {
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: auto;
+    color: var(--muted);
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2.5px solid currentColor;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: .85;
+    transition: opacity .15s, transform .15s;
+    line-height: 0;
+  }
+  .tp-btn:hover { opacity: 1; transform: scale(1.1); }
 
   /* ── Hidden card in edit mode ── */
   .card-edit-hidden { opacity: .38; }
@@ -2134,6 +2151,23 @@ function visBtn(uniqueId) {
   return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleVisibility('${uniqueId}')" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
 }
 
+const _tpIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>`;
+
+function teleportBtn(uniqueId, x, y, z) {
+  if (x != null) {
+    return `<button class="tp-btn" onclick="sendTeleport(null,${x},${y},${z})" title="Teleportieren">${_tpIcon}</button>`;
+  }
+  if (!uniqueId) return '';
+  return `<button class="tp-btn" onclick="sendTeleport('${uniqueId}')" title="Teleportieren">${_tpIcon}</button>`;
+}
+
+async function sendTeleport(uniqueId, x, y, z) {
+  const body = (x != null)
+    ? { cmd: 'player.teleportToPlaceable', x: String(x), y: String(y), z: String(z) }
+    : { cmd: 'player.teleportToPlaceable', uniqueId };
+  await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+}
+
 function visFieldBtn(farmlandId) {
   if (!editMode || !farmlandId) return '';
   const visible = isFieldVisible(farmlandId);
@@ -2298,7 +2332,7 @@ function renderHusbandryCard(h, idx) {
           <h3>${h.name}</h3>
           <span class="animal-type-tag">${animalName(h.animalType)}</span>
         </div>
-        ${h.uniqueId ? visBtn(h.uniqueId) : ''}
+        ${h.uniqueId ? visBtn(h.uniqueId) : ''}${h.uniqueId ? teleportBtn(h.uniqueId) : ''}
       </div>
       ${healthHtml}
       ${occHtml}
@@ -2503,7 +2537,7 @@ function renderSilos(data) {
 
     return `
       <article id="silo-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}">
-        <h3>${s.type === 'loosePallets' ? 'Paletten: ' + s.name : s.name} ${typeBadge}${visBtn(s.uniqueId)}</h3>
+        <h3>${s.type === 'loosePallets' ? 'Paletten: ' + s.name : s.name} ${typeBadge}${visBtn(s.uniqueId)}${s.type === 'loosePallets' ? teleportBtn(null, s.posX, s.posY, s.posZ) : teleportBtn(s.uniqueId)}</h3>
         ${contents}
       </article>`;
   }).join('');
@@ -2542,7 +2576,7 @@ function renderProductions(data) {
   el.innerHTML = prodsToShow.map((pp, idx) => {
     const hidden = !isVisible(pp.uniqueId);
     const activeChains = (pp.productions || []).filter(c => c.status !== 'inactive');
-    let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}</h3>`;
+    let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}${teleportBtn(pp.uniqueId)}</h3>`;
     const relevantInputs = (pp.inputs || []).filter(i => i.level > 0 || i.needed);
     if (relevantInputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
