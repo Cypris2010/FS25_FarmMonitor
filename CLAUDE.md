@@ -8,6 +8,7 @@ A Farming Simulator 25 mod that exports live farm data to JSON and serves a loca
 @ai/api_ts_stockcheck.md
 @ai/api_field_states.md
 @ai/api_growth_stages.md
+@ai/api_vehicles.md
 @ai/multiplayer_analysis.md
 
 ## Architecture
