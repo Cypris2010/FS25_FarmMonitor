@@ -2234,6 +2234,8 @@ function FarmMonitor:dispatchCommand(cmd)
         ["production.setOutputMode"]      = FarmMonitor.cmdSetProductionOutputMode,
         ["production.spawnPallets"]       = FarmMonitor.cmdSpawnPallets,
         ["player.teleportToPlaceable"]    = FarmMonitor.cmdTeleportToPlaceable,
+        ["vehicle.enter"]                 = FarmMonitor.cmdEnterVehicle,
+        ["vehicle.teleport"]              = FarmMonitor.cmdTeleportToVehicle,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -2268,6 +2270,10 @@ end
 
 function FarmMonitor:cmdTeleportToPlaceable(cmd)
     if g_localPlayer == nil then error("No local player (dedicated server?)") end
+    -- Leave vehicle before teleporting (teleportTo has no effect while in a vehicle)
+    if g_localPlayer.leaveVehicle ~= nil then
+        pcall(function() g_localPlayer:leaveVehicle() end)
+    end
 
     local x, y, z
 
@@ -2298,6 +2304,56 @@ function FarmMonitor:cmdTeleportToPlaceable(cmd)
     if x == nil then error("Cannot determine teleport position for: " .. tostring(cmd.uniqueId)) end
 
     g_localPlayer:teleportTo(x, (y or 0) + 0.2, z)
+end
+
+function FarmMonitor:cmdEnterVehicle(cmd)
+    if g_localPlayer == nil then error("No local player (dedicated server?)") end
+    -- Find vehicle by rootNode id
+    local targetId = cmd.uniqueId
+    local vehicle = nil
+    for _, v in pairs(g_currentMission.vehicleSystem.vehicles) do
+        if v ~= nil and v.rootNode ~= nil and tostring(v.rootNode) == targetId then
+            vehicle = v
+            break
+        end
+    end
+    if vehicle == nil then error("Vehicle not found: " .. tostring(targetId)) end
+    -- Always enter the root vehicle of the attachment chain
+    local rootVehicle = vehicle
+    if vehicle.rootVehicle ~= nil then rootVehicle = vehicle.rootVehicle end
+    g_localPlayer:requestToEnterVehicle(rootVehicle)
+end
+
+function FarmMonitor:cmdTeleportToVehicle(cmd)
+    if g_localPlayer == nil then error("No local player (dedicated server?)") end
+    -- Leave vehicle before teleporting
+    if g_localPlayer.leaveVehicle ~= nil then
+        pcall(function() g_localPlayer:leaveVehicle() end)
+    end
+    local targetId = cmd.uniqueId
+    local vehicle = nil
+    for _, v in pairs(g_currentMission.vehicleSystem.vehicles) do
+        if v ~= nil and v.rootNode ~= nil and tostring(v.rootNode) == targetId then
+            vehicle = v
+            break
+        end
+    end
+    if vehicle == nil then error("Vehicle not found: " .. tostring(targetId)) end
+
+    local originX, originY, originZ = getWorldTranslation(vehicle.rootNode)
+    local forwardX, forwardY, forwardZ = localDirectionToWorld(vehicle.rootNode, 0, 0, 1)
+    -- Normalize forward vector
+    local len = math.sqrt(forwardX*forwardX + forwardY*forwardY + forwardZ*forwardZ)
+    if len > 0.0001 then
+        forwardX, forwardY, forwardZ = forwardX/len, forwardY/len, forwardZ/len
+    else
+        forwardX, forwardY, forwardZ = 0, 0, 1
+    end
+    -- Teleport 6m in front of the vehicle
+    local targetX = originX + forwardX * 6
+    local targetZ = originZ + forwardZ * 6
+    local targetY = getTerrainHeightAtWorldPos(g_terrainNode, targetX, 0, targetZ) + 0.2
+    g_localPlayer:teleportTo(targetX, targetY, targetZ)
 end
 
 function FarmMonitor:cmdSpawnPallets(cmd)
