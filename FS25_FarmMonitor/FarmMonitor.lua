@@ -9,8 +9,10 @@ FarmMonitor.updateInterval    = 10000  -- milliseconds between exports
 FarmMonitor.timer             = 0
 FarmMonitor.fieldInterval     = 60000  -- milliseconds between field exports
 FarmMonitor.fieldTimer        = 60000  -- start at max so first export fires immediately
-FarmMonitor.vehicleInterval   = 2000   -- milliseconds between vehicle exports
-FarmMonitor.vehicleTimer      = 0
+FarmMonitor.vehicleInterval     = 2000   -- milliseconds between vehicle exports
+FarmMonitor.vehicleTimer        = 0
+FarmMonitor.vehicleMetaInterval = 10000  -- milliseconds between vehicle meta exports
+FarmMonitor.vehicleMetaTimer    = 10000  -- start at max so first export fires immediately
 FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
 FarmMonitor.commandTimer      = 0
 FarmMonitor.paths             = {}
@@ -18,7 +20,8 @@ FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
 FarmMonitor.fruitTypesExported  = false
 FarmMonitor.mapMetaExported     = false
-FarmMonitor.hotspotsExported    = false
+FarmMonitor.hotspotsExported          = false
+FarmMonitor.vehicleCategoriesExported = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
@@ -45,6 +48,8 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.mapMeta      = outputDir .. "mapMeta.json"
     FarmMonitor.paths.hotspots     = outputDir .. "hotspots.json"
     FarmMonitor.paths.vehicles     = outputDir .. "vehicles.json"
+    FarmMonitor.paths.vehicleMeta       = outputDir .. "vehicleMeta.json"
+    FarmMonitor.paths.vehicleCategories = outputDir .. "vehicleCategories.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
@@ -69,9 +74,11 @@ function FarmMonitor:update(dt)
         FarmMonitor.animalFoodExported = false
         FarmMonitor.fruitTypesExported = false
         FarmMonitor.mapMetaExported    = false
-        FarmMonitor.hotspotsExported   = false
+        FarmMonitor.hotspotsExported          = false
+        FarmMonitor.vehicleCategoriesExported = false
         FarmMonitor.timer              = 0
-        FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval  -- trigger field export on next tick
+        FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval      -- trigger field export on next tick
+        FarmMonitor.vehicleMetaTimer   = FarmMonitor.vehicleMetaInterval -- trigger meta export on next tick
     end
 
     if FarmMonitor.savegameName == nil then
@@ -103,6 +110,13 @@ function FarmMonitor:update(dt)
         FarmMonitor.hotspotsExported = true
     end
 
+    -- vehicleCategories: retry each tick until shop system is ready
+    if not FarmMonitor.vehicleCategoriesExported then
+        if FarmMonitor:exportVehicleCategories() then
+            FarmMonitor.vehicleCategoriesExported = true
+        end
+    end
+
     FarmMonitor.timer = FarmMonitor.timer + dt
     if FarmMonitor.timer >= FarmMonitor.updateInterval then
         FarmMonitor.timer = 0
@@ -119,6 +133,12 @@ function FarmMonitor:update(dt)
     if FarmMonitor.vehicleTimer >= FarmMonitor.vehicleInterval then
         FarmMonitor.vehicleTimer = 0
         FarmMonitor:collectAndSaveVehicles()
+    end
+
+    FarmMonitor.vehicleMetaTimer = FarmMonitor.vehicleMetaTimer + dt
+    if FarmMonitor.vehicleMetaTimer >= FarmMonitor.vehicleMetaInterval then
+        FarmMonitor.vehicleMetaTimer = 0
+        FarmMonitor:collectAndSaveVehicleMeta()
     end
 
     FarmMonitor.commandTimer = FarmMonitor.commandTimer + dt
@@ -175,6 +195,68 @@ function FarmMonitor:collectAndSave()
     if not ok then
         print("[FarmMonitor] ERROR during collect: " .. tostring(err))
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Vehicle category registry  (written once; retries until shop is ready)
+-- Returns true on success, false if shop not yet available
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportVehicleCategories()
+    local ok, result = pcall(function()
+        local shopMenu = g_gui and g_gui.screenControllers and g_gui.screenControllers[ShopMenu]
+        if shopMenu == nil then return false end
+        local vehiclePage = shopMenu.pageShopVehicles
+        if vehiclePage == nil then return false end
+
+        -- Sections (VEHICLES, EQUIPMENT, …)
+        local sections = FarmMonitor.arr()
+        if vehiclePage.categoryTypes then
+            for _, detail in pairs(vehiclePage.categoryTypes) do
+                if detail.name and detail.name ~= "OBJECTS" then
+                    table.insert(sections, FarmMonitor.obj(
+                        "id",    detail.name,
+                        "title", detail.title or detail.name
+                    ))
+                end
+            end
+        end
+
+        -- Categories per section (tractors, combines, trailers, …)
+        local categories = FarmMonitor.arr()
+        if vehiclePage.categories then
+            for sectionId, entries in pairs(vehiclePage.categories) do
+                if sectionId ~= "OBJECTS" then
+                    for _, cat in pairs(entries) do
+                        if cat.id then
+                            table.insert(categories, FarmMonitor.obj(
+                                "id",        cat.id,
+                                "section",   sectionId,
+                                "label",     cat.label or cat.id,
+                                "sortValue", cat.sortValue or 0
+                            ))
+                        end
+                    end
+                end
+            end
+        end
+
+        if #categories == 0 then return false end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.vehicleCategories, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "sections",   sections,
+            "categories", categories
+        ))
+        print("[FarmMonitor] vehicleCategories.json written (" .. #categories .. " categories)")
+        return true
+    end)
+
+    if not ok then
+        -- pcall error (ShopMenu not yet loaded) — retry next tick silently
+        return false
+    end
+    return result == true
 end
 
 -- ---------------------------------------------------------------------------
@@ -457,7 +539,6 @@ function FarmMonitor:collectVehicles()
     -- Raw hotspot type numbers from FS25 (vehicle subclasses)
     local hotspotTypeNames = {}
     if MapHotspot then
-        -- Collect all HOTSPOT_TYPE_* constants by brute-force iteration
         for k, v in pairs(MapHotspot) do
             if type(k) == "string" and type(v) == "number" then
                 hotspotTypeNames[v] = k
@@ -475,8 +556,17 @@ function FarmMonitor:collectVehicles()
         if constName:find("CAR")     then return "CAR"       end
         if constName:find("TOOL")    then return "TOOL"      end
         if constName:find("TRACTOR") then return "TRACTOR"   end
-        -- fallback: mapHotspotType set but unknown → likely a tractor/self-propelled
         return "TRACTOR"
+    end
+
+    -- Build fuel fillType index lookup once for the whole loop
+    local fuelFillTypeIndices = {}
+    if g_fillTypeManager and g_fillTypeManager.fillTypes then
+        for idx, ft in ipairs(g_fillTypeManager.fillTypes) do
+            if ft.name == "DIESEL" or ft.name == "ELECTRICCHARGE" or ft.name == "METHANE" then
+                fuelFillTypeIndices[idx] = ft.name
+            end
+        end
     end
 
     for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
@@ -491,28 +581,74 @@ function FarmMonitor:collectVehicles()
             local rot = MathUtil.getYRotationFromDirection(dx, dz) + math.pi
 
             local fillPct = nil
+            local fuelPct = nil
+            local tanks   = FarmMonitor.arr()
             if vehicle.spec_fillUnit ~= nil and vehicle.spec_fillUnit.fillUnits ~= nil then
                 local totalLevel, totalCap = 0, 0
+                local fuelLevel,  fuelCap  = 0, 0
                 for _, fu in ipairs(vehicle.spec_fillUnit.fillUnits) do
-                    totalLevel = totalLevel + (fu.fillLevel or 0)
-                    totalCap   = totalCap   + (fu.capacity or 0)
+                    local level = fu.fillLevel or 0
+                    local cap   = fu.capacity  or 0
+                    -- ignore math.huge (unlimited) tanks for aggregates
+                    if cap < 1e9 then
+                        totalLevel = totalLevel + level
+                        totalCap   = totalCap   + cap
+                        if fuelFillTypeIndices[fu.fillType] then
+                            fuelLevel = fuelLevel + level
+                            fuelCap   = fuelCap   + cap
+                        elseif cap > 0 then
+                            -- per-tank entry: only include if tank has content or is non-trivial
+                            local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fu.fillType)
+                            local ftName = ft and ft.name or ""
+                            if ftName ~= "" and ftName ~= "UNKNOWN" then
+                                table.insert(tanks, FarmMonitor.obj(
+                                    "name", ftName,
+                                    "pct",  MathUtil.round(level / cap * 100)
+                                ))
+                            end
+                        end
+                    end
                 end
-                if totalCap > 0 then
-                    fillPct = MathUtil.round(totalLevel / totalCap * 100)
-                end
+                if totalCap > 0 then fillPct = MathUtil.round(totalLevel / totalCap * 100) end
+                if fuelCap  > 0 then fuelPct = MathUtil.round(fuelLevel  / fuelCap  * 100) end
+            end
+
+            local damage = 0
+            if vehicle.spec_wearable ~= nil and vehicle.spec_wearable.getDamageAmount ~= nil then
+                local ok2, val = pcall(function() return vehicle.spec_wearable:getDamageAmount() end)
+                if ok2 and val then damage = MathUtil.round(val * 100) end
+            end
+
+            local isEntered    = vehicle.spec_enterable ~= nil and vehicle.spec_enterable.isEntered == true
+            local isAIActive   = vehicle.getIsAIActive ~= nil and vehicle:getIsAIActive() == true
+            local motorRunning = vehicle.getIsMotorStarted ~= nil and vehicle:getIsMotorStarted() == true
+            local speed = 0
+            if vehicle.getLastSpeed ~= nil then
+                local ok, s = pcall(function() return vehicle:getLastSpeed() end)
+                if ok and s and s > 0 then speed = MathUtil.round(s * 10) / 10 end
+            end
+            if speed == 0 then
+                speed = MathUtil.round((vehicle.lastSpeed or vehicle.lastSpeedReal or 0) * 3.6 * 10) / 10
             end
 
             local name = ""
             if vehicle.getName ~= nil then name = vehicle:getName() or "" end
 
             table.insert(result, FarmMonitor.obj(
-                "id",      tostring(vehicle.rootNode),
-                "name",    name,
-                "type",    vehicleTypeName(vehicle),
-                "x",       MathUtil.round(x * 10) / 10,
-                "z",       MathUtil.round(z * 10) / 10,
-                "rot",     MathUtil.round(rot * 1000) / 1000,
-                "fillPct", fillPct
+                "id",          tostring(vehicle.rootNode),
+                "name",        name,
+                "type",        vehicleTypeName(vehicle),
+                "x",           MathUtil.round(x * 10) / 10,
+                "z",           MathUtil.round(z * 10) / 10,
+                "rot",         MathUtil.round(rot * 1000) / 1000,
+                "fillPct",     fillPct,
+                "fuelPct",     fuelPct,
+                "tanks",       tanks,
+                "damage",      damage,
+                "isEntered",   isEntered,
+                "isAIActive",  isAIActive,
+                "motorRunning", motorRunning,
+                "speed",       speed
             ))
         end
     end
@@ -1529,6 +1665,174 @@ function FarmMonitor:collectAndSaveFields()
     end)
     if not ok then
         print("[FarmMonitor] ERROR during field collect: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Vehicle meta  (static attributes, written every 10 s)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectVehicleMeta()
+    local result = FarmMonitor.arr()
+    local farmId = g_currentMission:getFarmId()
+
+    local fuelFillTypeIndices = {}
+    if g_fillTypeManager and g_fillTypeManager.fillTypes then
+        for idx, ft in ipairs(g_fillTypeManager.fillTypes) do
+            if ft.name == "DIESEL" or ft.name == "ELECTRICCHARGE" or ft.name == "METHANE" then
+                fuelFillTypeIndices[idx] = ft.name
+            end
+        end
+    end
+
+    for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
+        if not (vehicle.isPallet or vehicle.isShippingContainer)
+            and vehicle.rootNode ~= nil
+            and vehicle.getOwnerFarmId ~= nil
+            and vehicle:getOwnerFarmId() == farmId
+        then
+            -- Use vehicle.xmlFile.filename (GarageMenu approach) with configFileName as fallback
+            local xmlPath = (vehicle.xmlFile and vehicle.xmlFile.filename)
+                         or vehicle.configFileName
+                         or ""
+
+            if xmlPath ~= "" then
+                -- Store item lookup: categoryName, brand (single pcall)
+                local brand    = ""
+                local category = ""
+                if g_storeManager then
+                    local ok2, si = pcall(function()
+                        return g_storeManager:getItemByXMLFilename(xmlPath)
+                    end)
+                    if ok2 and si then
+                        category = si.categoryName or ""
+                        if si.brandIndex and g_brandManager then
+                            local b = g_brandManager:getBrandByIndex(si.brandIndex)
+                            if b then brand = b.title or "" end
+                        end
+                    end
+                end
+
+                -- Only include vehicles with a meaningful shop category
+                if category ~= "" then
+                    local name = ""
+                    if vehicle.getName ~= nil then name = vehicle:getName() or "" end
+
+                    local propState = "owned"
+                    local ps = vehicle.propertyState
+                    if ps == 3 then propState = "leased"
+                    elseif ps == 4 then propState = "mission" end
+
+                    local fuelType = nil
+                    local fuelCap  = 0
+                    if vehicle.spec_fillUnit ~= nil and vehicle.spec_fillUnit.fillUnits ~= nil then
+                        for _, fu in ipairs(vehicle.spec_fillUnit.fillUnits) do
+                            local cap = fu.capacity or 0
+                            if cap < 1e9 then
+                                local ftName = fuelFillTypeIndices[fu.fillType]
+                                if ftName then
+                                    fuelType = fuelType or ftName
+                                    fuelCap  = fuelCap  + cap
+                                end
+                            end
+                        end
+                    end
+
+                    local opHours = 0
+                    if vehicle.operatingTime and vehicle.operatingTime > 0 then
+                        opHours = MathUtil.round(vehicle.operatingTime / 3600 * 10) / 10
+                    end
+
+                    local motorKw = nil
+                    if vehicle.spec_motorized ~= nil then
+                        local kw = vehicle.spec_motorized.peakMotorPower
+                                or (vehicle.spec_motorized.motor and vehicle.spec_motorized.motor.peakMotorPower)
+                                or (vehicle.spec_motorized.motor and vehicle.spec_motorized.motor.maxMotorPower)
+                        if kw ~= nil and kw > 0 then motorKw = MathUtil.round(kw) end
+                    end
+
+                    -- Vehicle colors (designColor + baseColor, fallback to any available color config)
+                    local color1 = nil
+                    local color2 = nil
+                    if vehicle.configurations and vehicle.configurationData then
+                        local function getVehicleColor(configName)
+                            local idx = vehicle.configurations[configName]
+                            if not idx then return nil end
+                            local configData = vehicle.configurationData[configName]
+                            if not configData then return nil end
+                            local entry = configData[idx]
+                            local c = entry and entry.color
+                            if not c then
+                                local ok, res = pcall(ConfigurationUtil.getColorByConfigId, vehicle, configName, idx)
+                                if ok and res then c = res end
+                            end
+                            if c and type(c) == "table" then
+                                local r = math.min(255, math.max(0, MathUtil.round((c[1] or 0) * 255)))
+                                local g = math.min(255, math.max(0, MathUtil.round((c[2] or 0) * 255)))
+                                local b = math.min(255, math.max(0, MathUtil.round((c[3] or 0) * 255)))
+                                return string.format("#%02x%02x%02x", r, g, b)
+                            end
+                            return nil
+                        end
+                        -- Preferred color configs first
+                        local ok1, r1 = pcall(getVehicleColor, "designColor")
+                        if ok1 then color1 = r1 end
+                        local ok2, r2 = pcall(getVehicleColor, "baseColor")
+                        if ok2 then color2 = r2 end
+                        -- Fallback: scan all configurationData for any entry with a color
+                        if color1 == nil or color2 == nil then
+                            for configName, _ in pairs(vehicle.configurationData) do
+                                if configName ~= "designColor" and configName ~= "baseColor" then
+                                    local ok, col = pcall(getVehicleColor, configName)
+                                    if ok and col then
+                                        if color1 == nil then
+                                            color1 = col
+                                        elseif color2 == nil and col ~= color1 then
+                                            color2 = col
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    table.insert(result, FarmMonitor.obj(
+                        "id",        tostring(vehicle.rootNode),
+                        "name",      name,
+                        "brand",     brand,
+                        "category",  category,
+                        "propState", propState,
+                        "age",       vehicle.age or 0,
+                        "price",     MathUtil.round(vehicle.price or 0),
+                        "opHours",   opHours,
+                        "fuelType",  fuelType,
+                        "fuelCap",   MathUtil.round(fuelCap),
+                        "motorKw",   motorKw,
+                        "color1",    color1,
+                        "color2",    color2
+                    ))
+                end
+            end
+        end
+    end
+
+    return result
+end
+
+function FarmMonitor:collectAndSaveVehicleMeta()
+    local ok, err = pcall(function()
+        local ts     = getDate("%Y-%m-%dT%H:%M:%S")
+        local farmId = g_currentMission:getFarmId()
+        FarmMonitor:writeJSON(FarmMonitor.paths.vehicleMeta, FarmMonitor.obj(
+            "timestamp",  ts,
+            "farmId",     farmId,
+            "savegameId", FarmMonitor.savegameId,
+            "vehicles",   FarmMonitor:collectVehicleMeta()
+        ))
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR during vehicleMeta collect: " .. tostring(err))
     end
 end
 

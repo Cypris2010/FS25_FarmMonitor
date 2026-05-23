@@ -1498,6 +1498,83 @@
   .vehicle-rot-scale {
     pointer-events: all;
   }
+
+  /* ── Fleet (Fahrzeuge) view ── */
+  .fleet-list { display: flex; flex-direction: column; gap: 8px; }
+  .fleet-category-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 0 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-muted); border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .fleet-category-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 5px;
+    border-radius: 10px; background: rgba(255,255,255,0.1);
+    font-size: 11px; color: var(--fg-muted);
+  }
+  .fleet-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 12px 16px;
+  }
+  .fleet-item-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .fleet-item-icon.is-moving {
+    background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3);
+    flex-direction: column; gap: 0;
+  }
+  .fleet-speed-val { font-size: 12px; font-weight: 700; color: #81c784; line-height: 1; }
+  .fleet-speed-unit { font-size: 8px; color: #81c784; opacity: 0.8; line-height: 1; }
+  .fleet-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  .fleet-item-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .fleet-identity-wrap { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .fleet-identity { display: flex; flex-direction: column; min-width: 0; gap: 2px; flex: 1; }
+  .fleet-brand {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--fg-muted); line-height: 1.3;
+  }
+  .fleet-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .fleet-name {
+    font-size: 14px; font-weight: 600; color: var(--fg);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.4; max-width: 260px;
+  }
+  .fleet-badges { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
+  .fleet-badge {
+    font-size: 11px; padding: 2px 8px;
+    border-radius: 20px; border: 1px solid transparent; line-height: 1.6; white-space: nowrap;
+  }
+  .fleet-badge.badge-active  { background: rgba(76,175,80,.15);  border-color: rgba(76,175,80,.4);  color: #81c784; }
+  .fleet-badge.badge-ai      { background: rgba(100,120,255,.15); border-color: rgba(100,120,255,.4); color: #9fa8da; }
+  .fleet-badge.badge-idle    { background: rgba(120,120,130,.12); border-color: rgba(120,120,130,.3); color: var(--fg-muted); }
+  .fleet-badge.badge-damage  { background: rgba(229,57,53,.15);  border-color: rgba(229,57,53,.4);  color: #ef9a9a; }
+  .fleet-badge.badge-leased  { background: rgba(255,160,0,.12);  border-color: rgba(255,160,0,.3);  color: #ffcc02; }
+  .fleet-bars { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  .fleet-bar-group { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 100px; }
+  .fleet-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--fg-muted); }
+  .fleet-bar-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .fleet-bar-fill  { height: 100%; border-radius: 3px; transition: width .5s; }
+  .fleet-bar-fill.fuel        { background: #66bb6a; }
+  .fleet-bar-fill.fuel.warn   { background: #ffa726; }
+  .fleet-bar-fill.fuel.low    { background: #ef5350; }
+  .fleet-bar-fill.cargo       { background: #5c8fd6; }
+  .fleet-item-footer { display: flex; gap: 16px; font-size: 11px; color: var(--fg-muted); }
+  .fleet-power {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    padding: 2px 7px; border-radius: 4px; line-height: 1.4;
+    background: rgba(255,255,255,0.07); color: var(--fg-muted);
+  }
+  .fleet-color-dot { flex-shrink: 0; }
+
   .map-controls {
     position: absolute;
     bottom: 16px;
@@ -1579,6 +1656,9 @@
       </button>
       <button class="nav-btn" data-view="fields" aria-label="Felder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5" r="1.8"/><path d="M5.5 2.2v.8M5.5 7v.8M2.7 5h.8M7.7 5h.8M3.5 3l.6.6M7.4 3l-.6.6M3.5 7l.6-.6M7.4 7l-.6-.6"/><path d="M1 11 L1 23 L23 23 L23 11"/><path d="M1 11 Q9 12 23 13.5"/><path d="M1 11 Q9 15 23 17"/><path d="M1 11 Q7 18 23 21"/><path d="M1 11 Q5 18 13 23"/><path d="M1 11 Q3 17 6 23"/></svg>
+      </button>
+      <button class="nav-btn" data-view="vehicles" aria-label="Fahrzeuge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>
       </button>
       <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
@@ -1828,6 +1908,26 @@
       </section>
     </div>
 
+    <!-- View: Fahrzeuge -->
+    <div id="view-vehicles" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="section-shell">
+        <div class="section-head">
+          <div class="section-title-group">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>
+            </span>
+            <div class="section-title-text">
+              <h2>Fahrzeuge</h2>
+              <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
+            </div>
+          </div>
+        </div>
+        <div id="fleet-content">
+          <div class="state-box"><span>Lade Fahrzeuge …</span></div>
+        </div>
+      </section>
+    </div>
+
     <!-- View: Warnungen -->
     <div id="view-alerts" class="view" style="display:none; flex-direction:column; gap:18px;">
       <section class="section-shell">
@@ -1924,6 +2024,9 @@
   </button>
   <button class="nav-btn" data-view="fields" aria-label="Felder">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg>
+  </button>
+  <button class="nav-btn" data-view="vehicles" aria-label="Fahrzeuge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>
   </button>
   <button class="nav-btn" data-view="alerts" aria-label="Warnungen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
@@ -3604,7 +3707,9 @@ function renderGoods(data) {
 // ═══════════════════════════════════════════════════════════
 
 function showView(name) {
-  if (currentView === 'map' && name !== 'map') stopVehicleTracking();
+  const wasTracking = currentView === 'map' || currentView === 'vehicles';
+  const willTrack   = name === 'map' || name === 'vehicles';
+  if (wasTracking && !willTrack) stopVehicleTracking();
   currentView = name;
   document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
   const el = document.getElementById(`view-${name}`);
@@ -3615,7 +3720,7 @@ function showView(name) {
   });
 
   if (appData) rerenderCurrentView();
-  if (name === 'map') startVehicleTracking();
+  if (willTrack) startVehicleTracking();
 }
 
 function renderSettings() {
@@ -4126,6 +4231,203 @@ function updateVehicles(vehiclesData, terrainSize) {
     `<strong>${appData?.mapMeta?.mapName || 'Karte'}</strong> &nbsp;·&nbsp; ${n} Fahrzeuge`;
 }
 
+// ═══════════════════════════════════════════════════════════
+// Fleet view
+// ═══════════════════════════════════════════════════════════
+
+// FLEET_CATEGORY_LABELS is built dynamically from vehicleCategories.json (game-provided, localized).
+// This fallback map covers the session before the file arrives or for unknown categories.
+const FLEET_CATEGORY_LABELS_FALLBACK = {
+  tractors:'Traktoren', combines:'Mähdrescher', harvesters:'Erntemaschinen',
+  forageHarvesters:'Feldhäcksler', cottonHarvesters:'Baumwollernte',
+  trailers:'Anhänger', tipper:'Kipper', liquidManureTanks:'Güllefässer',
+  manureSpreaders:'Miststreuer', sowingMachines:'Sämaschinen',
+  fertilizingSpreaders:'Düngerstreuer', sprayers:'Sprühgeräte',
+  ploughs:'Pflüge', cultivators:'Grubber', mulchers:'Mulcher',
+  mowers:'Mäher', tedders:'Wender', windrowers:'Schwader',
+  balers:'Ballenpressen', frontloaderTools:'Frontlader-Anbaugeräte',
+  loaders:'Lader', telehandlers:'Teleskoplader', trucks:'LKW', cars:'PKW', misc:'Sonstiges',
+};
+
+function fleetCategoryLabel(cat, appData) {
+  // Prefer game-provided localized label from vehicleCategories.json
+  const cats = appData?.vehicleCategories?.categories;
+  if (cats) {
+    const found = cats.find(c => c.id === cat);
+    if (found?.label) return found.label;
+  }
+  return FLEET_CATEGORY_LABELS_FALLBACK[cat] || cat || '–';
+}
+
+// Static fallback order — replaced at runtime by fleetCategoryOrder() from vehicleCategories.json
+const FLEET_CATEGORY_ORDER_FALLBACK = [
+  'tractors','combines','harvesters','forageHarvesters','cottonHarvesters',
+  'loaders','telehandlers',
+  'trailers','tipper','liquidManureTanks','manureSpreaders',
+  'ploughs','cultivators','sowingMachines','fertilizingSpreaders','sprayers',
+  'mulchers','mowers','tedders','windrowers','balers',
+  'frontloaderTools','trucks','cars','misc',
+];
+
+function fleetCategoryOrder(appData) {
+  const cats = appData?.vehicleCategories?.categories;
+  if (cats && cats.length > 0) {
+    // Sort by section order then sortValue within section
+    const sectionOrder = {};
+    (appData.vehicleCategories.sections || []).forEach((s, i) => { sectionOrder[s.id] = i; });
+    return [...cats]
+      .sort((a, b) => {
+        const si = (sectionOrder[a.section] ?? 99) - (sectionOrder[b.section] ?? 99);
+        if (si !== 0) return si;
+        return (a.sortValue ?? 0) - (b.sortValue ?? 0);
+      })
+      .map(c => c.id);
+  }
+  return FLEET_CATEGORY_ORDER_FALLBACK;
+}
+
+const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas' };
+
+// Icons keyed on broad group — unknown categories fall back to wrench
+function fleetCategoryIcon(cat) {
+  const tractor  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>`;
+  const harvester= `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="6" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M3 17H2V9l5-5h3l5 5v3"/><path d="M9 4v6h9v-1"/><path d="M14 14h6"/></svg>`;
+  const trailer  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><rect x="3" y="8" width="18" height="9" rx="1"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><path d="M1 12h2"/></svg>`;
+  const truck    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><path d="M1 7h12v10H1z"/><path d="M13 10h7l2 5v2h-9V10Z"/><circle cx="5.5" cy="19" r="2"/><circle cx="18.5" cy="19" r="2"/></svg>`;
+  const tool     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+  const loader   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="5" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M3 18V9l4-5h6l4 5v4h-6V9"/><path d="M14 13h5"/></svg>`;
+  const car      = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><path d="M5 17H3a2 2 0 0 1-2-2V9l3-6h12l3 6v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>`;
+
+  const map = {
+    tractors: tractor, combines: harvester, harvesters: harvester,
+    forageHarvesters: harvester, cottonHarvesters: harvester,
+    trailers: trailer, tipper: trailer, liquidManureTanks: trailer, manureSpreaders: trailer,
+    loaders: loader, telehandlers: loader,
+    trucks: truck, cars: car,
+  };
+  return map[cat] || tool;
+}
+
+function renderVehicleFleet(appData) {
+  const el = document.getElementById('fleet-content');
+  if (!el) return;
+
+  const metaList  = appData?.vehicleMeta?.vehicles || [];
+  const stateList = appData?.vehicles?.vehicles    || [];
+
+  if (metaList.length === 0) {
+    el.innerHTML = '<div class="state-box"><span>Keine Fahrzeuge gefunden</span></div>';
+    return;
+  }
+
+  const stateById = {};
+  for (const s of stateList) stateById[s.id] = s;
+
+  const catOrder = fleetCategoryOrder(appData);
+  const sorted = [...metaList].sort((a, b) => {
+    const ao = catOrder.indexOf(a.category);
+    const bo = catOrder.indexOf(b.category);
+    const ai = ao === -1 ? 999 : ao;
+    const bi = bo === -1 ? 999 : bo;
+    if (ai !== bi) return ai - bi;
+    if (ai === 999 && a.category !== b.category) return (a.category || '').localeCompare(b.category || '');
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  let html = '<div class="fleet-list">';
+  let lastCat = null;
+
+  for (const meta of sorted) {
+    if (meta.category !== lastCat) {
+      lastCat = meta.category;
+      const count = sorted.filter(v => v.category === meta.category).length;
+      const label = fleetCategoryLabel(meta.category, appData);
+      html += `<div class="fleet-category-header"><span>${label}</span><span class="fleet-category-count">${count}</span></div>`;
+    }
+
+    const state = stateById[meta.id] || {};
+
+    // Status badges
+    let badges = '';
+    if (state.motorRunning) {
+      if (state.isAIActive)    badges += '<span class="fleet-badge badge-ai">KI aktiv</span>';
+      else if (state.isEntered) badges += '<span class="fleet-badge badge-active">In Betrieb</span>';
+      else                      badges += '<span class="fleet-badge badge-active">Motor läuft</span>';
+    } else {
+      badges += '<span class="fleet-badge badge-idle">Geparkt</span>';
+    }
+    if ((state.damage || 0) > 5) badges += `<span class="fleet-badge badge-damage">${state.damage}% Schaden</span>`;
+    if (meta.propState === 'leased') badges += '<span class="fleet-badge badge-leased">Gemietet</span>';
+
+    // Bars
+    let bars = '';
+    if (meta.fuelCap > 0 && state.fuelPct != null) {
+      const fuelClass = state.fuelPct < 20 ? 'low' : state.fuelPct < 40 ? 'warn' : '';
+      const fuelLabel = FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff';
+      bars += `<div class="fleet-bar-group">
+        <div class="fleet-bar-label"><span>${fuelLabel}</span><span>${state.fuelPct}%</span></div>
+        <div class="fleet-bar-track"><div class="fleet-bar-fill fuel ${fuelClass}" style="width:${state.fuelPct}%"></div></div>
+      </div>`;
+    }
+    for (const tank of (state.tanks || [])) {
+      const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
+      bars += `<div class="fleet-bar-group">
+        <div class="fleet-bar-label"><span>${title}</span><span>${tank.pct}%</span></div>
+        <div class="fleet-bar-track"><div class="fleet-bar-fill cargo" style="width:${tank.pct}%"></div></div>
+      </div>`;
+    }
+
+    // Footer meta
+    const footerParts = [];
+    if (meta.opHours > 0) footerParts.push(`${meta.opHours} Bh.`);
+    if (meta.age > 0)      footerParts.push(`${meta.age} Mon. alt`);
+
+    const motorStr = meta.motorKw ? `<span>${meta.motorKw} kW</span><span>${Math.round(meta.motorKw * 1.35962)} PS</span>` : '';
+    const c1 = meta.color1, c2 = meta.color2;
+    let colorDot = '';
+    if (c1 && c2) {
+      colorDot = `<svg class="fleet-color-dot" width="20" height="20" viewBox="0 0 20 20">
+        <defs><clipPath id="vc-${meta.id}"><circle cx="10" cy="10" r="9"/></clipPath></defs>
+        <circle cx="10" cy="10" r="9" fill="${c1}"/>
+        <polygon points="20,0 20,20 0,20" fill="${c2}" clip-path="url(#vc-${meta.id})"/>
+        <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      </svg>`;
+    } else if (c1) {
+      colorDot = `<svg class="fleet-color-dot" width="20" height="20" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="9" fill="${c1}"/>
+        <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      </svg>`;
+    }
+
+    const speed = state.speed || 0;
+    const iconHtml = speed > 0.5
+      ? `<div class="fleet-item-icon is-moving"><span class="fleet-speed-val">${speed}</span><span class="fleet-speed-unit">km/h</span></div>`
+      : `<div class="fleet-item-icon">${fleetCategoryIcon(meta.category)}</div>`;
+
+    html += `<div class="fleet-item" data-id="${meta.id}">
+      ${iconHtml}
+      <div class="fleet-item-body">
+        <div class="fleet-item-top">
+          <div class="fleet-identity-wrap">
+            <div class="fleet-identity">
+              <span class="fleet-brand">${meta.brand || meta.category}</span>
+              <span class="fleet-name" title="${meta.name || ''}">${meta.name || '–'}</span>
+            </div>
+            ${colorDot}
+            ${motorStr ? `<span class="fleet-power">${motorStr}</span>` : ''}
+          </div>
+          <div class="fleet-badges">${badges}</div>
+        </div>
+        ${bars ? `<div class="fleet-bars">${bars}</div>` : ''}
+        ${footerParts.length ? `<div class="fleet-item-footer">${footerParts.map(p => `<span>${p}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
 function renderMap(data) {
   if (!data?.mapMeta) return;
   const terrainSize = data.mapMeta.terrainSize || 2048;
@@ -4150,9 +4452,12 @@ function startVehicleTracking() {
     try {
       const res  = await fetch('/api/vehicles');
       const data = await res.json();
-      if (data && appData?.mapMeta) {
+      if (data) {
         appData.vehicles = data;
-        updateVehicles(data, appData.mapMeta.terrainSize || 2048);
+        if (currentView === 'map' && appData?.mapMeta)
+          updateVehicles(data, appData.mapMeta.terrainSize || 2048);
+        if (currentView === 'vehicles')
+          renderVehicleFleet(appData);
       }
     } catch (e) {}
   };
@@ -4170,6 +4475,7 @@ function rerenderCurrentView() {
   if (currentView === 'husbandries') renderHusbandries(appData.husbandries);
   if (currentView === 'goods')       renderGoods(appData.goods);
   if (currentView === 'fields')      renderFields(appData.fields);
+  if (currentView === 'vehicles')    renderVehicleFleet(appData);
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
   if (currentView === 'map')         renderMap(appData);

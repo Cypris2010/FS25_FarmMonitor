@@ -607,7 +607,9 @@ func handleData(dataDir string) http.HandlerFunc {
 		FruitTypes  json.RawMessage `json:"fruitTypes"`
 		MapMeta     json.RawMessage `json:"mapMeta"`
 		Hotspots    json.RawMessage `json:"hotspots"`
-		Vehicles    json.RawMessage `json:"vehicles"`
+		Vehicles          json.RawMessage `json:"vehicles"`
+		VehicleMeta       json.RawMessage `json:"vehicleMeta"`
+		VehicleCategories json.RawMessage `json:"vehicleCategories"`
 	}
 
 	readFile := func(name string) json.RawMessage {
@@ -632,7 +634,9 @@ func handleData(dataDir string) http.HandlerFunc {
 			FruitTypes:  readFile("fruitTypes.json"),
 			MapMeta:     readFile("mapMeta.json"),
 			Hotspots:    readFile("hotspots.json"),
-			Vehicles:    readFile("vehicles.json"),
+			Vehicles:          readFile("vehicles.json"),
+			VehicleMeta:       readFile("vehicleMeta.json"),
+			VehicleCategories: readFile("vehicleCategories.json"),
 		})
 	}
 }
@@ -753,6 +757,8 @@ func main() {
 		filepath.Join(dataDir, "fruitTypes.json"),
 		filepath.Join(dataDir, "mapMeta.json"),
 		filepath.Join(dataDir, "hotspots.json"),
+		filepath.Join(dataDir, "vehicleMeta.json"),
+		filepath.Join(dataDir, "vehicleCategories.json"),
 	}
 
 	b := newBroker()

@@ -10,6 +10,8 @@ A Farming Simulator 25 mod that exports live farm data to JSON and serves a loca
 @ai/api_growth_stages.md
 @ai/api_vehicles.md
 @ai/multiplayer_analysis.md
+@ai/reference_garagemenu.md
+@ai/reference_quickselector.md
 
 ## Architecture
 
