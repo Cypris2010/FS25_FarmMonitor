@@ -581,7 +581,9 @@ function FarmMonitor:collectVehicles()
             local rot = MathUtil.getYRotationFromDirection(dx, dz) + math.pi
 
             local fillPct = nil
+            local fillLiter = nil
             local fuelPct = nil
+            local fuelLiter = nil
             local tanks   = FarmMonitor.arr()
             if vehicle.spec_fillUnit ~= nil and vehicle.spec_fillUnit.fillUnits ~= nil then
                 local totalLevel, totalCap = 0, 0
@@ -602,15 +604,23 @@ function FarmMonitor:collectVehicles()
                             local ftName = ft and ft.name or ""
                             if ftName ~= "" and ftName ~= "UNKNOWN" then
                                 table.insert(tanks, FarmMonitor.obj(
-                                    "name", ftName,
-                                    "pct",  MathUtil.round(level / cap * 100)
+                                    "name",  ftName,
+                                    "pct",   MathUtil.round(level / cap * 100),
+                                    "liter", MathUtil.round(level),
+                                    "cap",   MathUtil.round(cap)
                                 ))
                             end
                         end
                     end
                 end
-                if totalCap > 0 then fillPct = MathUtil.round(totalLevel / totalCap * 100) end
-                if fuelCap  > 0 then fuelPct = MathUtil.round(fuelLevel  / fuelCap  * 100) end
+                if totalCap > 0 then
+                    fillPct   = MathUtil.round(totalLevel / totalCap * 100)
+                    fillLiter = MathUtil.round(totalLevel)
+                end
+                if fuelCap > 0 then
+                    fuelPct   = MathUtil.round(fuelLevel / fuelCap * 100)
+                    fuelLiter = MathUtil.round(fuelLevel)
+                end
             end
 
             local damage = 0
@@ -622,6 +632,7 @@ function FarmMonitor:collectVehicles()
             local isEntered    = vehicle.spec_enterable ~= nil and vehicle.spec_enterable.isEntered == true
             local isAIActive   = vehicle.getIsAIActive ~= nil and vehicle:getIsAIActive() == true
             local motorRunning = vehicle.getIsMotorStarted ~= nil and vehicle:getIsMotorStarted() == true
+            local motorized    = vehicle.spec_motorized ~= nil
             local speed = 0
             if vehicle.getLastSpeed ~= nil then
                 local ok, s = pcall(function() return vehicle:getLastSpeed() end)
@@ -629,6 +640,12 @@ function FarmMonitor:collectVehicles()
             end
             if speed == 0 then
                 speed = MathUtil.round((vehicle.lastSpeed or vehicle.lastSpeedReal or 0) * 3.6 * 10) / 10
+            end
+
+            -- rootId: ID of the root vehicle in the attachment chain
+            local rootId = tostring(vehicle.rootNode)
+            if vehicle.rootVehicle ~= nil and vehicle.rootVehicle.rootNode ~= nil then
+                rootId = tostring(vehicle.rootVehicle.rootNode)
             end
 
             local name = ""
@@ -642,13 +659,17 @@ function FarmMonitor:collectVehicles()
                 "z",           MathUtil.round(z * 10) / 10,
                 "rot",         MathUtil.round(rot * 1000) / 1000,
                 "fillPct",     fillPct,
+                "fillLiter",   fillLiter,
                 "fuelPct",     fuelPct,
+                "fuelLiter",   fuelLiter,
                 "tanks",       tanks,
                 "damage",      damage,
                 "isEntered",   isEntered,
                 "isAIActive",  isAIActive,
                 "motorRunning", motorRunning,
-                "speed",       speed
+                "motorized",   motorized,
+                "speed",       speed,
+                "rootId",      rootId
             ))
         end
     end

@@ -406,10 +406,10 @@
     padding-bottom: 18px;
     border-bottom: 1px solid var(--line-soft);
     margin-bottom: 20px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
-  .section-title-group { display: flex; align-items: center; gap: 12px; }
+  .section-title-group { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
 
   .icon-box {
     width: 44px; height: 44px;
@@ -737,7 +737,6 @@
   @media (max-width: 1280px) {
     .kpi-row { grid-template-columns: repeat(2, 1fr); }
     .animal-grid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
-    .section-head { flex-direction: column; }
   }
   @media (max-width: 900px) {
     .animal-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1501,55 +1500,63 @@
 
   /* ── Fleet (Fahrzeuge) view ── */
   .fleet-list { display: flex; flex-direction: column; gap: 8px; }
-  .fleet-category-header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 14px 0 4px;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--fg-muted); border-bottom: 1px solid rgba(255,255,255,0.07);
+  /* One row = one train; cards sit side by side */
+  .fleet-row { display: flex; align-items: stretch; gap: 8px; }
+  /* Each vehicle = one card */
+  .fleet-cell {
+    flex: 1; min-width: 0; padding: 12px 14px;
   }
-  .fleet-category-count {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 20px; height: 20px; padding: 0 5px;
-    border-radius: 10px; background: rgba(255,255,255,0.1);
-    font-size: 11px; color: var(--fg-muted);
+  .fleet-cell-inner { display: flex; align-items: flex-start; gap: 12px; }
+  .fleet-cell-body  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  /* Left column: speed block + status badge */
+  .fleet-left-col {
+    display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0;
   }
-  .fleet-item {
-    display: flex; align-items: flex-start; gap: 12px;
-    background: var(--card-bg); border: 1px solid var(--card-border);
-    border-radius: var(--radius); padding: 12px 16px;
+  .fleet-speed-block {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-shrink: 0; width: 44px; min-height: 38px; padding: 5px 4px;
+    border-radius: 8px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
   }
-  .fleet-item-icon {
-    width: 36px; height: 36px; border-radius: 8px;
-    background: rgba(255,255,255,0.06);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; margin-top: 2px;
+  .fleet-speed-block.moving {
+    background: rgba(76,175,80,0.12); border-color: rgba(76,175,80,0.3);
   }
-  .fleet-item-icon.is-moving {
-    background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3);
-    flex-direction: column; gap: 0;
+  .fleet-speed-block .fleet-speed-val  { font-size: 13px; font-weight: 700; color: var(--fg-muted); line-height: 1; }
+  .fleet-speed-block.moving .fleet-speed-val { color: #81c784; }
+  .fleet-speed-block .fleet-speed-unit { font-size: 8px; color: var(--fg-muted); opacity: 0.7; line-height: 1.2; }
+  .fleet-speed-block.moving .fleet-speed-unit { color: #81c784; opacity: 0.8; }
+  .fleet-speed-block .fleet-badge { font-size: 8px; padding: 1px 4px; line-height: 1.5; }
+
+  /* Row 1: name + all badges in one flex line */
+  .fleet-cell-top {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0;
   }
-  .fleet-speed-val { font-size: 12px; font-weight: 700; color: #81c784; line-height: 1; }
-  .fleet-speed-unit { font-size: 8px; color: #81c784; opacity: 0.8; line-height: 1; }
-  .fleet-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-  .fleet-item-top {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap;
-  }
-  .fleet-identity-wrap { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .fleet-identity { display: flex; flex-direction: column; min-width: 0; gap: 2px; flex: 1; }
+  .fleet-identity { display: flex; flex-direction: column; min-width: 0; margin-right: 2px; }
+  .fleet-brand-row { display: flex; align-items: center; gap: 5px; }
   .fleet-brand {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--fg-muted); line-height: 1.3;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-muted); line-height: 1.2;
   }
-  .fleet-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .fleet-name {
-    font-size: 14px; font-weight: 600; color: var(--fg);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1.4; max-width: 260px;
+    font-size: 13px; font-weight: 600; color: var(--fg);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; line-height: 1.3;
+    padding-left: 5px;
   }
-  .fleet-badges { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
+  .fleet-cat-badge {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 1px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+    background: rgba(255,255,255,0.07); color: var(--fg-muted);
+  }
+  .fleet-color-dot { flex-shrink: 0; line-height: 0; }
+  .fleet-power {
+    display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+    font-size: 10px; font-weight: 600; white-space: nowrap; line-height: 1.3;
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(255,255,255,0.07); color: var(--fg-muted);
+  }
+  .fleet-badges { display: flex; gap: 4px; flex-wrap: wrap; flex-shrink: 0; }
   .fleet-badge {
-    font-size: 11px; padding: 2px 8px;
+    font-size: 10px; padding: 1px 7px;
     border-radius: 20px; border: 1px solid transparent; line-height: 1.6; white-space: nowrap;
   }
   .fleet-badge.badge-active  { background: rgba(76,175,80,.15);  border-color: rgba(76,175,80,.4);  color: #81c784; }
@@ -1557,23 +1564,85 @@
   .fleet-badge.badge-idle    { background: rgba(120,120,130,.12); border-color: rgba(120,120,130,.3); color: var(--fg-muted); }
   .fleet-badge.badge-damage  { background: rgba(229,57,53,.15);  border-color: rgba(229,57,53,.4);  color: #ef9a9a; }
   .fleet-badge.badge-leased  { background: rgba(255,160,0,.12);  border-color: rgba(255,160,0,.3);  color: #ffcc02; }
-  .fleet-bars { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-  .fleet-bar-group { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 100px; }
-  .fleet-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--fg-muted); }
-  .fleet-bar-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
-  .fleet-bar-fill  { height: 100%; border-radius: 3px; transition: width .5s; }
-  .fleet-bar-fill.fuel        { background: #66bb6a; }
-  .fleet-bar-fill.fuel.warn   { background: #ffa726; }
-  .fleet-bar-fill.fuel.low    { background: #ef5350; }
-  .fleet-bar-fill.cargo       { background: #5c8fd6; }
-  .fleet-item-footer { display: flex; gap: 16px; font-size: 11px; color: var(--fg-muted); }
-  .fleet-power {
-    display: flex; flex-direction: column; align-items: center;
-    font-size: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
-    padding: 2px 7px; border-radius: 4px; line-height: 1.4;
-    background: rgba(255,255,255,0.07); color: var(--fg-muted);
+  .fleet-speed {
+    display: flex; align-items: baseline; gap: 2px; flex-shrink: 0;
+    padding: 1px 8px; border-radius: 20px;
+    background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3);
   }
-  .fleet-color-dot { flex-shrink: 0; }
+  .fleet-speed-val  { font-size: 12px; font-weight: 700; color: #81c784; }
+  .fleet-speed-unit { font-size: 9px; color: #81c784; opacity: 0.8; }
+
+  /* Row 2: bars + footer inline */
+  .fleet-cell-bottom { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-left: 5px; }
+  .fleet-bar-inline {
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+    font-size: 10px; color: var(--fg-muted); white-space: nowrap;
+  }
+  .fleet-bar-track-inline {
+    display: inline-block; width: 48px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.08); overflow: hidden; flex-shrink: 0; vertical-align: middle;
+  }
+  .fleet-bar-fill { display: block; height: 100%; border-radius: 2px; transition: width .5s; }
+  .fleet-bar-fill.fuel      { background: #66bb6a; }
+  .fleet-bar-fill.fuel.warn { background: #ffa726; }
+  .fleet-bar-fill.fuel.low  { background: #ef5350; }
+  .fleet-bar-fill.cargo     { background: #5c8fd6; }
+  .fleet-cell-footer { display: flex; gap: 6px; font-size: 10px; color: var(--fg-muted); white-space: nowrap; }
+
+  /* Fleet settings button */
+  .fleet-settings-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.05); color: var(--fg-muted);
+    font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0;
+    transition: background .15s, color .15s;
+  }
+  .fleet-settings-btn:hover { background: rgba(255,255,255,0.1); color: var(--fg); }
+
+  /* Fleet settings modal */
+  .fsm-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fsm-dialog {
+    background: linear-gradient(180deg, rgba(30,36,30,.98), rgba(16,20,16,.98));
+    border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    width: 340px; max-width: 90vw; overflow: hidden;
+  }
+  .fsm-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+    font-size: 14px; font-weight: 600; color: var(--fg);
+  }
+  .fsm-close {
+    background: none; border: none; color: var(--fg-muted);
+    font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+  }
+  .fsm-close:hover { color: var(--fg); background: rgba(255,255,255,0.08); }
+  .fsm-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .fsm-group-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-muted); margin-bottom: 2px;
+  }
+  .fsm-toggle {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    font-size: 13px; color: var(--fg); user-select: none;
+  }
+  .fsm-toggle input { display: none; }
+  .fsm-slider {
+    position: relative; width: 36px; height: 20px; flex-shrink: 0;
+    background: rgba(255,255,255,0.12); border-radius: 10px;
+    transition: background .2s;
+  }
+  .fsm-slider::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; transition: transform .2s; opacity: 0.5;
+  }
+  .fsm-toggle input:checked + .fsm-slider { background: var(--green); }
+  .fsm-toggle input:checked + .fsm-slider::after { transform: translateX(16px); opacity: 1; }
 
   .map-controls {
     position: absolute;
@@ -1921,6 +1990,10 @@
               <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
             </div>
           </div>
+          <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Anzeige
+          </button>
         </div>
         <div id="fleet-content">
           <div class="state-box"><span>Lade Fahrzeuge …</span></div>
@@ -4288,6 +4361,54 @@ function fleetCategoryOrder(appData) {
 
 const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas' };
 
+// Fleet display settings
+const FLEET_SETTINGS_DEFAULTS = {
+  showColor: true, showPower: true, showDamage: true, showHours: true, showAge: true,
+  showFuel: true, showDef: true, showAir: true, showCargo: true
+};
+const DEF_FILL_TYPES = new Set(['DEF', 'ADBLUE']);
+const AIR_FILL_TYPES = new Set(['COMPRESSEDAIR', 'AIR']);
+
+function fleetSettingsKey() {
+  const id = appData?.mapMeta?.savegameId;
+  return id ? `farmmonitor_fleet_settings_${id}` : 'farmmonitor_fleet_settings';
+}
+function loadFleetSettings() {
+  try { return { ...FLEET_SETTINGS_DEFAULTS, ...JSON.parse(localStorage.getItem(fleetSettingsKey()) || '{}') }; }
+  catch { return { ...FLEET_SETTINGS_DEFAULTS }; }
+}
+function saveFleetSettings() {
+  const s = {
+    showColor:  document.getElementById('fss-color').checked,
+    showPower:  document.getElementById('fss-power').checked,
+    showDamage: document.getElementById('fss-damage').checked,
+    showHours:  document.getElementById('fss-hours').checked,
+    showAge:    document.getElementById('fss-age').checked,
+    showFuel:   document.getElementById('fss-fuel').checked,
+    showDef:    document.getElementById('fss-def').checked,
+    showAir:    document.getElementById('fss-air').checked,
+    showCargo:  document.getElementById('fss-cargo').checked,
+  };
+  localStorage.setItem(fleetSettingsKey(), JSON.stringify(s));
+  if (currentView === 'vehicles') renderVehicleFleet(appData);
+}
+function openFleetSettings() {
+  const s = loadFleetSettings();
+  document.getElementById('fss-color').checked  = s.showColor;
+  document.getElementById('fss-power').checked  = s.showPower;
+  document.getElementById('fss-damage').checked = s.showDamage;
+  document.getElementById('fss-hours').checked  = s.showHours;
+  document.getElementById('fss-age').checked    = s.showAge;
+  document.getElementById('fss-fuel').checked   = s.showFuel;
+  document.getElementById('fss-def').checked    = s.showDef;
+  document.getElementById('fss-air').checked    = s.showAir;
+  document.getElementById('fss-cargo').checked  = s.showCargo;
+  document.getElementById('fleet-settings-modal').style.display = 'flex';
+}
+function closeFleetSettings() {
+  document.getElementById('fleet-settings-modal').style.display = 'none';
+}
+
 // Icons keyed on broad group — unknown categories fall back to wrench
 function fleetCategoryIcon(cat) {
   const tractor  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>`;
@@ -4308,6 +4429,30 @@ function fleetCategoryIcon(cat) {
   return map[cat] || tool;
 }
 
+const _nearestHotspotCache = new Map(); // vehicleId → { x, z, result }
+
+function nearestHotspot(vehicleId, vx, vz, speed, hotspots) {
+  if (!hotspots || !hotspots.length || vx == null || vz == null) return null;
+  const cached = _nearestHotspotCache.get(vehicleId);
+  // Skip recalculation if parked and already have a result
+  if (cached && (speed == null || speed <= 0.5)) return cached.result;
+  let best = null, bestDist = Infinity;
+  for (const h of hotspots) {
+    const dx = h.x - vx, dz = h.z - vz;
+    const d = Math.sqrt(dx*dx + dz*dz);
+    if (d < bestDist) { bestDist = d; best = h; }
+  }
+  if (!best) return null;
+  const dx = best.x - vx, dz = best.z - vz;
+  const angle = Math.atan2(dx, -dz) * 180 / Math.PI;
+  const deg = (angle + 360) % 360;
+  const dirs = ['N','NO','O','SO','S','SW','W','NW'];
+  const dir = dirs[Math.round(deg / 45) % 8];
+  const result = { name: best.name, dist: Math.round(bestDist), dir };
+  _nearestHotspotCache.set(vehicleId, { x: vx, z: vz, result });
+  return result;
+}
+
 function renderVehicleFleet(appData) {
   const el = document.getElementById('fleet-content');
   if (!el) return;
@@ -4320,110 +4465,183 @@ function renderVehicleFleet(appData) {
     return;
   }
 
+  const metaById  = {};
   const stateById = {};
+  for (const m of metaList)  metaById[m.id]  = m;
   for (const s of stateList) stateById[s.id] = s;
 
-  const catOrder = fleetCategoryOrder(appData);
-  const sorted = [...metaList].sort((a, b) => {
-    const ao = catOrder.indexOf(a.category);
-    const bo = catOrder.indexOf(b.category);
-    const ai = ao === -1 ? 999 : ao;
-    const bi = bo === -1 ? 999 : bo;
-    if (ai !== bi) return ai - bi;
-    if (ai === 999 && a.category !== b.category) return (a.category || '').localeCompare(b.category || '');
-    return (a.name || '').localeCompare(b.name || '');
+  // Group vehicles by rootId (attachment chain)
+  const groups = {};   // rootId → [id, ...]
+  for (const s of stateList) {
+    const rootId = s.rootId || s.id;
+    if (!groups[rootId]) groups[rootId] = [];
+    if (!groups[rootId].includes(s.id)) groups[rootId].push(s.id);
+  }
+  // Also include meta-only vehicles not yet in stateList
+  for (const m of metaList) {
+    if (!stateById[m.id]) {
+      if (!groups[m.id]) groups[m.id] = [];
+      if (!groups[m.id].includes(m.id)) groups[m.id].push(m.id);
+    }
+  }
+
+  // Build list of root IDs (only top-level groups)
+  const rootIds = Object.keys(groups);
+
+  // Sort each group: motorized vehicle always first, then by name
+  for (const rootId of rootIds) {
+    groups[rootId].sort((a, b) => {
+      const aMotor = (stateById[a]?.motorized) || (metaById[a]?.motorKw != null);
+      const bMotor = (stateById[b]?.motorized) || (metaById[b]?.motorKw != null);
+      if (aMotor && !bMotor) return -1;
+      if (!aMotor && bMotor) return 1;
+      if (a === rootId) return -1;
+      if (b === rootId) return 1;
+      return (metaById[a]?.name || '').localeCompare(metaById[b]?.name || '');
+    });
+  }
+
+  // Sort groups: motorized first, unattached non-motorized last
+  rootIds.sort((a, b) => {
+    const aIds = groups[a];
+    const bIds = groups[b];
+    const aHasMotor = aIds.some(id => stateById[id]?.motorized || metaById[id]?.motorKw != null);
+    const bHasMotor = bIds.some(id => stateById[id]?.motorized || metaById[id]?.motorKw != null);
+    if (aHasMotor && !bHasMotor) return -1;
+    if (!aHasMotor && bHasMotor) return 1;
+    return (metaById[a]?.name || '').localeCompare(metaById[b]?.name || '');
   });
 
-  let html = '<div class="fleet-list">';
-  let lastCat = null;
+  const fss = loadFleetSettings();
 
-  for (const meta of sorted) {
-    if (meta.category !== lastCat) {
-      lastCat = meta.category;
-      const count = sorted.filter(v => v.category === meta.category).length;
-      const label = fleetCategoryLabel(meta.category, appData);
-      html += `<div class="fleet-category-header"><span>${label}</span><span class="fleet-category-count">${count}</span></div>`;
-    }
+  // Render one cell per vehicle
+  function renderCell(id) {
+    const meta  = metaById[id]  || {};
+    const state = stateById[id] || {};
 
-    const state = stateById[meta.id] || {};
+    const catLabel = fleetCategoryLabel(meta.category, appData);
 
-    // Status badges
-    let badges = '';
-    if (state.motorRunning) {
-      if (state.isAIActive)    badges += '<span class="fleet-badge badge-ai">KI aktiv</span>';
-      else if (state.isEntered) badges += '<span class="fleet-badge badge-active">In Betrieb</span>';
-      else                      badges += '<span class="fleet-badge badge-active">Motor läuft</span>';
-    } else {
-      badges += '<span class="fleet-badge badge-idle">Geparkt</span>';
-    }
-    if ((state.damage || 0) > 5) badges += `<span class="fleet-badge badge-damage">${state.damage}% Schaden</span>`;
-    if (meta.propState === 'leased') badges += '<span class="fleet-badge badge-leased">Gemietet</span>';
-
-    // Bars
-    let bars = '';
-    if (meta.fuelCap > 0 && state.fuelPct != null) {
-      const fuelClass = state.fuelPct < 20 ? 'low' : state.fuelPct < 40 ? 'warn' : '';
-      const fuelLabel = FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff';
-      bars += `<div class="fleet-bar-group">
-        <div class="fleet-bar-label"><span>${fuelLabel}</span><span>${state.fuelPct}%</span></div>
-        <div class="fleet-bar-track"><div class="fleet-bar-fill fuel ${fuelClass}" style="width:${state.fuelPct}%"></div></div>
-      </div>`;
-    }
-    for (const tank of (state.tanks || [])) {
-      const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
-      bars += `<div class="fleet-bar-group">
-        <div class="fleet-bar-label"><span>${title}</span><span>${tank.pct}%</span></div>
-        <div class="fleet-bar-track"><div class="fleet-bar-fill cargo" style="width:${tank.pct}%"></div></div>
-      </div>`;
-    }
-
-    // Footer meta
-    const footerParts = [];
-    if (meta.opHours > 0) footerParts.push(`${meta.opHours} Bh.`);
-    if (meta.age > 0)      footerParts.push(`${meta.age} Mon. alt`);
-
-    const motorStr = meta.motorKw ? `<span>${meta.motorKw} kW</span><span>${Math.round(meta.motorKw * 1.35962)} PS</span>` : '';
+    // Color dot
     const c1 = meta.color1, c2 = meta.color2;
     let colorDot = '';
-    if (c1 && c2) {
-      colorDot = `<svg class="fleet-color-dot" width="20" height="20" viewBox="0 0 20 20">
-        <defs><clipPath id="vc-${meta.id}"><circle cx="10" cy="10" r="9"/></clipPath></defs>
+    if (fss.showColor && c1 && c2) {
+      colorDot = `<svg class="fleet-color-dot" width="16" height="16" viewBox="0 0 20 20">
+        <defs><clipPath id="vc-${id}"><circle cx="10" cy="10" r="9"/></clipPath></defs>
         <circle cx="10" cy="10" r="9" fill="${c1}"/>
-        <polygon points="20,0 20,20 0,20" fill="${c2}" clip-path="url(#vc-${meta.id})"/>
+        <polygon points="20,0 20,20 0,20" fill="${c2}" clip-path="url(#vc-${id})"/>
         <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
       </svg>`;
-    } else if (c1) {
-      colorDot = `<svg class="fleet-color-dot" width="20" height="20" viewBox="0 0 20 20">
+    } else if (fss.showColor && c1) {
+      colorDot = `<svg class="fleet-color-dot" width="16" height="16" viewBox="0 0 20 20">
         <circle cx="10" cy="10" r="9" fill="${c1}"/>
         <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
       </svg>`;
     }
 
-    const speed = state.speed || 0;
-    const iconHtml = speed > 0.5
-      ? `<div class="fleet-item-icon is-moving"><span class="fleet-speed-val">${speed}</span><span class="fleet-speed-unit">km/h</span></div>`
-      : `<div class="fleet-item-icon">${fleetCategoryIcon(meta.category)}</div>`;
+    // Power tag
+    const motorStr = fss.showPower && meta.motorKw
+      ? `<span class="fleet-power"><span>${meta.motorKw} kW</span><span>${Math.round(meta.motorKw * 1.35962)} PS</span></span>`
+      : '';
 
-    html += `<div class="fleet-item" data-id="${meta.id}">
-      ${iconHtml}
-      <div class="fleet-item-body">
-        <div class="fleet-item-top">
-          <div class="fleet-identity-wrap">
+    // Speed + status block (motorized only) — shown left of card content
+    const speed = state.speed || 0;
+    const isMotorized = state.motorized || (meta.motorKw != null);
+
+    let statusLabel = '';
+    if (isMotorized) {
+      if (state.motorRunning) {
+        if (state.isAIActive)     statusLabel = '<span class="fleet-badge badge-ai">KI aktiv</span>';
+        else if (state.isEntered) statusLabel = '<span class="fleet-badge badge-active">In Betrieb</span>';
+        else                      statusLabel = '<span class="fleet-badge badge-active">Motor läuft</span>';
+      } else {
+        statusLabel = '<span class="fleet-badge badge-idle">Geparkt</span>';
+      }
+    }
+
+    const speedBlock = isMotorized
+      ? `<div class="fleet-left-col">
+           <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}">
+             <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
+             <span class="fleet-speed-unit">km/h</span>
+           </div>
+           ${statusLabel}
+         </div>`
+      : '';
+
+    // Remaining badges (damage, leased) — still inline in top row
+    let extraBadges = '';
+    if (fss.showDamage && (state.damage || 0) > 5) extraBadges += `<span class="fleet-badge badge-damage">${state.damage}%</span>`;
+    if (meta.propState === 'leased') extraBadges += '<span class="fleet-badge badge-leased">Gemietet</span>';
+    const badgesHtml = extraBadges ? `<div class="fleet-badges">${extraBadges}</div>` : '';
+
+    // Bars (inline)
+    let bars = '';
+    if (fss.showFuel && meta.fuelCap > 0 && state.fuelPct != null) {
+      const fc = state.fuelPct < 20 ? 'low' : state.fuelPct < 40 ? 'warn' : '';
+      const fl = FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff';
+      const fuelLabel = state.fuelLiter != null
+        ? `${state.fuelLiter} / ${meta.fuelCap} L`
+        : `${state.fuelPct}%`;
+      bars += `<span class="fleet-bar-inline">
+        <span>${fl}</span>
+        <span class="fleet-bar-track-inline"><span class="fleet-bar-fill fuel ${fc}" style="width:${state.fuelPct}%"></span></span>
+        <span>${fuelLabel}</span>
+      </span>`;
+    }
+    for (const tank of (state.tanks || [])) {
+      const isDef = DEF_FILL_TYPES.has(tank.name);
+      const isAir = AIR_FILL_TYPES.has(tank.name);
+      if (isDef  && !fss.showDef)   continue;
+      if (isAir  && !fss.showAir)   continue;
+      if (!isDef && !isAir && !fss.showCargo) continue;
+      const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
+      const tankLabel = tank.liter != null && tank.cap != null
+        ? `${tank.liter} / ${tank.cap} L`
+        : `${tank.pct}%`;
+      bars += `<span class="fleet-bar-inline">
+        <span>${title}</span>
+        <span class="fleet-bar-track-inline"><span class="fleet-bar-fill cargo" style="width:${tank.pct}%"></span></span>
+        <span>${tankLabel}</span>
+      </span>`;
+    }
+
+    // Footer
+    const footerParts = [];
+    if (fss.showHours && meta.opHours > 0) footerParts.push(`${meta.opHours} Bh.`);
+    if (fss.showAge   && meta.age > 0)     footerParts.push(`${meta.age} Mon.`);
+
+    const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots);
+    if (near) footerParts.push(`${near.dist} m ${near.dir} · ${near.name}`);
+
+    const bottomParts = bars + (footerParts.length ? `<div class="fleet-cell-footer">${footerParts.map(p => `<span>${p}</span>`).join('<span>·</span>')}</div>` : '');
+    return `<div class="fleet-cell card" data-id="${id}">
+      <div class="fleet-cell-inner">
+        ${speedBlock}
+        <div class="fleet-cell-body">
+          <div class="fleet-cell-top">
             <div class="fleet-identity">
-              <span class="fleet-brand">${meta.brand || meta.category}</span>
+              <div class="fleet-brand-row">
+                ${catLabel ? `<span class="fleet-cat-badge">${catLabel}</span>` : ''}
+                <span class="fleet-brand">${meta.brand || ''}</span>
+              </div>
               <span class="fleet-name" title="${meta.name || ''}">${meta.name || '–'}</span>
             </div>
             ${colorDot}
-            ${motorStr ? `<span class="fleet-power">${motorStr}</span>` : ''}
+            ${motorStr}
+            ${badgesHtml}
           </div>
-          <div class="fleet-badges">${badges}</div>
+          ${bottomParts ? `<div class="fleet-cell-bottom">${bottomParts}</div>` : ''}
         </div>
-        ${bars ? `<div class="fleet-bars">${bars}</div>` : ''}
-        ${footerParts.length ? `<div class="fleet-item-footer">${footerParts.map(p => `<span>${p}</span>`).join('')}</div>` : ''}
       </div>
     </div>`;
   }
 
+  let html = '<div class="fleet-list">';
+  for (const rootId of rootIds) {
+    const ids = groups[rootId].filter(id => metaById[id]);
+    if (ids.length === 0) continue;
+    html += `<div class="fleet-row">${ids.map(renderCell).join('')}</div>`;
+  }
   html += '</div>';
   el.innerHTML = html;
 }
@@ -4624,6 +4842,29 @@ connect();
   <div class="omm-footer">
     <button onclick="closeOutputModeModal()">Abbrechen</button>
     <button class="omm-confirm" onclick="confirmOutputModes()">Bestätigen</button>
+  </div>
+</div>
+
+<!-- Fleet Settings Modal -->
+<div id="fleet-settings-modal" class="fsm-overlay" style="display:none" onclick="if(event.target===this)closeFleetSettings()">
+  <div class="fsm-dialog">
+    <div class="fsm-header">
+      <span>Fahrzeuge — Anzeigeoptionen</span>
+      <button class="fsm-close" onclick="closeFleetSettings()">✕</button>
+    </div>
+    <div class="fsm-body">
+      <div class="fsm-group-label">Allgemein</div>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-color" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugfarbe</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Motorleistung (kW / PS)</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-damage" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Schaden-Badge</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-hours" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Betriebsstunden</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-age" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugalter</span></label>
+      <div class="fsm-group-label" style="margin-top:14px">Füllstandsbalken</div>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-fuel" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Kraftstoff / Strom / Gas</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-def" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Harnstofflösung (DEF)</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-air" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Druckluft</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-cargo" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Ladung (sonstige Tanks)</span></label>
+    </div>
   </div>
 </div>
 </body>
