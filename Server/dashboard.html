@@ -1823,11 +1823,11 @@
     flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 2px;
     width: 58px; padding: 8px 6px; border-radius: 10px;
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.05); border: none;
     align-self: center;
   }
   .vd-header-speed.moving {
-    background: rgba(154,227,58,.12); border-color: rgba(154,227,58,.3);
+    background: rgba(154,227,58,.12);
   }
   .vd-header-speed-val  { font-size: 20px; font-weight: 800; color: var(--fg-muted); line-height: 1; }
   .vd-header-speed.moving .vd-header-speed-val { color: var(--green); }
@@ -1868,7 +1868,7 @@
   .vd-stat {
     display: flex; flex-direction: column; gap: 2px;
     padding: 9px 12px; border-radius: 8px;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.04); border: none;
   }
   .vd-stat-label { font-size: 9px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--fg-muted); opacity: 0.65; }
   .vd-stat-value { font-size: 15px; font-weight: 700; color: var(--fg); }
@@ -1892,7 +1892,7 @@
   .vd-location {
     font-size: 12px; color: var(--fg-muted);
     padding: 8px 12px; border-radius: 8px;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.04); border: none;
     display: flex; align-items: center; gap: 8px;
   }
   /* Actions */
@@ -1900,8 +1900,8 @@
   .vd-ev-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .vd-ev-badge {
     display: flex; align-items: center; gap: 5px;
-    padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
     color: var(--fg-muted);
   }
   .vd-ev-badge.locked  { background: rgba(229,57,53,.15);  border-color: rgba(229,57,53,.4);  color: #ef9a9a; }
@@ -1919,10 +1919,10 @@
   .vd-cc-slot {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
     padding: 9px 8px; border-radius: 9px;
-    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+    border: none; background: rgba(255,255,255,0.04);
   }
-  .vd-cc-slot.selected { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
-  .vd-cc-slot.running  { border-color: rgba(154,227,58,.4); background: rgba(154,227,58,.1); }
+  .vd-cc-slot.selected { background: rgba(255,255,255,0.08); }
+  .vd-cc-slot.running  { background: rgba(154,227,58,.1); }
   .vd-cc-label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
   .vd-cc-slot.running .vd-cc-label { color: var(--green); }
   .vd-cc-speed { font-size: 16px; font-weight: 800; color: var(--fg); line-height: 1; }
@@ -4684,8 +4684,8 @@ const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas
 
 // Fleet display settings
 const FLEET_SETTINGS_DEFAULTS = {
-  showColor: true, showPower: true, showPs: true, showDamage: true, showHours: true, showAge: true,
-  showFuel: true, showDef: true, showAir: true, showCargo: true
+  showColor: true, showPower: true, showPs: false, showDamage: false, showHours: false, showAge: false,
+  showFuel: true, showDef: false, showAir: false, showCargo: true
 };
 const DEF_FILL_TYPES = new Set(['DEF', 'ADBLUE']);
 const AIR_FILL_TYPES = new Set(['COMPRESSEDAIR', 'AIR']);
