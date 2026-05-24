@@ -5161,6 +5161,8 @@ function startVehicleTracking() {
           updateVehicles(data, appData.mapMeta.terrainSize || 2048);
         if (currentView === 'vehicles')
           renderVehicleFleet(appData);
+        if (_vdCurrentId != null)
+          _renderVehicleDetail(_vdCurrentId);
       }
     } catch (e) {}
   };
