@@ -1658,6 +1658,184 @@
   .fsm-toggle input:checked + .fsm-slider { background: var(--green); }
   .fsm-toggle input:checked + .fsm-slider::after { transform: translateX(16px); opacity: 1; }
 
+  /* ── Vehicle detail panel (slide-in from right) ── */
+  .vd-overlay {
+    position: fixed; inset: 0; z-index: 1100;
+    background: rgba(0,0,0,0); pointer-events: none;
+    transition: background .25s;
+  }
+  .vd-overlay.open {
+    background: rgba(0,0,0,0.55); pointer-events: auto;
+  }
+  .vd-panel {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 480px; max-width: 92vw;
+    background: linear-gradient(160deg, rgba(26,34,26,.99) 0%, rgba(16,20,16,.99) 100%);
+    border-left: 1px solid var(--line);
+    box-shadow: -12px 0 40px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(0.32,0,0.15,1);
+    overflow: hidden;
+  }
+  .vd-overlay.open .vd-panel {
+    transform: translateX(0);
+  }
+  .vd-header {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 18px 18px 14px; border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .vd-color-swatch {
+    flex-shrink: 0; line-height: 0; margin-top: 2px;
+  }
+  .vd-header-text { flex: 1; min-width: 0; }
+  .vd-brand-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .vd-brand {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .vd-cat-badge {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 1px 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.07); color: var(--fg-muted);
+  }
+  .vd-name {
+    font-size: 16px; font-weight: 700; color: var(--fg); line-height: 1.25;
+    word-break: break-word;
+  }
+  .vd-driver-line {
+    display: flex; align-items: center; gap: 5px; margin-top: 4px;
+    font-size: 11px; color: var(--fg-muted);
+  }
+  .vd-status-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+  .vd-loc-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--fg-muted);
+    padding: 2px 7px; border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    white-space: nowrap;
+  }
+  .vd-header-speed {
+    flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2px;
+    width: 58px; padding: 8px 6px; border-radius: 10px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    align-self: center;
+  }
+  .vd-header-speed.moving {
+    background: rgba(154,227,58,.12); border-color: rgba(154,227,58,.3);
+  }
+  .vd-header-speed-val  { font-size: 20px; font-weight: 800; color: var(--fg-muted); line-height: 1; }
+  .vd-header-speed.moving .vd-header-speed-val { color: var(--green); }
+  .vd-header-speed-unit { font-size: 9px; color: var(--fg-muted); opacity: 0.7; line-height: 1.3; }
+  .vd-header-speed.moving .vd-header-speed-unit { color: var(--green); opacity: 0.85; }
+
+  .vd-close {
+    flex-shrink: 0; background: none; border: none; color: var(--fg-muted);
+    font-size: 18px; cursor: pointer; padding: 2px 4px; border-radius: 5px;
+    line-height: 1; align-self: flex-start; margin-top: -2px;
+  }
+  .vd-close:hover { color: var(--fg); background: rgba(255,255,255,0.08); }
+
+  .vd-body {
+    flex: 1; overflow-y: auto; padding: 14px 18px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .vd-section { display: flex; flex-direction: column; gap: 10px; }
+  .vd-section-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--fg-muted); opacity: 0.6;
+  }
+  /* Speed hero */
+  .vd-speed-hero {
+    display: flex; align-items: baseline; gap: 5px;
+    padding: 10px 14px; border-radius: 10px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .vd-speed-hero.moving {
+    background: rgba(154,227,58,.08); border-color: rgba(154,227,58,.25);
+  }
+  .vd-speed-val { font-size: 28px; font-weight: 800; color: var(--fg-muted); line-height: 1; }
+  .vd-speed-hero.moving .vd-speed-val { color: var(--green); }
+  .vd-speed-unit { font-size: 13px; color: var(--fg-muted); }
+  .vd-speed-hero.moving .vd-speed-unit { color: var(--green); opacity: 0.8; }
+  /* Stat grid */
+  .vd-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .vd-stat {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 9px 12px; border-radius: 8px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .vd-stat-label { font-size: 9px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--fg-muted); opacity: 0.65; }
+  .vd-stat-value { font-size: 15px; font-weight: 700; color: var(--fg); }
+  .vd-stat-sub   { font-size: 10px; color: var(--fg-muted); }
+  /* Tank bars */
+  .vd-tank { display: flex; flex-direction: column; gap: 5px; }
+  .vd-tank-label-row { display: flex; justify-content: space-between; align-items: center; }
+  .vd-tank-name { font-size: 12px; font-weight: 600; color: var(--fg); }
+  .vd-tank-val  { font-size: 11px; color: var(--fg-muted); }
+  .vd-tank-track {
+    width: 100%; height: 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.08); overflow: hidden;
+  }
+  .vd-tank-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+  .vd-tank-fill.fuel      { background: var(--green); }
+  .vd-tank-fill.fuel.warn { background: #ffa726; }
+  .vd-tank-fill.fuel.low  { background: #ef5350; }
+  .vd-tank-fill.cargo     { background: #5c8fd6; }
+  .vd-tank-fill.damage    { background: #ef5350; }
+  /* Location */
+  .vd-location {
+    font-size: 12px; color: var(--fg-muted);
+    padding: 8px 12px; border-radius: 8px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; gap: 8px;
+  }
+  /* Actions */
+  /* Enhanced Vehicle — drive badges */
+  .vd-ev-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .vd-ev-badge {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
+    color: var(--fg-muted);
+  }
+  .vd-ev-badge.locked  { background: rgba(229,57,53,.15);  border-color: rgba(229,57,53,.4);  color: #ef9a9a; }
+  .vd-ev-badge.mode-4wd { background: rgba(154,227,58,.1); border-color: rgba(154,227,58,.3); color: var(--green); }
+  .vd-ev-badge.mode-fwd { background: rgba(100,160,255,.1); border-color: rgba(100,160,255,.3); color: #90caf9; }
+  .vd-ev-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* Vehicle Inspector — cruise control presets */
+  .vd-cc-row { display: flex; gap: 6px; }
+  .vd-cc-slot {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 8px; border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+  }
+  .vd-cc-slot.selected { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
+  .vd-cc-slot.running  { border-color: rgba(154,227,58,.4); background: rgba(154,227,58,.1); }
+  .vd-cc-label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
+  .vd-cc-slot.running .vd-cc-label { color: var(--green); }
+  .vd-cc-speed { font-size: 16px; font-weight: 800; color: var(--fg); line-height: 1; }
+  .vd-cc-slot.running .vd-cc-speed { color: var(--green); }
+  .vd-cc-speed small { font-size: 10px; font-weight: 500; color: var(--fg-muted); }
+
+  .vd-actions { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); flex-shrink: 0; }
+  .vd-action-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 10px 14px; border-radius: 9px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.05); color: var(--fg);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .vd-action-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  .vd-action-btn.primary {
+    background: rgba(154,227,58,.12); border-color: rgba(154,227,58,.35); color: var(--green);
+  }
+  .vd-action-btn.primary:hover { background: rgba(154,227,58,.2); border-color: rgba(154,227,58,.5); }
+
   .map-controls {
     position: absolute;
     bottom: 16px;
@@ -4433,6 +4611,266 @@ function closeFleetSettings() {
   document.getElementById('fleet-settings-modal').style.display = 'none';
 }
 
+// ── Vehicle detail panel ──────────────────────────────────────────
+let _vdCurrentId = null;
+
+function openVehicleDetail(id) {
+  _vdCurrentId = id;
+  _renderVehicleDetail(id);
+  const overlay = document.getElementById('vehicle-detail-overlay');
+  overlay.style.display = '';
+  // Force reflow so transition plays
+  overlay.offsetHeight; // eslint-disable-line no-unused-expressions
+  overlay.classList.add('open');
+}
+
+function closeVehicleDetail() {
+  const overlay = document.getElementById('vehicle-detail-overlay');
+  overlay.classList.remove('open');
+  overlay.addEventListener('transitionend', () => {
+    overlay.style.display = 'none';
+  }, { once: true });
+  _vdCurrentId = null;
+}
+
+function _renderVehicleDetail(id) {
+  if (!appData) return;
+  const metaList  = appData?.vehicleMeta?.vehicles || [];
+  const stateList = appData?.vehicles?.vehicles    || [];
+  const metaById  = {};
+  const stateById = {};
+  for (const m of metaList)  metaById[m.id]  = m;
+  for (const s of stateList) stateById[s.id] = s;
+
+  const meta  = metaById[id]  || {};
+  const state = stateById[id] || {};
+
+  const catLabel    = fleetCategoryLabel(meta.category, appData);
+  const isMotorized = state.motorized || (meta.motorKw != null);
+  const speed       = state.speed || 0;
+  const isMoving    = speed > 0.5;
+  const damage      = state.damage     || 0;
+  const wear        = state.wear       || 0;
+  const driverName  = state.driverName || null;
+
+  // ── Header ──────────────────────────────────────────────────────
+  const c1 = meta.color1, c2 = meta.color2;
+  let colorSwatch = '';
+  if (c1 && c2) {
+    const uid = 'vds-' + id;
+    colorSwatch = `<svg class="vd-color-swatch" width="32" height="32" viewBox="0 0 20 20">
+      <defs><clipPath id="${uid}"><circle cx="10" cy="10" r="9"/></clipPath></defs>
+      <circle cx="10" cy="10" r="9" fill="${c1}"/>
+      <polygon points="20,0 20,20 0,20" fill="${c2}" clip-path="url(#${uid})"/>
+      <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+    </svg>`;
+  } else if (c1) {
+    colorSwatch = `<svg class="vd-color-swatch" width="32" height="32" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="9" fill="${c1}"/>
+      <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+    </svg>`;
+  }
+
+  let statusBadge = '';
+  if (isMotorized) {
+    if (state.motorRunning) {
+      if (state.isAIActive)     statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
+      else if (state.isEntered) statusBadge = '<span class="fleet-badge badge-active">In Betrieb</span>';
+      else                      statusBadge = '<span class="fleet-badge badge-active">Motor läuft</span>';
+    } else {
+      statusBadge = '<span class="fleet-badge badge-idle">Geparkt</span>';
+    }
+  }
+  if (damage > 5)                statusBadge += `<span class="fleet-badge badge-damage">${damage}% Schaden</span>`;
+  if (meta.propState === 'leased') statusBadge += '<span class="fleet-badge badge-leased">Gemietet</span>';
+
+  const driverLine = driverName
+    ? `<div class="vd-driver-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        ${driverName}
+       </div>`
+    : '';
+
+  const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots);
+  const nearTag = near
+    ? `<span class="vd-loc-tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        ${near.dist} m ${near.dir} · ${near.name}
+       </span>`
+    : '';
+
+  const speedBlock = isMotorized ? `
+    <div class="vd-header-speed ${isMoving ? 'moving' : ''}">
+      <span class="vd-header-speed-val">${isMoving ? speed : '0'}</span>
+      <span class="vd-header-speed-unit">km/h</span>
+    </div>` : '';
+
+  document.getElementById('vd-header').innerHTML = `
+    ${speedBlock}
+    <div class="vd-header-text">
+      <div class="vd-brand-row">
+        ${meta.brand ? `<span class="vd-brand">${meta.brand}</span>` : ''}
+        ${catLabel   ? `<span class="vd-cat-badge">${catLabel}</span>` : ''}
+      </div>
+      <div class="vd-name">${meta.name || '–'}</div>
+      ${driverLine}
+      ${(statusBadge || nearTag) ? `<div class="vd-status-row">${statusBadge}${nearTag}</div>` : ''}
+    </div>
+    ${colorSwatch}
+    <button class="vd-close" onclick="closeVehicleDetail()" title="Schließen">✕</button>
+  `;
+
+  // ── Body ────────────────────────────────────────────────────────
+  let sections = '';
+
+
+  // Motor stats
+  if (isMotorized && meta.motorKw) {
+    const ps = Math.round(meta.motorKw * 1.35962);
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">Motor</div>
+      <div class="vd-stat-grid">
+        <div class="vd-stat">
+          <span class="vd-stat-label">Leistung</span>
+          <span class="vd-stat-value">${meta.motorKw} kW</span>
+          <span class="vd-stat-sub">${ps} PS</span>
+        </div>
+        ${meta.fuelCap > 0 ? `<div class="vd-stat">
+          <span class="vd-stat-label">Tankgröße</span>
+          <span class="vd-stat-value">${meta.fuelCap} L</span>
+          <span class="vd-stat-sub">${FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff'}</span>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Fuel + tanks
+  const tankRows = [];
+  if (meta.fuelCap > 0 && state.fuelPct != null) {
+    const fc = state.fuelPct < 20 ? 'low' : state.fuelPct < 40 ? 'warn' : '';
+    const fl = FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff';
+    const fuelLabel = state.fuelLiter != null ? `${state.fuelLiter} / ${meta.fuelCap} L` : `${state.fuelPct}%`;
+    tankRows.push(`<div class="vd-tank">
+      <div class="vd-tank-label-row">
+        <span class="vd-tank-name">${fl}</span>
+        <span class="vd-tank-val">${fuelLabel}</span>
+      </div>
+      <div class="vd-tank-track"><div class="vd-tank-fill fuel ${fc}" style="width:${state.fuelPct}%"></div></div>
+    </div>`);
+  }
+  for (const tank of (state.tanks || [])) {
+    const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
+    const tankLabel = tank.liter != null && tank.cap != null ? `${tank.liter} / ${tank.cap} L` : `${tank.pct}%`;
+    tankRows.push(`<div class="vd-tank">
+      <div class="vd-tank-label-row">
+        <span class="vd-tank-name">${title}</span>
+        <span class="vd-tank-val">${tankLabel}</span>
+      </div>
+      <div class="vd-tank-track"><div class="vd-tank-fill cargo" style="width:${tank.pct}%"></div></div>
+    </div>`);
+  }
+  if (tankRows.length) {
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">Füllstände</div>
+      ${tankRows.join('')}
+    </div>`;
+  }
+
+  // Damage + Wear
+  if (damage > 0 || wear > 0) {
+    const damageRow = damage > 0 ? `<div class="vd-tank">
+      <div class="vd-tank-label-row">
+        <span class="vd-tank-name">Schaden</span>
+        <span class="vd-tank-val">${damage}%</span>
+      </div>
+      <div class="vd-tank-track"><div class="vd-tank-fill damage" style="width:${damage}%"></div></div>
+    </div>` : '';
+    const wearColor = wear > 60 ? '#ef5350' : wear > 30 ? '#ffa726' : '#9e9e9e';
+    const wearRow = wear > 0 ? `<div class="vd-tank">
+      <div class="vd-tank-label-row">
+        <span class="vd-tank-name">Lackzustand</span>
+        <span class="vd-tank-val">${wear}% Abnutzung</span>
+      </div>
+      <div class="vd-tank-track"><div class="vd-tank-fill" style="width:${wear}%;background:${wearColor}"></div></div>
+    </div>` : '';
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">Zustand</div>
+      ${damageRow}${wearRow}
+    </div>`;
+  }
+
+  // Enhanced Vehicle — Antrieb
+  if (state.evFrontDiff != null || state.evRearDiff != null || state.evDriveMode != null) {
+    const dmLabels = { 0: '2WD', 1: '4WD', 2: 'FWD' };
+    const dmClass  = state.evDriveMode === 1 ? 'mode-4wd' : state.evDriveMode === 2 ? 'mode-fwd' : '';
+    const dmBadge  = state.evDriveMode != null
+      ? `<span class="vd-ev-badge ${dmClass}"><span class="vd-ev-dot"></span>${dmLabels[state.evDriveMode] ?? '–'}</span>`
+      : '';
+    const frontBadge = state.evFrontDiff != null
+      ? `<span class="vd-ev-badge ${state.evFrontDiff ? 'locked' : ''}"><span class="vd-ev-dot"></span>Diff V ${state.evFrontDiff ? 'gesperrt' : 'offen'}</span>`
+      : '';
+    const rearBadge = state.evRearDiff != null
+      ? `<span class="vd-ev-badge ${state.evRearDiff ? 'locked' : ''}"><span class="vd-ev-dot"></span>Diff H ${state.evRearDiff ? 'gesperrt' : 'offen'}</span>`
+      : '';
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">Antrieb</div>
+      <div class="vd-ev-row">${dmBadge}${frontBadge}${rearBadge}</div>
+    </div>`;
+  }
+
+  // Vehicle Inspector — Tempomat-Presets
+  if (state.viPresets && state.viPresets.length > 0) {
+    const slots = state.viPresets.map((p, i) => {
+      const isRunning  = p.isActive;
+      const isSelected = !isRunning && (state.viActiveKey === i + 1);
+      return `<div class="vd-cc-slot ${isRunning ? 'running' : isSelected ? 'selected' : ''}">
+        <span class="vd-cc-label">P${i + 1}</span>
+        <span class="vd-cc-speed">${p.speed}<small> km/h</small></span>
+      </div>`;
+    }).join('');
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">Tempomat</div>
+      <div class="vd-cc-row">${slots}</div>
+    </div>`;
+  }
+
+  // Info grid
+  const infoStats = [];
+  if (meta.workWidth)    infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Arbeitsbreite</span><span class="vd-stat-value">${meta.workWidth} m</span></div>`);
+  if (meta.opHours > 0) infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Betriebsstunden</span><span class="vd-stat-value">${meta.opHours} Bh.</span></div>`);
+  if (meta.age    > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Alter</span><span class="vd-stat-value">${meta.age} Mon.</span></div>`);
+  if (meta.price  > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Zeitwert</span><span class="vd-stat-value">${meta.price.toLocaleString('de-DE')} $</span></div>`);
+  if (infoStats.length) {
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">Informationen</div>
+      <div class="vd-stat-grid">${infoStats.join('')}</div>
+    </div>`;
+  }
+
+  document.getElementById('vd-body').innerHTML = sections;
+
+  // ── Actions ─────────────────────────────────────────────────────
+  const isAttached = state && state.rootId && state.rootId !== id;
+  let actionsHtml = '';
+  if (isMotorized) {
+    actionsHtml = `<button class="vd-action-btn primary" onclick="sendVehicleEnter('${id}');closeVehicleDetail()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Einsteigen
+    </button>`;
+  } else if (!isAttached) {
+    actionsHtml = `<button class="vd-action-btn primary" onclick="sendVehicleTeleport('${id}');closeVehicleDetail()">
+      ${_tpIcon}
+      Hinfahren
+    </button>`;
+  }
+  document.getElementById('vd-actions').innerHTML = actionsHtml;
+}
+
+// Close detail panel on ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _vdCurrentId != null) closeVehicleDetail();
+});
+
 // Icons keyed on broad group — unknown categories fall back to wrench
 function fleetCategoryIcon(cat) {
   const tractor  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>`;
@@ -4651,16 +5089,16 @@ function renderVehicleFleet(appData) {
     const isAttached = state && state.rootId && state.rootId !== id;
     let actionBtn = '';
     if (isMotorized) {
-      actionBtn = `<button class="tp-btn" onclick="sendVehicleEnter('${id}')" title="Einsteigen">
+      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleEnter('${id}')" title="Einsteigen">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
       </button>`;
     } else if (!isAttached) {
-      actionBtn = `<button class="tp-btn" onclick="sendVehicleTeleport('${id}')" title="Hinfahren">
+      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleTeleport('${id}')" title="Hinfahren">
         ${_tpIcon}
       </button>`;
     }
 
-    return `<div class="fleet-cell card" data-id="${id}">
+    return `<div class="fleet-cell card" data-id="${id}" onclick="openVehicleDetail('${id}')" style="cursor:pointer">
       <div class="fleet-cell-inner">
         ${speedBlock}
         ${actionBtn}
@@ -4893,6 +5331,15 @@ connect();
 </div>
 
 <!-- Fleet Settings Modal -->
+<!-- Vehicle detail panel -->
+<div id="vehicle-detail-overlay" class="vd-overlay" onclick="if(event.target===this)closeVehicleDetail()">
+  <div class="vd-panel" role="dialog" aria-modal="true">
+    <div class="vd-header" id="vd-header"></div>
+    <div class="vd-body"  id="vd-body"></div>
+    <div class="vd-actions" id="vd-actions"></div>
+  </div>
+</div>
+
 <div id="fleet-settings-modal" class="fsm-overlay" style="display:none" onclick="if(event.target===this)closeFleetSettings()">
   <div class="fsm-dialog">
     <div class="fsm-header">

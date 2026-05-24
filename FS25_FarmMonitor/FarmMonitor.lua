@@ -559,6 +559,39 @@ function FarmMonitor:collectVehicles()
         return "TRACTOR"
     end
 
+    -- Mod availability flags (checked once per collect cycle)
+    local hasEnhancedVehicle  = g_modIsLoaded["FS25_EnhancedVehicle"]  == true
+    local hasVehicleInspector = g_modIsLoaded["FS25_VehicleInspector"] == true
+
+    -- userId → playerName lookup (for driver identification)
+    local userIdToName = {}
+    if g_currentMission.userManager ~= nil then
+        local ok, users = pcall(function() return g_currentMission.userManager.users end)
+        if ok and users then
+            for _, user in pairs(users) do
+                local uid  = user.userId or user.id
+                local name = (user.getNickname and (pcall(function() return user:getNickname() end) and user:getNickname()))
+                          or user.playerName or user.nickname or user.name
+                if uid and name and name ~= "" then
+                    userIdToName[uid] = name
+                end
+            end
+        end
+    end
+    -- Fallback: iterate playerSystem for networkInformation.playerName
+    if g_currentMission.playerSystem ~= nil then
+        for _, player in pairs(g_currentMission.playerSystem.players) do
+            if player ~= nil then
+                local uid  = player.userId
+                          or (player.networkInformation and player.networkInformation.userId)
+                local name = (player.networkInformation and player.networkInformation.playerName)
+                if uid and name and name ~= "" and not userIdToName[uid] then
+                    userIdToName[uid] = name
+                end
+            end
+        end
+    end
+
     -- Build fuel fillType index lookup once for the whole loop
     local fuelFillTypeIndices = {}
     if g_fillTypeManager and g_fillTypeManager.fillTypes then
@@ -624,13 +657,25 @@ function FarmMonitor:collectVehicles()
             end
 
             local damage = 0
-            if vehicle.spec_wearable ~= nil and vehicle.spec_wearable.getDamageAmount ~= nil then
-                local ok2, val = pcall(function() return vehicle.spec_wearable:getDamageAmount() end)
-                if ok2 and val then damage = MathUtil.round(val * 100) end
+            local wear   = 0
+            if vehicle.spec_wearable ~= nil then
+                if vehicle.spec_wearable.getDamageAmount ~= nil then
+                    local ok2, val = pcall(function() return vehicle.spec_wearable:getDamageAmount() end)
+                    if ok2 and val then damage = MathUtil.round(val * 100) end
+                end
+                if vehicle.spec_wearable.getWearTotalAmount ~= nil then
+                    local ok3, val = pcall(function() return vehicle.spec_wearable:getWearTotalAmount() end)
+                    if ok3 and val then wear = MathUtil.round(val * 100) end
+                end
             end
 
             local isEntered    = vehicle.spec_enterable ~= nil and vehicle.spec_enterable.isEntered == true
             local isAIActive   = vehicle.getIsAIActive ~= nil and vehicle:getIsAIActive() == true
+            local driverName   = nil
+            if isEntered and vehicle.spec_enterable ~= nil then
+                local uid = vehicle.spec_enterable.controllerUserId
+                if uid then driverName = userIdToName[uid] end
+            end
             local motorRunning = vehicle.getIsMotorStarted ~= nil and vehicle:getIsMotorStarted() == true
             local motorized    = vehicle.spec_motorized ~= nil
             local speed = 0
@@ -651,6 +696,41 @@ function FarmMonitor:collectVehicles()
             local name = ""
             if vehicle.getName ~= nil then name = vehicle:getName() or "" end
 
+            -- ── Enhanced Vehicle (optional mod) ──────────────────────────
+            local evFrontDiff = nil
+            local evRearDiff  = nil
+            local evDriveMode = nil
+            if hasEnhancedVehicle and vehicle.vData ~= nil and vehicle.vData.is ~= nil then
+                pcall(function()
+                    if vehicle.vData.is[1] ~= nil then evFrontDiff = vehicle.vData.is[1] == true end
+                    if vehicle.vData.is[2] ~= nil then evRearDiff  = vehicle.vData.is[2] == true end
+                    if vehicle.vData.is[3] ~= nil then evDriveMode = vehicle.vData.is[3] end
+                    -- 0=2WD, 1=4WD, 2=FWD
+                end)
+            end
+
+            -- ── Vehicle Inspector SpeedControl (optional mod) ─────────────
+            local viPresets   = nil
+            local viActiveKey = nil
+            if hasVehicleInspector and vehicle.spec_speedControl ~= nil then
+                local sc = vehicle.speedControl
+                if sc ~= nil and sc.keys ~= nil then
+                    pcall(function()
+                        viPresets = FarmMonitor.arr()
+                        for i = 1, 3 do
+                            local k = sc.keys[i]
+                            if k then
+                                table.insert(viPresets, FarmMonitor.obj(
+                                    "speed",    MathUtil.round(k.speed or 0),
+                                    "isActive", k.isActive == true
+                                ))
+                            end
+                        end
+                        viActiveKey = sc.currentKey
+                    end)
+                end
+            end
+
             table.insert(result, FarmMonitor.obj(
                 "id",          tostring(vehicle.rootNode),
                 "name",        name,
@@ -664,12 +744,19 @@ function FarmMonitor:collectVehicles()
                 "fuelLiter",   fuelLiter,
                 "tanks",       tanks,
                 "damage",      damage,
+                "wear",        wear,
                 "isEntered",   isEntered,
+                "driverName",  driverName,
                 "isAIActive",  isAIActive,
                 "motorRunning", motorRunning,
                 "motorized",   motorized,
                 "speed",       speed,
-                "rootId",      rootId
+                "rootId",      rootId,
+                "evFrontDiff", evFrontDiff,
+                "evRearDiff",  evRearDiff,
+                "evDriveMode", evDriveMode,
+                "viPresets",   viPresets,
+                "viActiveKey", viActiveKey
             ))
         end
     end
@@ -1772,6 +1859,23 @@ function FarmMonitor:collectVehicleMeta()
                         if kw ~= nil and kw > 0 then motorKw = MathUtil.round(kw) end
                     end
 
+                    -- Working width (largest workArea, or sprayer width as fallback)
+                    local workWidth = 0
+                    if vehicle.spec_workArea ~= nil and vehicle.spec_workArea.workAreas ~= nil then
+                        for _, area in ipairs(vehicle.spec_workArea.workAreas) do
+                            local w = area.workWidth or 0
+                            if w > workWidth then workWidth = w end
+                        end
+                    end
+                    if workWidth == 0 and vehicle.spec_sprayer ~= nil then
+                        local ok, w = pcall(function()
+                            return vehicle.spec_sprayer.usageScale
+                               and vehicle.spec_sprayer.usageScale.workingWidth
+                        end)
+                        if ok and w and w > 0 then workWidth = w end
+                    end
+                    workWidth = workWidth > 0 and (MathUtil.round(workWidth * 10) / 10) or nil
+
                     -- Vehicle colors (designColor + baseColor, fallback to any available color config)
                     local color1 = nil
                     local color2 = nil
@@ -1830,6 +1934,7 @@ function FarmMonitor:collectVehicleMeta()
                         "fuelType",  fuelType,
                         "fuelCap",   MathUtil.round(fuelCap),
                         "motorKw",   motorKw,
+                        "workWidth", workWidth,
                         "color1",    color1,
                         "color2",    color2
                     ))
