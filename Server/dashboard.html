@@ -1578,6 +1578,7 @@
   .fleet-badge.badge-idle    { background: rgba(120,120,130,.12); border-color: rgba(120,120,130,.3); color: var(--fg-muted); }
   .fleet-badge.badge-damage  { background: rgba(229,57,53,.15);  border-color: rgba(229,57,53,.4);  color: #ef9a9a; }
   .fleet-badge.badge-leased  { background: rgba(255,160,0,.12);  border-color: rgba(255,160,0,.3);  color: #ffcc02; }
+  .fleet-badge.badge-ad      { background: rgba(0,188,212,.15);  border-color: rgba(0,188,212,.4);  color: #4dd0e1; }
   .fleet-speed {
     display: flex; align-items: baseline; gap: 2px; flex-shrink: 0;
     padding: 1px 8px; border-radius: 20px;
@@ -1806,6 +1807,11 @@
   .vd-ev-badge.mode-4wd { background: rgba(154,227,58,.1); border-color: rgba(154,227,58,.3); color: var(--green); }
   .vd-ev-badge.mode-fwd { background: rgba(100,160,255,.1); border-color: rgba(100,160,255,.3); color: #90caf9; }
   .vd-ev-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* AutoDrive */
+  .ad-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--fg-muted); vertical-align: middle; margin-left: 4px; }
+  .ad-dot.on { background: #4dd0e1; box-shadow: 0 0 4px rgba(0,188,212,.6); }
+  .vd-section-hint { font-size: 11px; color: var(--fg-muted); }
 
   /* Vehicle Inspector — cruise control presets */
   .vd-cc-row { display: flex; gap: 6px; }
@@ -4524,6 +4530,18 @@ const FLEET_CATEGORY_LABELS_FALLBACK = {
   loaders:'Lader', telehandlers:'Teleskoplader', trucks:'LKW', cars:'PKW', misc:'Sonstiges',
 };
 
+function formatAdTime(seconds) {
+  if (!seconds || seconds <= 0) return '';
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return m > 0 ? `${m} min ${s < 10 ? '0' : ''}${s} s` : `${s} s`;
+}
+
+const AD_MODE_LABELS = {
+  1: 'Fahren zu', 2: 'Abholen & Liefern', 3: 'Liefern zu',
+  4: 'Laden', 5: 'Entladen', 6: 'BGA'
+};
+
 function fleetCategoryLabel(cat, appData) {
   // Prefer game-provided localized label from vehicleCategories.json
   const cats = appData?.vehicleCategories?.categories;
@@ -4674,9 +4692,10 @@ function _renderVehicleDetail(id) {
   let statusBadge = '';
   if (isMotorized) {
     if (state.motorRunning) {
-      if (state.isAIActive)     statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
-      else if (state.isEntered) statusBadge = '<span class="fleet-badge badge-active">In Betrieb</span>';
-      else                      statusBadge = '<span class="fleet-badge badge-active">Motor läuft</span>';
+      if (state.adActive)        statusBadge = '<span class="fleet-badge badge-ad">AutoDrive</span>';
+      else if (state.isAIActive) statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
+      else if (state.isEntered)  statusBadge = '<span class="fleet-badge badge-active">In Betrieb</span>';
+      else                       statusBadge = '<span class="fleet-badge badge-active">Motor läuft</span>';
     } else {
       statusBadge = '<span class="fleet-badge badge-idle">Geparkt</span>';
     }
@@ -4831,6 +4850,31 @@ function _renderVehicleDetail(id) {
     sections += `<div class="vd-section">
       <div class="vd-section-label">Tempomat</div>
       <div class="vd-cc-row">${slots}</div>
+    </div>`;
+  }
+
+  // AutoDrive
+  if (state.adActive != null) {
+    const isOn = state.adActive === true;
+    const dot = `<span class="ad-dot ${isOn ? 'on' : ''}"></span>`;
+    let adBody = '';
+    if (isOn) {
+      const modeName = AD_MODE_LABELS[state.adMode] || '–';
+      const driverStr = state.adDriverName ? `<span class="vd-stat-sub">${state.adDriverName}</span>` : '';
+      const dest1 = state.adDestination || '–';
+      const timeStr = formatAdTime(state.adRemainingTime);
+      adBody = `<div class="vd-stat-grid">
+        <div class="vd-stat"><span class="vd-stat-label">Modus</span><span class="vd-stat-value">${modeName}</span>${driverStr}</div>
+        <div class="vd-stat"><span class="vd-stat-label">Ziel</span><span class="vd-stat-value">${dest1}</span></div>
+        ${state.adDestination2 ? `<div class="vd-stat"><span class="vd-stat-label">Entladeziel</span><span class="vd-stat-value">${state.adDestination2}</span></div>` : ''}
+        ${timeStr ? `<div class="vd-stat"><span class="vd-stat-label">Ankunft in</span><span class="vd-stat-value">${timeStr}</span></div>` : ''}
+      </div>`;
+    } else {
+      adBody = `<span class="vd-section-hint">Inaktiv</span>`;
+    }
+    sections += `<div class="vd-section">
+      <div class="vd-section-label">AutoDrive ${dot}</div>
+      ${adBody}
     </div>`;
   }
 
@@ -5020,7 +5064,8 @@ function renderVehicleFleet(appData) {
     let statusLabel = '';
     if (isMotorized) {
       if (state.motorRunning) {
-        if (state.isAIActive)     statusLabel = '<span class="fleet-badge badge-ai">KI aktiv</span>';
+        if (state.adActive)       statusLabel = '<span class="fleet-badge badge-ad">AutoDrive</span>';
+        else if (state.isAIActive) statusLabel = '<span class="fleet-badge badge-ai">KI aktiv</span>';
         else if (state.isEntered) statusLabel = '<span class="fleet-badge badge-active">In Betrieb</span>';
         else                      statusLabel = '<span class="fleet-badge badge-active">Motor läuft</span>';
       } else {
@@ -5080,6 +5125,11 @@ function renderVehicleFleet(appData) {
     if (fss.showHours && meta.opHours > 0) footerParts.push(`${meta.opHours} Bh.`);
     if (fss.showAge   && meta.age > 0)     footerParts.push(`${meta.age} Mon.`);
 
+    if (state.adActive && state.adDestination) {
+      const adLabel = AD_MODE_LABELS[state.adMode] || 'AD';
+      const timeStr = formatAdTime(state.adRemainingTime);
+      footerParts.push(`${adLabel}: ${state.adDestination}${timeStr ? ' · ' + timeStr : ''}`);
+    }
     const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots);
     if (near) footerParts.push(`${near.dist} m ${near.dir} · ${near.name}`);
 

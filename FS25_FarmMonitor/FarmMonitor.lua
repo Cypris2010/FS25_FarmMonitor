@@ -22,6 +22,7 @@ FarmMonitor.fruitTypesExported  = false
 FarmMonitor.mapMetaExported     = false
 FarmMonitor.hotspotsExported          = false
 FarmMonitor.vehicleCategoriesExported = false
+FarmMonitor.autoDriveMarkersExported  = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
@@ -50,6 +51,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.vehicles     = outputDir .. "vehicles.json"
     FarmMonitor.paths.vehicleMeta       = outputDir .. "vehicleMeta.json"
     FarmMonitor.paths.vehicleCategories = outputDir .. "vehicleCategories.json"
+    FarmMonitor.paths.autoDriveMarkers  = outputDir .. "autoDriveMarkers.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
@@ -76,6 +78,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.mapMetaExported    = false
         FarmMonitor.hotspotsExported          = false
         FarmMonitor.vehicleCategoriesExported = false
+        FarmMonitor.autoDriveMarkersExported  = false
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval      -- trigger field export on next tick
         FarmMonitor.vehicleMetaTimer   = FarmMonitor.vehicleMetaInterval -- trigger meta export on next tick
@@ -115,6 +118,11 @@ function FarmMonitor:update(dt)
         if FarmMonitor:exportVehicleCategories() then
             FarmMonitor.vehicleCategoriesExported = true
         end
+    end
+
+    if not FarmMonitor.autoDriveMarkersExported then
+        FarmMonitor:exportAutoDriveMarkers()
+        FarmMonitor.autoDriveMarkersExported = true
     end
 
     FarmMonitor.timer = FarmMonitor.timer + dt
@@ -414,6 +422,56 @@ function FarmMonitor:exportAnimalFood()
 end
 
 -- ---------------------------------------------------------------------------
+-- AutoDrive markers  (written once per session, if mod is loaded)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportAutoDriveMarkers()
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then return end
+    if ADGraphManager == nil then return end
+
+    local ok, err = pcall(function()
+        local markers = FarmMonitor.arr()
+        for _, marker in pairs(ADGraphManager:getMapMarkers()) do
+            if marker.isADDebug ~= true then
+                local wp = ADGraphManager:getWayPointById(marker.id)
+                local x, y, z = nil, nil, nil
+                if wp ~= nil then
+                    x = MathUtil.round(wp.x * 10) / 10
+                    y = MathUtil.round(wp.y * 10) / 10
+                    z = MathUtil.round(wp.z * 10) / 10
+                end
+                table.insert(markers, FarmMonitor.obj(
+                    "id",    marker.markerIndex,
+                    "name",  marker.name,
+                    "group", marker.group or "All",
+                    "x",     x,
+                    "y",     y,
+                    "z",     z
+                ))
+            end
+        end
+
+        local groups = FarmMonitor.arr()
+        for groupName, _ in pairs(ADGraphManager:getGroups()) do
+            if groupName ~= ADGraphManager.debugGroupName then
+                table.insert(groups, groupName)
+            end
+        end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.autoDriveMarkers, FarmMonitor.obj(
+            "savegameId", FarmMonitor.savegameId,
+            "markers",    markers,
+            "groups",     groups
+        ))
+        print("[FarmMonitor] autoDriveMarkers.json written (" .. #markers .. " markers)")
+    end)
+
+    if not ok then
+        print("[FarmMonitor] ERROR writing autoDriveMarkers.json: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Map metadata  (written once per session)
 -- ---------------------------------------------------------------------------
 
@@ -562,6 +620,7 @@ function FarmMonitor:collectVehicles()
     -- Mod availability flags (checked once per collect cycle)
     local hasEnhancedVehicle  = g_modIsLoaded["FS25_EnhancedVehicle"]  == true
     local hasVehicleInspector = g_modIsLoaded["FS25_VehicleInspector"] == true
+    local hasAutoDrive        = g_modIsLoaded["FS25_AutoDrive"]        == true
 
     -- userId → playerName lookup (for driver identification)
     local userIdToName = {}
@@ -731,6 +790,28 @@ function FarmMonitor:collectVehicles()
                 end
             end
 
+            -- ── AutoDrive (optional mod) ─────────────────────────────────
+            local adActive        = nil
+            local adMode          = nil
+            local adDriverName    = nil
+            local adDestination   = nil
+            local adDestination2  = nil
+            local adRemainingTime = nil
+            if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
+                pcall(function()
+                    local sm = vehicle.ad.stateModule
+                    adActive      = sm:isActive() == true
+                    adMode        = sm:getMode()
+                    adDriverName  = sm:getName()
+                    adDestination = sm:getFirstMarkerName()
+                    if sm.secondMarker ~= nil then
+                        adDestination2 = sm.secondMarker.name
+                    end
+                    local t = sm.remainingDriveTime
+                    if t and t > 0 then adRemainingTime = MathUtil.round(t) end
+                end)
+            end
+
             table.insert(result, FarmMonitor.obj(
                 "id",          tostring(vehicle.rootNode),
                 "name",        name,
@@ -755,8 +836,14 @@ function FarmMonitor:collectVehicles()
                 "evFrontDiff", evFrontDiff,
                 "evRearDiff",  evRearDiff,
                 "evDriveMode", evDriveMode,
-                "viPresets",   viPresets,
-                "viActiveKey", viActiveKey
+                "viPresets",        viPresets,
+                "viActiveKey",      viActiveKey,
+                "adActive",         adActive,
+                "adMode",           adMode,
+                "adDriverName",     adDriverName,
+                "adDestination",    adDestination,
+                "adDestination2",   adDestination2,
+                "adRemainingTime",  adRemainingTime
             ))
         end
     end
