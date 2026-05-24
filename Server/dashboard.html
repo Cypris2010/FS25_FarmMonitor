@@ -279,20 +279,22 @@
   .badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    border-radius: 10px;
-    border: 1px solid currentColor;
-    padding: 5px 11px;
-    font-weight: 700;
-    font-size: 13px;
-    background: rgba(255,255,255,.035);
+    gap: 4px;
+    border-radius: 5px;
+    border: none;
+    padding: 2px 7px;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: rgba(255,255,255,.06);
   }
-  .badge.red    { color: var(--red);    background: rgba(255,92,77,.08); }
-  .badge.orange { color: var(--orange); background: rgba(255,173,50,.08); }
-  .badge.green  { color: var(--green);  background: rgba(154,227,58,.08); }
-  .badge.yellow { color: var(--yellow); background: rgba(255,212,59,.08); }
-  .badge.blue   { color: var(--blue);   background: rgba(114,168,255,.08); }
-  .badge.gray   { color: var(--muted);  background: rgba(255,255,255,.06); border-color: var(--line); }
+  .badge.red    { color: var(--red);    background: rgba(255,92,77,.13); }
+  .badge.orange { color: var(--orange); background: rgba(255,173,50,.13); }
+  .badge.green  { color: var(--green);  background: rgba(154,227,58,.12); }
+  .badge.yellow { color: var(--yellow); background: rgba(255,212,59,.12); }
+  .badge.blue   { color: var(--blue);   background: rgba(114,168,255,.12); }
+  .badge.gray   { color: var(--fg-muted); background: rgba(255,255,255,.07); }
 
   .chain-status { display: inline-flex; align-items: center; font-size: 16px; }
   .chain-status.green  { color: var(--green); }
@@ -333,11 +335,11 @@
   .metric.has-badge { grid-template-columns: 90px 1fr auto auto; }
   .bar.empty-needed > i { width: 100% !important; background: rgba(255,92,77,.18); }
   .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
-  button.output-mode-badge { cursor: pointer; width:30px; height:30px; border-radius:8px; border:none !important; display:inline-flex; align-items:center; justify-content:center; opacity:.85; transition:background .15s, opacity .15s, transform .12s; background: rgba(255,255,255,0.07); }
-  button.output-mode-badge.red    { background: rgba(229,57,53,.15); }
-  button.output-mode-badge.green  { background: rgba(154,227,58,.13); }
-  button.output-mode-badge.orange { background: rgba(255,160,0,.13); }
-  button.output-mode-badge.blue   { background: rgba(92,143,214,.15); }
+  button.output-mode-badge { cursor: pointer; width:30px; height:30px; border-radius:8px; border:1px solid var(--line); display:inline-flex; align-items:center; justify-content:center; opacity:.85; transition:background .15s, border-color .15s, opacity .15s, transform .12s; background: rgba(255,255,255,0.05); }
+  button.output-mode-badge.red    { background: rgba(229,57,53,.12);  border-color: rgba(229,57,53,.35); }
+  button.output-mode-badge.green  { background: rgba(154,227,58,.10); border-color: rgba(154,227,58,.35); }
+  button.output-mode-badge.orange { background: rgba(255,160,0,.10);  border-color: rgba(255,160,0,.35); }
+  button.output-mode-badge.blue   { background: rgba(92,143,214,.12); border-color: rgba(92,143,214,.35); }
   button.output-mode-badge:hover { opacity:1; transform:scale(1.07); filter:brightness(1.2); }
   @keyframes mode-pending         { 0%,100% { background:transparent; } 50% { background:color-mix(in srgb, currentColor 30%, transparent); } }
   @keyframes mode-pending-icon    { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
@@ -586,10 +588,14 @@
     margin: 4px 0 4px;
   }
   .metric + .sub-label, .chain-row + .sub-label { margin-top: 22px; }
-  .sub-label.inactive-toggle { cursor: pointer; user-select: none; }
-  .sub-label.inactive-toggle:hover { opacity: 0.7; }
+  .sub-label.inactive-toggle {
+    cursor: pointer; user-select: none;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 6px 2px 3px; border-radius: 5px;
+    transition: background .15s, color .15s;
+  }
+  .sub-label.inactive-toggle:hover { background: rgba(255,255,255,.07); color: var(--fg); opacity: 1; }
   .chain-row { cursor: pointer; user-select: none; }
-  .chain-row:hover { opacity: 0.8; }
   .chain-recipe { font-size: 11px; color: var(--muted); padding: 2px 0 6px 16px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .chain-recipe .cr-name { color: var(--text); }
   .chain-recipe .cr-sep { opacity: 0.5; }
@@ -714,10 +720,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 5px 0;
+    padding: 5px 6px;
+    margin: 0 -6px;
     border-bottom: 1px solid var(--line-soft);
+    border-radius: 5px;
     font-size: 13px;
+    transition: background .12s;
   }
+  .chain-row:hover { background: rgba(255,255,255,.05); }
   .chain-row:last-child { border-bottom: none; }
 
   /* ── Mobile bottom nav ── */
@@ -800,22 +810,22 @@
   .vis-btn.is-hidden  { color: var(--muted); }
   .vis-btn:hover { opacity: .7; }
   .tp-btn {
-    background: rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.05);
     cursor: pointer;
     flex-shrink: 0;
     margin-left: auto;
     color: var(--fg-muted);
     width: 32px; height: 32px;
     border-radius: 8px;
-    border: none;
+    border: 1px solid var(--line);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     opacity: .8;
-    transition: background .15s, opacity .15s, transform .12s;
+    transition: background .15s, border-color .15s, opacity .15s, transform .12s;
     line-height: 0;
   }
-  .tp-btn:hover { background: rgba(255,255,255,0.14); opacity: 1; transform: scale(1.06); }
+  .tp-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,.22); opacity: 1; transform: scale(1.06); }
   .fleet-cell-inner > .tp-btn { width: 36px; height: 36px; border-radius: 9px; margin-left: 0; }
 
   .fleet-action-btn {
@@ -1543,10 +1553,9 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     flex-shrink: 0; width: 44px; min-height: 38px; padding: 5px 4px;
     border-radius: 8px; background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
   }
   .fleet-speed-block.moving {
-    background: rgba(154,227,58,.12); border-color: rgba(154,227,58,.3);
+    background: rgba(154,227,58,.12);
   }
   .fleet-speed-block .fleet-speed-val  { font-size: 13px; font-weight: 700; color: var(--fg-muted); line-height: 1; }
   .fleet-speed-block.moving .fleet-speed-val { color: var(--green); }
