@@ -45,6 +45,18 @@
 - ✅ **Lua/modDesc:** Multiplayer aktiviert (`multiplayer supported="true"`)
 - ✅ **Lua:** `isServer`-Guard in `update()` — überspringt Ausführung auf Dedicated Servers
 
+## v0.4.x — AutoDrive Integration
+- ✅ **Lua:** `autoDriveMarkers.json` exportiert alle Marker (Name, Gruppe, markerIndex) via Iterator-Trick über `sm:setFirstMarker(id)` — da `ADGraphManager` aus FarmMonitor-Sandbox nicht zugänglich
+- ✅ **Lua:** Inkrementeller Export alle 60s: Schnelltest mit `lastMaxId+1`, nur re-exportieren bei neuen Markern
+- ✅ **Lua:** `vehicles.json` enthält AutoDrive-Status pro Fahrzeug: `adActive`, `adMode`, `adDriverName`, `adDestination`, `adDestination2`, `adRemainingTime`
+- ✅ **Lua:** IPC-Commands `autodrive.configure` (Mode, Marker1, Marker2, FillType) und `autodrive.startStop`
+- ✅ **Lua:** Fahrzeug-Lookup per `rootNode` (nicht `getVehicleByUniqueId`) da `vehicles.json` rootNode als ID exportiert
+- ✅ **Lua:** Start-Sequenz: `sm:getCurrentMode():start()` direkt — der Mode ruft `startAutoDrive()` intern selbst auf; separate Vorbelegung bricht Initialisierungsreihenfolge
+- ✅ **Dashboard:** AutoDrive-Tab im Fahrzeug-Detailpanel — schiebt sich von rechts ins Bild (max-width Animation)
+- ✅ **Dashboard:** Mode-Dropdown (1–5), dynamische Marker-Dropdowns (gruppiert), FillType-Dropdown (Modi 2/3/4), Start/Stop-Buttons
+- ✅ **Dashboard:** „Start" konfiguriert automatisch zuerst (configure + startStop in einem Click)
+- ✅ **Dashboard:** Flottenkarte zeigt AutoDrive-Status (aktiv/Ziel)
+
 ## v0.4.0 — Object Storages (Paletten & Ballenlager)
 - **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
   - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus

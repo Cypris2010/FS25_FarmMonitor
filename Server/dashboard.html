@@ -1676,20 +1676,20 @@
     display: flex; flex-direction: row;
     transform: translateX(100%);
     transition: transform .3s cubic-bezier(0.32,0,0.15,1);
-    overflow: hidden;
+    /* No overflow:hidden here — it blocks the AD panel from expanding */
   }
   .vd-overlay.open .vd-panel {
     transform: translateX(0);
   }
-  /* Main scrollable content column */
+  /* Main scrollable content column — fixed at 480px, never shrinks */
   .vd-main {
-    flex: 0 0 480px; max-width: 480px;
+    flex: 0 0 480px; width: 480px;
     display: flex; flex-direction: column;
     overflow: hidden;
   }
   /* Vertical AutoDrive tab strip */
   .vd-ad-tab {
-    flex: 0 0 26px;
+    flex: 0 0 26px; width: 26px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 3px;
     background: rgba(0,180,220,.06);
@@ -1705,20 +1705,21 @@
   .vd-ad-tab.active { background: rgba(0,180,220,.16); color: rgba(0,180,220,1); border-color: rgba(0,180,220,.4); }
   .vd-ad-tab svg { opacity: .5; transition: opacity .2s; }
   .vd-ad-tab:hover svg, .vd-ad-tab.active svg { opacity: 1; }
-  /* AutoDrive sub-panel */
+  /* AutoDrive sub-panel — max-width animiert zuverlässig in allen Browsern */
   .vd-ad-panel {
-    flex: 0 0 0; width: 0;
+    max-width: 0;
     overflow: hidden;
-    transition: flex-basis .3s cubic-bezier(0.32,0,0.15,1);
+    transition: max-width .3s cubic-bezier(0.32,0,0.15,1),
+                border-color .3s;
     display: flex; flex-direction: column;
-    border-left: 0px solid rgba(0,180,220,.2);
+    border-left: 1px solid transparent;
   }
   .vd-ad-panel.open {
-    flex-basis: 300px;
-    border-left-width: 1px;
+    max-width: 300px;
+    border-left-color: rgba(0,180,220,.2);
   }
   .vd-ad-inner {
-    width: 300px; flex-shrink: 0;
+    width: 300px; /* fixed so content doesn't squish during animation */
     height: 100%; overflow-y: auto;
     display: flex; flex-direction: column;
     padding: 16px 14px;
@@ -4792,13 +4793,14 @@ function _renderAdPanel(id) {
   if (!inner) return;
 
   const stateList = appData?.vehicles?.vehicles || [];
-  const state = stateList.find(s => s.id === id) || {};
+  const state = stateList.find(s => String(s.id) === String(id)) || {};
   const markers = appData?.autoDriveMarkers?.markers || [];
   const hasAD = state.adActive != null; // vehicle has AD module
+  console.log('[AD] _renderAdPanel id='+id+' stateFound='+(!!state.adActive !== undefined)+' adActive='+state.adActive+' hasAD='+hasAD+' markers='+markers.length);
 
   if (!hasAD) {
     inner.innerHTML = `<div class="vd-ad-title">AutoDrive</div>
-      <div class="vd-ad-no-ad">Kein AutoDrive-Modul erkannt</div>`;
+      <div class="vd-ad-no-ad">Kein AutoDrive-Modul erkannt (id=${id})</div>`;
     return;
   }
 
@@ -4859,12 +4861,12 @@ function _renderAdPanel(id) {
     <div id="ad-m2-wrap">${m2Block}</div>
     <div id="ad-ft-wrap">${ftBlock}</div>
     <div class="vd-ad-btn-row">
-      <button class="vd-ad-btn vd-ad-btn-start" onclick="_adConfigure(${JSON.stringify(id)})">Übernehmen</button>
+      <button class="vd-ad-btn vd-ad-btn-start" onclick="_adConfigure('${id}')">Übernehmen</button>
     </div>
     <div class="vd-ad-btn-row">
       ${isActive
-        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop(${JSON.stringify(id)}, 'stop')">⏹ Stopp</button>`
-        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop(${JSON.stringify(id)}, 'start')">▶ Start</button>`
+        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop('${id}', 'stop')">⏹ Stopp</button>`
+        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop('${id}', 'start')">▶ Start</button>`
       }
     </div>
   `;
@@ -4892,22 +4894,29 @@ function _onAdModeChange() {
     </div>` : '';
 }
 
+async function _adStartStop(vehicleId, action) {
+  console.log('[AD] _adStartStop called', vehicleId, action);
+  if (action === 'start') {
+    await _adConfigure(vehicleId);
+  }
+  const res = await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, mode: action })
+  });
+  console.log('[AD] startStop response', res.status);
+}
+
 async function _adConfigure(vehicleId) {
   const mode    = document.getElementById('ad-mode')?.value    || '';
   const marker1 = document.getElementById('ad-marker1')?.value || '';
   const marker2 = document.getElementById('ad-marker2')?.value || '';
   const fillType= document.getElementById('ad-filltype')?.value|| '';
-  await fetch('/api/command', {
+  console.log('[AD] _adConfigure', vehicleId, 'mode='+mode, 'marker1='+marker1);
+  const res = await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cmd: 'autodrive.configure', uniqueId: vehicleId, mode, marker1, marker2, fillType })
   });
-}
-
-async function _adStartStop(vehicleId, action) {
-  await fetch('/api/command', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, mode: action })
-  });
+  console.log('[AD] configure response', res.status);
 }
 
 function _renderVehicleDetail(id) {

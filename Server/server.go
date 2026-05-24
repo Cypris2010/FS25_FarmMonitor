@@ -246,6 +246,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			http.Error(w, "invalid JSON", http.StatusBadRequest)
 			return
 		}
+		log.Printf("[command] received: cmd=%s uniqueId=%s mode=%s marker1=%s marker2=%s", cmd.Cmd, cmd.UniqueID, cmd.Mode, cmd.Marker1, cmd.Marker2)
 		if cmd.ID == "" {
 			cmd.ID = fmt.Sprintf("%d", time.Now().UnixNano())
 		}

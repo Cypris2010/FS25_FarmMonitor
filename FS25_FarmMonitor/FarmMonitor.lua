@@ -78,7 +78,9 @@ function FarmMonitor:update(dt)
         FarmMonitor.mapMetaExported    = false
         FarmMonitor.hotspotsExported          = false
         FarmMonitor.vehicleCategoriesExported = false
-        FarmMonitor.autoDriveMarkersExported  = false
+        FarmMonitor.autoDriveLastMaxId        = 0
+        FarmMonitor.autoDriveMarkerCache      = nil
+        FarmMonitor.autoDriveRetryTimer       = 4500  -- ersten Versuch nach 0.5s
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval      -- trigger field export on next tick
         FarmMonitor.vehicleMetaTimer   = FarmMonitor.vehicleMetaInterval -- trigger meta export on next tick
@@ -120,9 +122,10 @@ function FarmMonitor:update(dt)
         end
     end
 
-    if not FarmMonitor.autoDriveMarkersExported then
+    FarmMonitor.autoDriveRetryTimer = (FarmMonitor.autoDriveRetryTimer or 0) + dt
+    if FarmMonitor.autoDriveRetryTimer >= 60000 then  -- alle 60 Sekunden prüfen
+        FarmMonitor.autoDriveRetryTimer = 0
         FarmMonitor:exportAutoDriveMarkers()
-        FarmMonitor.autoDriveMarkersExported = true
     end
 
     FarmMonitor.timer = FarmMonitor.timer + dt
@@ -427,47 +430,97 @@ end
 
 function FarmMonitor:exportAutoDriveMarkers()
     if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then return end
-    if ADGraphManager == nil then return end
+
+    -- Fahrzeug mit AutoDrive-Modul auf unserer Farm finden
+    local sm = nil
+    local farmId = g_currentMission:getFarmId()
+    for _, v in pairs(g_currentMission.vehicleSystem.vehicles) do
+        if v.ownerFarmId == farmId and v.ad ~= nil and v.ad.stateModule ~= nil then
+            sm = v.ad.stateModule
+            break
+        end
+    end
+    if sm == nil then return end  -- kein AD-Fahrzeug → nächster Versuch in 60s
 
     local ok, err = pcall(function()
-        local markers = FarmMonitor.arr()
-        for _, marker in pairs(ADGraphManager:getMapMarkers()) do
-            if marker.isADDebug ~= true then
-                local wp = ADGraphManager:getWayPointById(marker.id)
-                local x, y, z = nil, nil, nil
-                if wp ~= nil then
-                    x = MathUtil.round(wp.x * 10) / 10
-                    y = MathUtil.round(wp.y * 10) / 10
-                    z = MathUtil.round(wp.z * 10) / 10
-                end
-                table.insert(markers, FarmMonitor.obj(
-                    "id",    marker.markerIndex,
-                    "name",  marker.name,
-                    "group", marker.group or "All",
-                    "x",     x,
-                    "y",     y,
-                    "z",     z
-                ))
+        local savedMarker = sm.firstMarker
+        local lastMaxId   = FarmMonitor.autoDriveLastMaxId or 0
+        local startId     = lastMaxId + 1
+
+        -- Inkrementeller Schnelltest: gibt es eine neue ID nach dem letzten bekannten Maximum?
+        if lastMaxId > 0 then
+            sm:setFirstMarker(startId)
+            local probe = sm.firstMarker
+            sm.firstMarker = savedMarker
+            if probe == nil or probe.isADDebug == true then
+                return  -- keine neuen Marker → nichts zu tun
             end
         end
 
-        local groups = FarmMonitor.arr()
-        for groupName, _ in pairs(ADGraphManager:getGroups()) do
-            if groupName ~= ADGraphManager.debugGroupName then
-                table.insert(groups, groupName)
+        -- Vollscan ab startId (beim ersten Mal ab 1, danach ab lastMaxId+1)
+        local newMarkers  = {}
+        local groupSet    = {}
+        local emptyStreak = 0
+        local highestId   = lastMaxId
+
+        -- Bestehende Gruppen aus Cache übernehmen (für inkrementellen Lauf)
+        if lastMaxId > 0 and FarmMonitor.autoDriveMarkerCache then
+            for _, m in ipairs(FarmMonitor.autoDriveMarkerCache) do
+                if m.group then groupSet[m.group] = true end
             end
+        end
+
+        for id = startId, 2000 do
+            sm:setFirstMarker(id)
+            local m = sm.firstMarker
+            if m ~= nil and m.isADDebug ~= true then
+                local group = m.group or "All"
+                groupSet[group] = true
+                table.insert(newMarkers, { id = m.markerIndex, name = m.name, group = group })
+                highestId   = math.max(highestId, id)
+                emptyStreak = 0
+            else
+                emptyStreak = emptyStreak + 1
+                if emptyStreak >= 100 then break end
+            end
+        end
+
+        -- Originalmarker wiederherstellen (direkt — dirty flag batched, nur finaler Zustand wird gesynct)
+        sm.firstMarker = savedMarker
+
+        if #newMarkers == 0 then return end  -- nichts gefunden (erster Lauf, noch keine Marker)
+
+        -- Neue Marker an Cache anhängen
+        local allMarkers = FarmMonitor.autoDriveMarkerCache or {}
+        for _, m in ipairs(newMarkers) do
+            table.insert(allMarkers, m)
+        end
+        FarmMonitor.autoDriveLastMaxId    = highestId
+        FarmMonitor.autoDriveMarkerCache  = allMarkers
+
+        -- Gruppen sortieren
+        local groups = FarmMonitor.arr()
+        for groupName, _ in pairs(groupSet) do
+            table.insert(groups, groupName)
+        end
+        table.sort(groups)
+
+        -- JSON-Array aufbauen
+        local markerArr = FarmMonitor.arr()
+        for _, m in ipairs(allMarkers) do
+            table.insert(markerArr, FarmMonitor.obj("id", m.id, "name", m.name, "group", m.group))
         end
 
         FarmMonitor:writeJSON(FarmMonitor.paths.autoDriveMarkers, FarmMonitor.obj(
             "savegameId", FarmMonitor.savegameId,
-            "markers",    markers,
+            "markers",    markerArr,
             "groups",     groups
         ))
-        print("[FarmMonitor] autoDriveMarkers.json written (" .. #markers .. " markers)")
+        print("[FarmMonitor] autoDriveMarkers.json written (" .. #allMarkers .. " total, +" .. #newMarkers .. " neu)")
     end)
 
     if not ok then
-        print("[FarmMonitor] ERROR writing autoDriveMarkers.json: " .. tostring(err))
+        print("[FarmMonitor] autoDriveMarkers: pcall error: " .. tostring(err))
     end
 end
 
@@ -2598,31 +2651,56 @@ end
 -- AutoDrive commands
 -- ---------------------------------------------------------------------------
 
+function FarmMonitor:findVehicleByNodeId(nodeId)
+    for _, v in pairs(g_currentMission.vehicleSystem.vehicles) do
+        if v ~= nil and v.rootNode ~= nil and tostring(v.rootNode) == nodeId then
+            return v
+        end
+    end
+    return nil
+end
+
 function FarmMonitor:cmdAutoDriveConfigure(cmd)
     if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
         error("AutoDrive not loaded")
     end
-    local vehicle = g_currentMission.vehicleSystem:getVehicleByUniqueId(cmd.uniqueId)
+    local vehicle = FarmMonitor:findVehicleByNodeId(cmd.uniqueId)
     if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
         error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
     end
     local sm = vehicle.ad.stateModule
 
+    print("[FarmMonitor] AD configure: mode=" .. tostring(cmd.mode) .. " marker1=" .. tostring(cmd.marker1) .. " marker2=" .. tostring(cmd.marker2) .. " fillType=" .. tostring(cmd.fillType))
+
     if cmd.mode ~= "" then
         local modeNum = tonumber(cmd.mode)
-        if modeNum then sm:setMode(modeNum) end
+        if modeNum then
+            sm:setMode(modeNum)
+            print("[FarmMonitor] AD setMode(" .. modeNum .. ") → getMode=" .. tostring(sm:getMode()))
+        end
     end
     if cmd.marker1 ~= "" then
         local mid = tonumber(cmd.marker1)
-        if mid then sm:setFirstMarker(mid) end
+        if mid then
+            sm:setFirstMarker(mid)
+            local m = sm.firstMarker
+            print("[FarmMonitor] AD setFirstMarker(" .. mid .. ") → firstMarker=" .. tostring(m and m.name or "nil"))
+        end
     end
     if cmd.marker2 ~= "" then
         local mid = tonumber(cmd.marker2)
-        if mid then sm:setSecondMarker(mid) end
+        if mid then
+            sm:setSecondMarker(mid)
+            local m = sm.secondMarker
+            print("[FarmMonitor] AD setSecondMarker(" .. mid .. ") → secondMarker=" .. tostring(m and m.name or "nil"))
+        end
     end
     if cmd.fillType ~= "" then
         local ft = g_fillTypeManager:getFillTypeByName(cmd.fillType)
-        if ft then sm:setFillType(ft.index) end
+        if ft then
+            sm:setFillType(ft.index)
+            print("[FarmMonitor] AD setFillType(" .. cmd.fillType .. ")")
+        end
     end
 end
 
@@ -2630,15 +2708,30 @@ function FarmMonitor:cmdAutoDriveStartStop(cmd)
     if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
         error("AutoDrive not loaded")
     end
-    local vehicle = g_currentMission.vehicleSystem:getVehicleByUniqueId(cmd.uniqueId)
+    local vehicle = FarmMonitor:findVehicleByNodeId(cmd.uniqueId)
     if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
         error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
     end
     local sm = vehicle.ad.stateModule
+    print("[FarmMonitor] AD startStop: action=" .. tostring(cmd.mode) .. " isActive=" .. tostring(sm:isActive()) .. " isServer=" .. tostring(vehicle.isServer))
     if cmd.mode == "start" then
-        if not sm:isActive() then vehicle:startAutoDrive() end
+        local currentMode = sm:getCurrentMode()
+        print("[FarmMonitor] AD start: isActive=" .. tostring(sm:isActive()) .. " mode=" .. tostring(sm:getMode()) .. " firstMarker=" .. tostring(sm.firstMarker and sm.firstMarker.name or "nil"))
+        -- DriveToMode:start() ruft startAutoDrive() intern selbst auf — nicht vorher aufrufen
+        if not sm:isActive() then
+            currentMode:start()
+            print("[FarmMonitor] AD mode:start() called")
+        else
+            print("[FarmMonitor] AD already active, stopping first then restarting")
+            vehicle:stopAutoDrive()
+            currentMode:start()
+            print("[FarmMonitor] AD stopped and restarted")
+        end
     else
-        if sm:isActive() then vehicle:stopAutoDrive() end
+        if sm:isActive() then
+            vehicle:stopAutoDrive()
+            print("[FarmMonitor] AD stopAutoDrive() called")
+        end
     end
 end
 
