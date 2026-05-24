@@ -2399,6 +2399,8 @@ function FarmMonitor:processCommands()
             x        = getXMLString(xmlId, base .. "#x")        or "",
             y        = getXMLString(xmlId, base .. "#y")        or "",
             z        = getXMLString(xmlId, base .. "#z")        or "",
+            marker1  = getXMLString(xmlId, base .. "#marker1")  or "",
+            marker2  = getXMLString(xmlId, base .. "#marker2")  or "",
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -2428,6 +2430,8 @@ function FarmMonitor:dispatchCommand(cmd)
         ["player.teleportToPlaceable"]    = FarmMonitor.cmdTeleportToPlaceable,
         ["vehicle.enter"]                 = FarmMonitor.cmdEnterVehicle,
         ["vehicle.teleport"]              = FarmMonitor.cmdTeleportToVehicle,
+        ["autodrive.configure"]           = FarmMonitor.cmdAutoDriveConfigure,
+        ["autodrive.startStop"]           = FarmMonitor.cmdAutoDriveStartStop,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -2589,6 +2593,54 @@ function FarmMonitor:cmdSpawnPallets(cmd)
     )
 end
 
+
+-- ---------------------------------------------------------------------------
+-- AutoDrive commands
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:cmdAutoDriveConfigure(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    local vehicle = g_currentMission.vehicleSystem:getVehicleByUniqueId(cmd.uniqueId)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+
+    if cmd.mode ~= "" then
+        local modeNum = tonumber(cmd.mode)
+        if modeNum then sm:setMode(modeNum) end
+    end
+    if cmd.marker1 ~= "" then
+        local mid = tonumber(cmd.marker1)
+        if mid then sm:setFirstMarker(mid) end
+    end
+    if cmd.marker2 ~= "" then
+        local mid = tonumber(cmd.marker2)
+        if mid then sm:setSecondMarker(mid) end
+    end
+    if cmd.fillType ~= "" then
+        local ft = g_fillTypeManager:getFillTypeByName(cmd.fillType)
+        if ft then sm:setFillType(ft.index) end
+    end
+end
+
+function FarmMonitor:cmdAutoDriveStartStop(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    local vehicle = g_currentMission.vehicleSystem:getVehicleByUniqueId(cmd.uniqueId)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    if cmd.mode == "start" then
+        if not sm:isActive() then vehicle:startAutoDrive() end
+    else
+        if sm:isActive() then vehicle:stopAutoDrive() end
+    end
+end
 
 -- ---------------------------------------------------------------------------
 -- Generic helpers

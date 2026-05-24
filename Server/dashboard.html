@@ -1670,11 +1670,10 @@
   }
   .vd-panel {
     position: absolute; top: 0; right: 0; bottom: 0;
-    width: 480px; max-width: 92vw;
     background: linear-gradient(160deg, rgba(26,34,26,.99) 0%, rgba(16,20,16,.99) 100%);
     border-left: 1px solid var(--line);
     box-shadow: -12px 0 40px rgba(0,0,0,0.5);
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: row;
     transform: translateX(100%);
     transition: transform .3s cubic-bezier(0.32,0,0.15,1);
     overflow: hidden;
@@ -1682,6 +1681,87 @@
   .vd-overlay.open .vd-panel {
     transform: translateX(0);
   }
+  /* Main scrollable content column */
+  .vd-main {
+    flex: 0 0 480px; max-width: 480px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  /* Vertical AutoDrive tab strip */
+  .vd-ad-tab {
+    flex: 0 0 26px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    background: rgba(0,180,220,.06);
+    border: none; border-left: 1px solid var(--line);
+    color: rgba(0,180,220,.45);
+    cursor: pointer;
+    padding: 0;
+    transition: background .2s, color .2s, border-color .2s;
+    font-size: 8px; font-weight: 800; letter-spacing: 0.12em;
+  }
+  .vd-ad-tab span { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); }
+  .vd-ad-tab:hover { background: rgba(0,180,220,.14); color: rgba(0,180,220,.8); border-color: rgba(0,180,220,.25); }
+  .vd-ad-tab.active { background: rgba(0,180,220,.16); color: rgba(0,180,220,1); border-color: rgba(0,180,220,.4); }
+  .vd-ad-tab svg { opacity: .5; transition: opacity .2s; }
+  .vd-ad-tab:hover svg, .vd-ad-tab.active svg { opacity: 1; }
+  /* AutoDrive sub-panel */
+  .vd-ad-panel {
+    flex: 0 0 0; width: 0;
+    overflow: hidden;
+    transition: flex-basis .3s cubic-bezier(0.32,0,0.15,1);
+    display: flex; flex-direction: column;
+    border-left: 0px solid rgba(0,180,220,.2);
+  }
+  .vd-ad-panel.open {
+    flex-basis: 300px;
+    border-left-width: 1px;
+  }
+  .vd-ad-inner {
+    width: 300px; flex-shrink: 0;
+    height: 100%; overflow-y: auto;
+    display: flex; flex-direction: column;
+    padding: 16px 14px;
+    gap: 14px;
+  }
+  /* AD panel elements */
+  .vd-ad-title {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(0,180,220,.8); margin-bottom: 2px;
+  }
+  .vd-ad-field { display: flex; flex-direction: column; gap: 5px; }
+  .vd-ad-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--fg-muted); opacity: .65;
+  }
+  .vd-ad-select {
+    width: 100%; background: rgba(255,255,255,.06); border: 1px solid var(--line);
+    color: var(--fg); border-radius: 6px; padding: 6px 8px;
+    font-size: 12px; cursor: pointer; outline: none;
+    transition: border-color .15s, background .15s;
+  }
+  .vd-ad-select:focus { border-color: rgba(0,180,220,.5); background: rgba(0,180,220,.06); }
+  .vd-ad-select option { background: #1a221a; }
+  .vd-ad-select optgroup { background: #111a11; color: rgba(0,180,220,.7); font-style: normal; }
+  .vd-ad-divider { height: 1px; background: var(--line); margin: 2px 0; }
+  .vd-ad-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+  .vd-ad-btn {
+    flex: 1; padding: 8px 10px; border-radius: 7px; border: 1px solid;
+    font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s;
+  }
+  .vd-ad-btn:active { transform: scale(.97); }
+  .vd-ad-btn-start { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.4); color: rgba(0,180,220,1); }
+  .vd-ad-btn-start:hover { background: rgba(0,180,220,.28); }
+  .vd-ad-btn-stop  { background: rgba(220,60,60,.15); border-color: rgba(220,60,60,.4); color: rgba(220,100,100,1); }
+  .vd-ad-btn-stop:hover  { background: rgba(220,60,60,.28); }
+  .vd-ad-status {
+    font-size: 11px; color: var(--fg-muted); padding: 8px 10px;
+    background: rgba(255,255,255,.04); border-radius: 7px; border: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .vd-ad-status-row { display: flex; justify-content: space-between; align-items: center; }
+  .vd-ad-status-val { color: var(--fg); font-weight: 600; }
+  .vd-ad-no-ad { font-size: 11px; color: var(--fg-muted); opacity: .6; text-align: center; padding: 20px 0; }
   .vd-header {
     display: flex; align-items: flex-start; gap: 12px;
     padding: 18px 18px 14px; border-bottom: 1px solid var(--line);
@@ -4649,6 +4729,185 @@ function closeVehicleDetail() {
     overlay.style.display = 'none';
   }, { once: true });
   _vdCurrentId = null;
+  // Close AD panel too
+  document.getElementById('vd-ad-panel')?.classList.remove('open');
+  document.getElementById('vd-ad-tab')?.classList.remove('active');
+}
+
+// ── AutoDrive sub-panel ────────────────────────────────────────────
+let _adPanelOpen = false;
+
+function toggleAdPanel() {
+  _adPanelOpen = !_adPanelOpen;
+  document.getElementById('vd-ad-panel').classList.toggle('open', _adPanelOpen);
+  document.getElementById('vd-ad-tab').classList.toggle('active', _adPanelOpen);
+  if (_adPanelOpen && _vdCurrentId) _renderAdPanel(_vdCurrentId);
+}
+
+function _buildMarkerOptions(markers, selectedId) {
+  if (!markers || markers.length === 0) return '<option value="">– keine Marker –</option>';
+  // Group markers by group name
+  const grouped = {};
+  for (const m of markers) {
+    const g = m.group || 'Alle';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(m);
+  }
+  const groups = Object.keys(grouped).sort();
+  let html = '<option value="">– bitte wählen –</option>';
+  for (const g of groups) {
+    const opts = grouped[g].map(m =>
+      `<option value="${m.id}" ${m.id === selectedId ? 'selected' : ''}>${m.name}</option>`
+    ).join('');
+    if (groups.length === 1) {
+      html += opts; // no optgroup if only one group
+    } else {
+      html += `<optgroup label="${g}">${opts}</optgroup>`;
+    }
+  }
+  return html;
+}
+
+function _buildFillTypeOptions(selectedName) {
+  const fts = appData?.fillTypes?.fillTypes || [];
+  if (fts.length === 0) return '<option value="">– keine –</option>';
+  const relevant = fts.filter(f => f.name && f.title && f.name !== 'UNKNOWN');
+  relevant.sort((a, b) => a.title.localeCompare(b.title));
+  return '<option value="">– beliebig –</option>' +
+    relevant.map(f =>
+      `<option value="${f.name}" ${f.name === selectedName ? 'selected' : ''}>${f.title}</option>`
+    ).join('');
+}
+
+const AD_MODES = [
+  { id: 1, label: 'Fahren zu',            m1: 'Ziel',              m2: null,          ft: false },
+  { id: 2, label: 'Abholen & Liefern',    m1: 'Ladeort',           m2: 'Entladeort',  ft: true  },
+  { id: 3, label: 'Liefern zu',           m1: 'Entladeort',        m2: null,          ft: false },
+  { id: 4, label: 'Laden',                m1: 'Ladeort',           m2: 'Entladeort',  ft: true  },
+  { id: 5, label: 'Drescher-Begleiter',   m1: 'Entladeort',        m2: 'Wartepunkt',  ft: false },
+];
+
+function _renderAdPanel(id) {
+  const inner = document.getElementById('vd-ad-inner');
+  if (!inner) return;
+
+  const stateList = appData?.vehicles?.vehicles || [];
+  const state = stateList.find(s => s.id === id) || {};
+  const markers = appData?.autoDriveMarkers?.markers || [];
+  const hasAD = state.adActive != null; // vehicle has AD module
+
+  if (!hasAD) {
+    inner.innerHTML = `<div class="vd-ad-title">AutoDrive</div>
+      <div class="vd-ad-no-ad">Kein AutoDrive-Modul erkannt</div>`;
+    return;
+  }
+
+  const curMode   = state.adMode    || 1;
+  const curM1     = state.adDestination  ? (markers.find(m => m.name === state.adDestination)?.id  ?? '') : '';
+  const curM2     = state.adDestination2 ? (markers.find(m => m.name === state.adDestination2)?.id ?? '') : '';
+  const curFT     = ''; // filltype not currently exported, will be '' initially
+  const isActive  = state.adActive === true;
+
+  const modeSel = AD_MODES.map(m =>
+    `<option value="${m.id}" ${m.id === curMode ? 'selected' : ''}>${m.label}</option>`
+  ).join('');
+
+  const modeInfo = AD_MODES.find(m => m.id === curMode) || AD_MODES[0];
+
+  const m2Block = modeInfo.m2 ? `
+    <div class="vd-ad-field">
+      <div class="vd-ad-label">${modeInfo.m2}</div>
+      <select class="vd-ad-select" id="ad-marker2" onchange="_onAdModeChange()">
+        ${_buildMarkerOptions(markers, curM2)}
+      </select>
+    </div>` : '';
+
+  const ftBlock = modeInfo.ft ? `
+    <div class="vd-ad-field">
+      <div class="vd-ad-label">Fülltyp</div>
+      <select class="vd-ad-select" id="ad-filltype">
+        ${_buildFillTypeOptions(curFT)}
+      </select>
+    </div>` : '';
+
+  // Current status box
+  const statusBox = isActive ? `
+    <div class="vd-ad-status">
+      <div class="vd-ad-status-row">
+        <span>Modus</span><span class="vd-ad-status-val">${AD_MODES.find(m=>m.id===curMode)?.label||'–'}</span>
+      </div>
+      ${state.adDestination ? `<div class="vd-ad-status-row"><span>Ziel</span><span class="vd-ad-status-val">${state.adDestination}</span></div>` : ''}
+      ${state.adDestination2 ? `<div class="vd-ad-status-row"><span>${modeInfo.m2||'Ziel 2'}</span><span class="vd-ad-status-val">${state.adDestination2}</span></div>` : ''}
+    </div>` : '';
+
+  inner.innerHTML = `
+    <div class="vd-ad-title">AutoDrive</div>
+    ${statusBox}
+    <div class="vd-ad-divider"></div>
+    <div class="vd-ad-field">
+      <div class="vd-ad-label">Modus</div>
+      <select class="vd-ad-select" id="ad-mode" onchange="_onAdModeChange()">
+        ${modeSel}
+      </select>
+    </div>
+    <div class="vd-ad-field">
+      <div class="vd-ad-label" id="ad-m1-label">${modeInfo.m1}</div>
+      <select class="vd-ad-select" id="ad-marker1">
+        ${_buildMarkerOptions(markers, curM1)}
+      </select>
+    </div>
+    <div id="ad-m2-wrap">${m2Block}</div>
+    <div id="ad-ft-wrap">${ftBlock}</div>
+    <div class="vd-ad-btn-row">
+      <button class="vd-ad-btn vd-ad-btn-start" onclick="_adConfigure(${JSON.stringify(id)})">Übernehmen</button>
+    </div>
+    <div class="vd-ad-btn-row">
+      ${isActive
+        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop(${JSON.stringify(id)}, 'stop')">⏹ Stopp</button>`
+        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop(${JSON.stringify(id)}, 'start')">▶ Start</button>`
+      }
+    </div>
+  `;
+}
+
+function _onAdModeChange() {
+  const modeId = parseInt(document.getElementById('ad-mode')?.value || '1');
+  const modeInfo = AD_MODES.find(m => m.id === modeId) || AD_MODES[0];
+  const markers = appData?.autoDriveMarkers?.markers || [];
+
+  document.getElementById('ad-m1-label').textContent = modeInfo.m1;
+
+  const m2wrap = document.getElementById('ad-m2-wrap');
+  if (m2wrap) m2wrap.innerHTML = modeInfo.m2 ? `
+    <div class="vd-ad-field">
+      <div class="vd-ad-label">${modeInfo.m2}</div>
+      <select class="vd-ad-select" id="ad-marker2">${_buildMarkerOptions(markers, '')}</select>
+    </div>` : '';
+
+  const ftwrap = document.getElementById('ad-ft-wrap');
+  if (ftwrap) ftwrap.innerHTML = modeInfo.ft ? `
+    <div class="vd-ad-field">
+      <div class="vd-ad-label">Fülltyp</div>
+      <select class="vd-ad-select" id="ad-filltype">${_buildFillTypeOptions('')}</select>
+    </div>` : '';
+}
+
+async function _adConfigure(vehicleId) {
+  const mode    = document.getElementById('ad-mode')?.value    || '';
+  const marker1 = document.getElementById('ad-marker1')?.value || '';
+  const marker2 = document.getElementById('ad-marker2')?.value || '';
+  const fillType= document.getElementById('ad-filltype')?.value|| '';
+  await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'autodrive.configure', uniqueId: vehicleId, mode, marker1, marker2, fillType })
+  });
+}
+
+async function _adStartStop(vehicleId, action) {
+  await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, mode: action })
+  });
 }
 
 function _renderVehicleDetail(id) {
@@ -5385,10 +5644,24 @@ connect();
 <!-- Fleet Settings Modal -->
 <!-- Vehicle detail panel -->
 <div id="vehicle-detail-overlay" class="vd-overlay" onclick="if(event.target===this)closeVehicleDetail()">
-  <div class="vd-panel" role="dialog" aria-modal="true">
-    <div class="vd-header" id="vd-header"></div>
-    <div class="vd-body"  id="vd-body"></div>
-    <div class="vd-actions" id="vd-actions"></div>
+  <div class="vd-panel" id="vd-panel" role="dialog" aria-modal="true">
+    <!-- Main content column -->
+    <div class="vd-main">
+      <div class="vd-header" id="vd-header"></div>
+      <div class="vd-body"  id="vd-body"></div>
+      <div class="vd-actions" id="vd-actions"></div>
+    </div>
+    <!-- Vertical AutoDrive tab -->
+    <button class="vd-ad-tab" id="vd-ad-tab" onclick="toggleAdPanel()" title="AutoDrive">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/>
+      </svg>
+      <span>AD</span>
+    </button>
+    <!-- AutoDrive sub-panel -->
+    <div class="vd-ad-panel" id="vd-ad-panel">
+      <div class="vd-ad-inner" id="vd-ad-inner"></div>
+    </div>
   </div>
 </div>
 

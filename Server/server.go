@@ -210,6 +210,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		X        string `json:"x,omitempty"`
 		Y        string `json:"y,omitempty"`
 		Z        string `json:"z,omitempty"`
+		Marker1  string `json:"marker1,omitempty"`
+		Marker2  string `json:"marker2,omitempty"`
 	}
 	type xmlCommand struct {
 		XMLName  xml.Name `xml:"command"`
@@ -222,6 +224,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		X        string   `xml:"x,attr"`
 		Y        string   `xml:"y,attr"`
 		Z        string   `xml:"z,attr"`
+		Marker1  string   `xml:"marker1,attr"`
+		Marker2  string   `xml:"marker2,attr"`
 	}
 	type xmlCommands struct {
 		XMLName  xml.Name     `xml:"commands"`
@@ -256,6 +260,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			X:        cmd.X,
 			Y:        cmd.Y,
 			Z:        cmd.Z,
+			Marker1:  cmd.Marker1,
+			Marker2:  cmd.Marker2,
 		}
 
 		mu.Lock()
@@ -610,6 +616,7 @@ func handleData(dataDir string) http.HandlerFunc {
 		Vehicles          json.RawMessage `json:"vehicles"`
 		VehicleMeta       json.RawMessage `json:"vehicleMeta"`
 		VehicleCategories json.RawMessage `json:"vehicleCategories"`
+		AutoDriveMarkers  json.RawMessage `json:"autoDriveMarkers"`
 	}
 
 	readFile := func(name string) json.RawMessage {
@@ -637,6 +644,7 @@ func handleData(dataDir string) http.HandlerFunc {
 			Vehicles:          readFile("vehicles.json"),
 			VehicleMeta:       readFile("vehicleMeta.json"),
 			VehicleCategories: readFile("vehicleCategories.json"),
+			AutoDriveMarkers:  readFile("autoDriveMarkers.json"),
 		})
 	}
 }
@@ -759,6 +767,7 @@ func main() {
 		filepath.Join(dataDir, "hotspots.json"),
 		filepath.Join(dataDir, "vehicleMeta.json"),
 		filepath.Join(dataDir, "vehicleCategories.json"),
+		filepath.Join(dataDir, "autoDriveMarkers.json"),
 	}
 
 	b := newBroker()
