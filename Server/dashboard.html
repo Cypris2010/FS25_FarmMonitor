@@ -333,8 +333,12 @@
   .metric.has-badge { grid-template-columns: 90px 1fr auto auto; }
   .bar.empty-needed > i { width: 100% !important; background: rgba(255,92,77,.18); }
   .output-mode-badge { padding: 0; border: none; background: none; font-size: 18px; cursor: default; -webkit-text-stroke: 0.5px currentColor; }
-  button.output-mode-badge { cursor: pointer; width:32px; height:32px; border-radius:50%; border:2.5px solid currentColor !important; display:inline-flex; align-items:center; justify-content:center; opacity:.85; transition:opacity .15s, transform .15s; }
-  button.output-mode-badge:hover { opacity:1; transform:scale(1.1); }
+  button.output-mode-badge { cursor: pointer; width:30px; height:30px; border-radius:8px; border:none !important; display:inline-flex; align-items:center; justify-content:center; opacity:.85; transition:background .15s, opacity .15s, transform .12s; background: rgba(255,255,255,0.07); }
+  button.output-mode-badge.red    { background: rgba(229,57,53,.15); }
+  button.output-mode-badge.green  { background: rgba(154,227,58,.13); }
+  button.output-mode-badge.orange { background: rgba(255,160,0,.13); }
+  button.output-mode-badge.blue   { background: rgba(92,143,214,.15); }
+  button.output-mode-badge:hover { opacity:1; transform:scale(1.07); filter:brightness(1.2); }
   @keyframes mode-pending         { 0%,100% { background:transparent; } 50% { background:color-mix(in srgb, currentColor 30%, transparent); } }
   @keyframes mode-pending-icon    { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
   button.output-mode-badge.pending { animation:mode-pending 1.2s ease-in-out infinite; }
@@ -796,23 +800,23 @@
   .vis-btn.is-hidden  { color: var(--muted); }
   .vis-btn:hover { opacity: .7; }
   .tp-btn {
-    background: none;
+    background: rgba(255,255,255,0.07);
     cursor: pointer;
     flex-shrink: 0;
     margin-left: auto;
-    color: var(--muted);
+    color: var(--fg-muted);
     width: 32px; height: 32px;
-    border-radius: 50%;
-    border: 2.5px solid currentColor;
+    border-radius: 8px;
+    border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    opacity: .85;
-    transition: opacity .15s, transform .15s;
+    opacity: .8;
+    transition: background .15s, opacity .15s, transform .12s;
     line-height: 0;
   }
-  .tp-btn:hover { opacity: 1; transform: scale(1.1); }
-  .fleet-cell-inner > .tp-btn { width: 38px; height: 38px; border-radius: 50%; margin-left: 0; }
+  .tp-btn:hover { background: rgba(255,255,255,0.14); opacity: 1; transform: scale(1.06); }
+  .fleet-cell-inner > .tp-btn { width: 36px; height: 36px; border-radius: 9px; margin-left: 0; }
 
   .fleet-action-btn {
     display: inline-flex; align-items: center; gap: 4px;
@@ -1519,6 +1523,15 @@
   /* Each vehicle = one card */
   .fleet-cell {
     flex: 1; min-width: 0; padding: 12px 14px;
+    position: relative; overflow: hidden;
+    --vc1: transparent; --vc2: transparent;
+  }
+  .fleet-cell::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(to right, var(--vc1) 50%, var(--vc2) 50%);
+    pointer-events: none; width: 8px;
   }
   .fleet-cell-inner { display: flex; align-items: flex-start; gap: 12px; }
   .fleet-cell-body  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -1561,7 +1574,6 @@
     padding: 1px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
     background: rgba(255,255,255,0.07); color: var(--fg-muted);
   }
-  .fleet-color-dot { flex-shrink: 0; line-height: 0; }
   .fleet-power {
     display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
     font-size: 10px; font-weight: 600; white-space: nowrap; line-height: 1.3;
@@ -4664,7 +4676,7 @@ const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas
 
 // Fleet display settings
 const FLEET_SETTINGS_DEFAULTS = {
-  showColor: true, showPower: true, showDamage: true, showHours: true, showAge: true,
+  showColor: true, showPower: true, showPs: true, showDamage: true, showHours: true, showAge: true,
   showFuel: true, showDef: true, showAir: true, showCargo: true
 };
 const DEF_FILL_TYPES = new Set(['DEF', 'ADBLUE']);
@@ -4682,6 +4694,7 @@ function saveFleetSettings() {
   const s = {
     showColor:  document.getElementById('fss-color').checked,
     showPower:  document.getElementById('fss-power').checked,
+    showPs:     document.getElementById('fss-ps').checked,
     showDamage: document.getElementById('fss-damage').checked,
     showHours:  document.getElementById('fss-hours').checked,
     showAge:    document.getElementById('fss-age').checked,
@@ -4697,6 +4710,7 @@ function openFleetSettings() {
   const s = loadFleetSettings();
   document.getElementById('fss-color').checked  = s.showColor;
   document.getElementById('fss-power').checked  = s.showPower;
+  document.getElementById('fss-ps').checked     = s.showPs;
   document.getElementById('fss-damage').checked = s.showDamage;
   document.getElementById('fss-hours').checked  = s.showHours;
   document.getElementById('fss-age').checked    = s.showAge;
@@ -5303,26 +5317,15 @@ function renderVehicleFleet(appData) {
 
     const catLabel = fleetCategoryLabel(meta.category, appData);
 
-    // Color dot
+    // Color stripe (CSS vars on card element)
     const c1 = meta.color1, c2 = meta.color2;
-    let colorDot = '';
-    if (fss.showColor && c1 && c2) {
-      colorDot = `<svg class="fleet-color-dot" width="16" height="16" viewBox="0 0 20 20">
-        <defs><clipPath id="vc-${id}"><circle cx="10" cy="10" r="9"/></clipPath></defs>
-        <circle cx="10" cy="10" r="9" fill="${c1}"/>
-        <polygon points="20,0 20,20 0,20" fill="${c2}" clip-path="url(#vc-${id})"/>
-        <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-      </svg>`;
-    } else if (fss.showColor && c1) {
-      colorDot = `<svg class="fleet-color-dot" width="16" height="16" viewBox="0 0 20 20">
-        <circle cx="10" cy="10" r="9" fill="${c1}"/>
-        <circle cx="10" cy="10" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-      </svg>`;
-    }
+    const colorVars = fss.showColor && c1
+      ? `;--vc1:${c1};--vc2:${c2 || c1}`
+      : '';
 
     // Power tag
     const motorStr = fss.showPower && meta.motorKw
-      ? `<span class="fleet-power"><span>${meta.motorKw} kW</span><span>${Math.round(meta.motorKw * 1.35962)} PS</span></span>`
+      ? `<span class="fleet-power"><span>${meta.motorKw} kW</span>${fss.showPs ? `<span>${Math.round(meta.motorKw * 1.35962)} PS</span>` : ''}</span>`
       : '';
 
     // Speed + status block (motorized only) — shown left of card content
@@ -5416,7 +5419,7 @@ function renderVehicleFleet(appData) {
       </button>`;
     }
 
-    return `<div class="fleet-cell card" data-id="${id}" onclick="openVehicleDetail('${id}')" style="cursor:pointer">
+    return `<div class="fleet-cell card" data-id="${id}" onclick="openVehicleDetail('${id}')" style="cursor:pointer${colorVars}">
       <div class="fleet-cell-inner">
         ${speedBlock}
         ${actionBtn}
@@ -5429,7 +5432,6 @@ function renderVehicleFleet(appData) {
               </div>
               <span class="fleet-name" title="${meta.name || ''}">${meta.name || '–'}</span>
             </div>
-            ${colorDot}
             ${motorStr}
             ${badgesHtml}
           </div>
@@ -5683,7 +5685,8 @@ connect();
     <div class="fsm-body">
       <div class="fsm-group-label">Allgemein</div>
       <label class="fsm-toggle"><input type="checkbox" id="fss-color" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugfarbe</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Motorleistung (kW / PS)</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Motorleistung (kW)</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-ps" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>PS zusätzlich anzeigen</span></label>
       <label class="fsm-toggle"><input type="checkbox" id="fss-damage" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Schaden-Badge</span></label>
       <label class="fsm-toggle"><input type="checkbox" id="fss-hours" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Betriebsstunden</span></label>
       <label class="fsm-toggle"><input type="checkbox" id="fss-age" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugalter</span></label>
