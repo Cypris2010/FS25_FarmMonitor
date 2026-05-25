@@ -866,11 +866,13 @@ function FarmMonitor:collectVehicles()
                     end
                     local t = sm.remainingDriveTime
                     if t and t > 0 then adRemainingTime = MathUtil.round(t) end
-                    -- Fill type (nil if "all" or unset)
-                    local ftIdx = sm:getFillType()
-                    if ftIdx and ftIdx > 1 then
-                        local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
-                        if ft then adFillType = ft.name end
+                    -- Fill type only for modes that use it (2=PickupAndDeliver, 3=DeliverTo, 4=Load)
+                    if adMode == 2 or adMode == 3 or adMode == 4 then
+                        local ftIdx = sm:getFillType()
+                        if ftIdx and ftIdx > 1 then
+                            local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+                            if ft then adFillType = ft.name end
+                        end
                     end
                     -- Loop counter
                     local lc = sm:getLoopCounter()
@@ -878,13 +880,25 @@ function FarmMonitor:collectVehicles()
                         adLoopCounter = lc
                         adLoopsDone   = sm:getLoopsDone() or 0
                     end
-                    -- Current active target leg (mode 2 = PickupAndDeliver only)
+                    -- Current active target leg
                     if adMode == 2 then
+                        -- PickupAndDeliver: state-based detection
                         local modeObj = sm:getCurrentMode()
                         if modeObj and modeObj.state then
                             local s = modeObj.state
                             if s == 2 or s == 8 then adCurrentTarget = 1
                             elseif s == 3 or s == 7 then adCurrentTarget = 2
+                            end
+                        end
+                    elseif adMode == 5 and adDestination2 ~= nil then
+                        -- CombineUnloader: table-based states, compare via class metatable
+                        local modeObj = sm:getCurrentMode()
+                        if modeObj and modeObj.state then
+                            if modeObj.state == modeObj.STATE_DRIVE_TO_UNLOAD then
+                                adCurrentTarget = 1
+                            elseif modeObj.state == modeObj.STATE_DRIVE_TO_START
+                                or modeObj.state == modeObj.STATE_WAIT_TO_BE_CALLED then
+                                adCurrentTarget = 2
                             end
                         end
                     end

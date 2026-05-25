@@ -1707,9 +1707,9 @@
   .vd-overlay.open .vd-panel {
     transform: translateX(0);
   }
-  /* Main scrollable content column — fixed at 480px, never shrinks */
+  /* Main scrollable content column — fixed at 550px, never shrinks */
   .vd-main {
-    flex: 0 0 480px; width: 480px;
+    flex: 0 0 550px; width: 550px;
     display: flex; flex-direction: column;
     overflow: hidden;
   }
@@ -1788,6 +1788,7 @@
   }
   .vd-ad-status-row { display: flex; justify-content: space-between; align-items: center; }
   .vd-ad-status-val { color: var(--fg); font-weight: 600; }
+  .vd-ad-status-val.active { color: rgba(0,210,240,1); font-weight: 700; }
   .vd-ad-no-ad { font-size: 11px; color: var(--fg-muted); opacity: .6; text-align: center; padding: 20px 0; }
   .vd-header {
     display: flex; align-items: flex-start; gap: 12px;
@@ -1873,7 +1874,8 @@
   }
   .vd-ad-banner-dest.active {
     color: rgba(0,210,240,1);
-    background: rgba(0,180,220,.18);
+    background: none;
+    font-weight: 700;
   }
   .vd-ad-banner-arrow { color: var(--fg-muted); opacity: 0.5; font-size: 11px; }
   .vd-ad-banner-row2 {
@@ -1894,6 +1896,26 @@
     font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--fg-muted); opacity: 0.6;
   }
+  .vd-section-label.collapsible {
+    cursor: pointer; display: flex; align-items: center; gap: 5px; user-select: none;
+    opacity: 0.6; transition: opacity .15s;
+  }
+  .vd-section-label.collapsible:hover { opacity: 1; }
+  .vd-section-label.collapsible::after {
+    content: '▸'; font-size: 8px; transition: transform .2s;
+  }
+  .vd-section-label.collapsible.open::after { transform: rotate(90deg); }
+  .vd-collapsible-body { display: none; }
+  .vd-collapsible-body.open { display: block; }
+  .vd-info-toggle {
+    background: none; border: none; cursor: pointer; padding: 0;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--fg-muted); opacity: 0.5; display: flex; align-items: center; gap: 4px;
+    transition: opacity .15s;
+  }
+  .vd-info-toggle:hover { opacity: 1; }
+  .vd-info-toggle span { font-size: 8px; transition: transform .2s; }
+  .vd-info-toggle.open span { transform: rotate(90deg); }
   /* Speed hero */
   .vd-speed-hero {
     display: flex; align-items: baseline; gap: 5px;
@@ -1932,6 +1954,7 @@
   .vd-tank-fill.fuel.low  { background: #ef5350; }
   .vd-tank-fill.cargo     { background: #5c8fd6; }
   .vd-tank-fill.damage    { background: #ef5350; }
+  .vd-tank-track.slim { height: 4px; border-radius: 2px; }
   /* Location */
   .vd-location {
     font-size: 12px; color: var(--fg-muted);
@@ -1972,6 +1995,12 @@
   .vd-cc-speed { font-size: 16px; font-weight: 800; color: var(--fg); line-height: 1; }
   .vd-cc-slot.running .vd-cc-speed { color: var(--green); }
   .vd-cc-speed small { font-size: 10px; font-weight: 500; color: var(--fg-muted); }
+  .vd-cc-slot.drive-4wd  { background: rgba(154,227,58,.1);  }
+  .vd-cc-slot.drive-4wd  .vd-cc-label, .vd-cc-slot.drive-4wd  .vd-cc-speed { color: var(--green); }
+  .vd-cc-slot.drive-fwd  { background: rgba(100,160,255,.1); }
+  .vd-cc-slot.drive-fwd  .vd-cc-label, .vd-cc-slot.drive-fwd  .vd-cc-speed { color: #90caf9; }
+  .vd-cc-slot.diff-locked { background: rgba(229,57,53,.1);  }
+  .vd-cc-slot.diff-locked .vd-cc-label, .vd-cc-slot.diff-locked .vd-cc-speed { color: #ef9a9a; }
 
   .vd-actions { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); flex-shrink: 0; }
   .vd-action-btn {
@@ -4899,13 +4928,15 @@ function _renderAdPanel(id) {
     </div>` : '';
 
   // Current status box
+  const singleDestModes = [1, 3, 4];
+  const activeLeg = state.adCurrentTarget ?? (singleDestModes.includes(curMode) ? 1 : null);
   const statusBox = isActive ? `
     <div class="vd-ad-status">
       <div class="vd-ad-status-row">
         <span>Modus</span><span class="vd-ad-status-val">${AD_MODES.find(m=>m.id===curMode)?.label||'–'}</span>
       </div>
-      ${state.adDestination ? `<div class="vd-ad-status-row"><span>Ziel</span><span class="vd-ad-status-val">${state.adDestination}</span></div>` : ''}
-      ${state.adDestination2 ? `<div class="vd-ad-status-row"><span>${modeInfo.m2||'Ziel 2'}</span><span class="vd-ad-status-val">${state.adDestination2}</span></div>` : ''}
+      ${state.adDestination ? `<div class="vd-ad-status-row"><span>Ziel</span><span class="vd-ad-status-val${activeLeg===1?' active':''}">${state.adDestination}</span></div>` : ''}
+      ${state.adDestination2 ? `<div class="vd-ad-status-row"><span>${modeInfo.m2||'Ziel 2'}</span><span class="vd-ad-status-val${activeLeg===2?' active':''}">${state.adDestination2}</span></div>` : ''}
     </div>` : '';
 
   inner.innerHTML = `
@@ -5026,15 +5057,14 @@ function _renderVehicleDetail(id) {
   let statusBadge = '';
   if (isMotorized) {
     if (state.motorRunning) {
-      if (state.adActive)        statusBadge = '<span class="fleet-badge badge-ad">AutoDrive</span>';
-      else if (state.isAIActive) statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
+      if (state.isAIActive)      statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
       else if (state.isEntered)  statusBadge = '<span class="fleet-badge badge-active">In Betrieb</span>';
       else                       statusBadge = '<span class="fleet-badge badge-active">Motor läuft</span>';
     } else {
       statusBadge = '<span class="fleet-badge badge-idle">Geparkt</span>';
     }
   }
-  if (damage > 5)                statusBadge += `<span class="fleet-badge badge-damage">${damage}% Schaden</span>`;
+  // damage badge removed from header — shown in body section instead
   if (meta.propState === 'leased') statusBadge += '<span class="fleet-badge badge-leased">Gemietet</span>';
 
   const driverLine = driverName
@@ -5061,12 +5091,13 @@ function _renderVehicleDetail(id) {
   document.getElementById('vd-header').innerHTML = `
     ${speedBlock}
     <div class="vd-header-text">
+      ${driverLine}
       <div class="vd-brand-row">
         ${meta.brand ? `<span class="vd-brand">${meta.brand}</span>` : ''}
         ${catLabel   ? `<span class="vd-cat-badge">${catLabel}</span>` : ''}
+        ${meta.motorKw ? `<span class="fleet-power"><span>${meta.motorKw} kW</span><span>${Math.round(meta.motorKw * 1.35962)} PS</span></span>` : ''}
       </div>
       <div class="vd-name">${meta.name || '–'}</div>
-      ${driverLine}
       ${(statusBadge || nearTag) ? `<div class="vd-status-row">${statusBadge}${nearTag}</div>` : ''}
     </div>
     ${colorSwatch}
@@ -5077,7 +5108,8 @@ function _renderVehicleDetail(id) {
   const adBanner = document.getElementById('vd-ad-banner');
   if (state.adActive === true && adBanner) {
     const modeName = AD_MODE_LABELS[state.adMode] || '–';
-    const ct = state.adCurrentTarget; // 1, 2, or null
+    const singleDestModes = [1, 3, 4];
+    const ct = state.adCurrentTarget ?? (singleDestModes.includes(state.adMode) ? 1 : null);
     const dest1Class = ct === 1 ? 'active' : '';
     const dest2Class = ct === 2 ? 'active' : '';
     const dest1Html = state.adDestination
@@ -5118,28 +5150,9 @@ function _renderVehicleDetail(id) {
   let sections = '';
 
 
-  // Motor stats
-  if (isMotorized && meta.motorKw) {
-    const ps = Math.round(meta.motorKw * 1.35962);
-    sections += `<div class="vd-section">
-      <div class="vd-section-label">Motor</div>
-      <div class="vd-stat-grid">
-        <div class="vd-stat">
-          <span class="vd-stat-label">Leistung</span>
-          <span class="vd-stat-value">${meta.motorKw} kW</span>
-          <span class="vd-stat-sub">${ps} PS</span>
-        </div>
-        ${meta.fuelCap > 0 ? `<div class="vd-stat">
-          <span class="vd-stat-label">Tankgröße</span>
-          <span class="vd-stat-value">${meta.fuelCap} L</span>
-          <span class="vd-stat-sub">${FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff'}</span>
-        </div>` : ''}
-      </div>
-    </div>`;
-  }
-
-  // Fuel + tanks
+  // Fuel + tanks — DEF/Air get slim 2-col treatment, rest normal
   const tankRows = [];
+  const betriebRows = []; // DEF + Air → slim, 2-col
   if (meta.fuelCap > 0 && state.fuelPct != null) {
     const fc = state.fuelPct < 20 ? 'low' : state.fuelPct < 40 ? 'warn' : '';
     const fl = FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff';
@@ -5153,62 +5166,83 @@ function _renderVehicleDetail(id) {
     </div>`);
   }
   for (const tank of (state.tanks || [])) {
+    const isDef = DEF_FILL_TYPES.has(tank.name);
+    const isAir = AIR_FILL_TYPES.has(tank.name);
     const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
     const tankLabel = tank.liter != null && tank.cap != null ? `${tank.liter} / ${tank.cap} L` : `${tank.pct}%`;
-    tankRows.push(`<div class="vd-tank">
-      <div class="vd-tank-label-row">
-        <span class="vd-tank-name">${title}</span>
-        <span class="vd-tank-val">${tankLabel}</span>
-      </div>
-      <div class="vd-tank-track"><div class="vd-tank-fill cargo" style="width:${tank.pct}%"></div></div>
-    </div>`);
+    if (isDef || isAir) {
+      betriebRows.push(`<div class="vd-tank">
+        <div class="vd-tank-label-row">
+          <span class="vd-tank-name">${title}</span>
+          <span class="vd-tank-val">${tankLabel}</span>
+        </div>
+        <div class="vd-tank-track slim"><div class="vd-tank-fill cargo" style="width:${tank.pct}%"></div></div>
+      </div>`);
+    } else {
+      tankRows.push(`<div class="vd-tank">
+        <div class="vd-tank-label-row">
+          <span class="vd-tank-name">${title}</span>
+          <span class="vd-tank-val">${tankLabel}</span>
+        </div>
+        <div class="vd-tank-track"><div class="vd-tank-fill cargo" style="width:${tank.pct}%"></div></div>
+      </div>`);
+    }
   }
-  if (tankRows.length) {
+  const betriebGrid = betriebRows.length
+    ? `<div style="display:grid;grid-template-columns:${betriebRows.length > 1 ? '1fr 1fr' : '1fr'};gap:10px">${betriebRows.join('')}</div>`
+    : '';
+  if (tankRows.length || betriebRows.length) {
     sections += `<div class="vd-section">
-      <div class="vd-section-label">Füllstände</div>
       ${tankRows.join('')}
+      ${betriebGrid}
     </div>`;
   }
 
-  // Damage + Wear
-  if (damage > 0 || wear > 0) {
-    const damageRow = damage > 0 ? `<div class="vd-tank">
+  // Zustand: Schaden + Lackabnutzung — slim bars nebeneinander
+  {
+    const damageCol = `<div class="vd-tank">
       <div class="vd-tank-label-row">
         <span class="vd-tank-name">Schaden</span>
         <span class="vd-tank-val">${damage}%</span>
       </div>
-      <div class="vd-tank-track"><div class="vd-tank-fill damage" style="width:${damage}%"></div></div>
-    </div>` : '';
+      <div class="vd-tank-track slim"><div class="vd-tank-fill damage" style="width:${damage}%"></div></div>
+    </div>`;
     const wearColor = wear > 60 ? '#ef5350' : wear > 30 ? '#ffa726' : '#9e9e9e';
-    const wearRow = wear > 0 ? `<div class="vd-tank">
+    const wearCol = `<div class="vd-tank">
       <div class="vd-tank-label-row">
-        <span class="vd-tank-name">Lackzustand</span>
-        <span class="vd-tank-val">${wear}% Abnutzung</span>
+        <span class="vd-tank-name">Lackabnutzung</span>
+        <span class="vd-tank-val">${wear}%</span>
       </div>
-      <div class="vd-tank-track"><div class="vd-tank-fill" style="width:${wear}%;background:${wearColor}"></div></div>
-    </div>` : '';
+      <div class="vd-tank-track slim"><div class="vd-tank-fill" style="width:${wear}%;background:${wearColor}"></div></div>
+    </div>`;
     sections += `<div class="vd-section">
-      <div class="vd-section-label">Zustand</div>
-      ${damageRow}${wearRow}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${damageCol}${wearCol}
+      </div>
     </div>`;
   }
 
   // Enhanced Vehicle — Antrieb
   if (state.evFrontDiff != null || state.evRearDiff != null || state.evDriveMode != null) {
     const dmLabels = { 0: '2WD', 1: '4WD', 2: 'FWD' };
-    const dmClass  = state.evDriveMode === 1 ? 'mode-4wd' : state.evDriveMode === 2 ? 'mode-fwd' : '';
-    const dmBadge  = state.evDriveMode != null
-      ? `<span class="vd-ev-badge ${dmClass}"><span class="vd-ev-dot"></span>${dmLabels[state.evDriveMode] ?? '–'}</span>`
-      : '';
-    const frontBadge = state.evFrontDiff != null
-      ? `<span class="vd-ev-badge ${state.evFrontDiff ? 'locked' : ''}"><span class="vd-ev-dot"></span>Diff V ${state.evFrontDiff ? 'gesperrt' : 'offen'}</span>`
-      : '';
-    const rearBadge = state.evRearDiff != null
-      ? `<span class="vd-ev-badge ${state.evRearDiff ? 'locked' : ''}"><span class="vd-ev-dot"></span>Diff H ${state.evRearDiff ? 'gesperrt' : 'offen'}</span>`
-      : '';
+    const dmClass  = state.evDriveMode === 1 ? 'drive-4wd' : state.evDriveMode === 2 ? 'drive-fwd' : '';
+    const dmSlot   = state.evDriveMode != null ? `
+      <div class="vd-cc-slot ${dmClass}">
+        <span class="vd-cc-label">Antrieb</span>
+        <span class="vd-cc-speed">${dmLabels[state.evDriveMode] ?? '–'}</span>
+      </div>` : '';
+    const frontSlot = state.evFrontDiff != null ? `
+      <div class="vd-cc-slot ${state.evFrontDiff ? 'diff-locked' : ''}">
+        <span class="vd-cc-label">Diff V</span>
+        <span class="vd-cc-speed">${state.evFrontDiff ? 'gesperrt' : 'offen'}</span>
+      </div>` : '';
+    const rearSlot  = state.evRearDiff != null ? `
+      <div class="vd-cc-slot ${state.evRearDiff ? 'diff-locked' : ''}">
+        <span class="vd-cc-label">Diff H</span>
+        <span class="vd-cc-speed">${state.evRearDiff ? 'gesperrt' : 'offen'}</span>
+      </div>` : '';
     sections += `<div class="vd-section">
-      <div class="vd-section-label">Antrieb</div>
-      <div class="vd-ev-row">${dmBadge}${frontBadge}${rearBadge}</div>
+      <div class="vd-cc-row">${dmSlot}${frontSlot}${rearSlot}</div>
     </div>`;
   }
 
@@ -5218,26 +5252,16 @@ function _renderVehicleDetail(id) {
       const isRunning  = p.isActive;
       const isSelected = !isRunning && (state.viActiveKey === i + 1);
       return `<div class="vd-cc-slot ${isRunning ? 'running' : isSelected ? 'selected' : ''}">
-        <span class="vd-cc-label">P${i + 1}</span>
+        <span class="vd-cc-label">Tempo P${i + 1}</span>
         <span class="vd-cc-speed">${p.speed}<small> km/h</small></span>
       </div>`;
     }).join('');
     sections += `<div class="vd-section">
-      <div class="vd-section-label">Tempomat</div>
       <div class="vd-cc-row">${slots}</div>
     </div>`;
   }
 
-  // AutoDrive — shown in banner above body; show inaktiv hint in body when AD present but off
-  if (state.adActive != null && state.adActive !== true) {
-    const dot = `<span class="ad-dot"></span>`;
-    sections += `<div class="vd-section">
-      <div class="vd-section-label">AutoDrive ${dot}</div>
-      <span class="vd-section-hint">Inaktiv</span>
-    </div>`;
-  }
-
-  // Info grid
+  // Info grid — collapsible, hidden by default
   const infoStats = [];
   if (meta.workWidth)    infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Arbeitsbreite</span><span class="vd-stat-value">${meta.workWidth} m</span></div>`);
   if (meta.opHours > 0) infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Betriebsstunden</span><span class="vd-stat-value">${meta.opHours} Bh.</span></div>`);
@@ -5245,8 +5269,8 @@ function _renderVehicleDetail(id) {
   if (meta.price  > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Zeitwert</span><span class="vd-stat-value">${meta.price.toLocaleString('de-DE')} $</span></div>`);
   if (infoStats.length) {
     sections += `<div class="vd-section">
-      <div class="vd-section-label">Informationen</div>
-      <div class="vd-stat-grid">${infoStats.join('')}</div>
+      <button class="vd-info-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Informationen <span>▸</span></button>
+      <div class="vd-collapsible-body"><div class="vd-stat-grid">${infoStats.join('')}</div></div>
     </div>`;
   }
 
