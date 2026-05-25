@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
@@ -12,11 +13,13 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -455,6 +458,41 @@ func (c *mapCache) getPNG() []byte {
 	return c.overviewPNG
 }
 
+// readOverviewDDS reads overview.dds from disk.
+// FS25 mods are often installed as zips — the game loads them directly without
+// extracting. missionInfo.baseDirectory returns a folder path without ".zip",
+// so the file may not exist on disk. As a fallback we look for a .zip next to
+// the expected folder and read the file from inside it.
+func readOverviewDDS(ddsPath string) ([]byte, error) {
+	// Fast path: file exists directly
+	if data, err := os.ReadFile(ddsPath); err == nil {
+		return data, nil
+	}
+	// Fallback: mod is a zip — derive zip path from the directory component
+	// e.g. /path/to/FS25_Thueringen_2_0/overview.dds
+	//   →  /path/to/FS25_Thueringen_2_0.zip  (read "overview.dds" inside)
+	dir := filepath.Dir(ddsPath)
+	base := filepath.Base(ddsPath)
+	zipPath := dir + ".zip"
+	zr, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return nil, fmt.Errorf("file not found and no zip at %s: %w", zipPath, err)
+	}
+	defer zr.Close()
+	for _, f := range zr.File {
+		// Match by filename only — ignore sub-directory prefix inside zip
+		if strings.EqualFold(filepath.Base(f.Name), base) {
+			rc, err := f.Open()
+			if err != nil {
+				return nil, fmt.Errorf("zip open %s: %w", f.Name, err)
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+	}
+	return nil, fmt.Errorf("overview.dds not found in %s", zipPath)
+}
+
 func (c *mapCache) rebuild(metaPath string) {
 	raw, err := os.ReadFile(metaPath)
 	if err != nil {
@@ -472,7 +510,7 @@ func (c *mapCache) rebuild(metaPath string) {
 	if same {
 		return
 	}
-	ddsData, err := os.ReadFile(meta.OverviewDdsPath)
+	ddsData, err := readOverviewDDS(meta.OverviewDdsPath)
 	if err != nil {
 		log.Printf("[map] cannot read overview.dds: %v", err)
 		return
