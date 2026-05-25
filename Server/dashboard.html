@@ -1561,6 +1561,12 @@
   .fleet-speed-block .fleet-speed-unit { font-size: 8px; color: var(--fg-muted); opacity: 0.7; line-height: 1.2; }
   .fleet-speed-block.moving .fleet-speed-unit { color: var(--green); opacity: 0.8; }
   .fleet-speed-block .fleet-badge { font-size: 8px; padding: 1px 4px; line-height: 1.5; }
+  .fleet-driver {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 9px; font-weight: 700; color: var(--green);
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fleet-driver svg { flex-shrink: 0; }
 
   /* Row 1: name + all badges in one flex line */
   .fleet-cell-top {
@@ -1575,7 +1581,6 @@
   .fleet-name {
     font-size: 13px; font-weight: 600; color: var(--fg);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; line-height: 1.3;
-    padding-left: 5px;
   }
   .fleet-cat-badge {
     font-size: 9px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
@@ -1583,11 +1588,12 @@
     background: rgba(255,255,255,0.07); color: var(--fg-muted);
   }
   .fleet-power {
-    display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
-    font-size: 10px; font-weight: 600; white-space: nowrap; line-height: 1.3;
-    padding: 1px 6px; border-radius: 4px;
+    display: flex; flex-direction: row; align-items: center; gap: 4px; flex-shrink: 0;
+    font-size: 9px; font-weight: 600; white-space: nowrap; line-height: 1.3;
+    padding: 1px 5px; border-radius: 3px;
     background: rgba(255,255,255,0.07); color: var(--fg-muted);
   }
+  .fleet-power span + span::before { content: '·'; margin-right: 4px; opacity: 0.4; }
   .fleet-badges { display: flex; gap: 4px; flex-wrap: wrap; flex-shrink: 0; }
   .fleet-badge {
     font-size: 10px; padding: 1px 7px;
@@ -1608,7 +1614,7 @@
   .fleet-speed-unit { font-size: 9px; color: var(--green); opacity: 0.8; }
 
   /* Row 2: bars + footer inline */
-  .fleet-cell-bottom { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-left: 5px; }
+  .fleet-cell-bottom { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .fleet-bar-inline {
     display: flex; align-items: center; gap: 4px; flex-shrink: 0;
     font-size: 10px; color: var(--fg-muted); white-space: nowrap;
@@ -1840,6 +1846,44 @@
     line-height: 1; align-self: flex-start; margin-top: -2px;
   }
   .vd-close:hover { color: var(--fg); background: rgba(255,255,255,0.08); }
+
+  /* AutoDrive status banner (between header and body) */
+  .vd-ad-banner {
+    display: none; flex-direction: column; gap: 6px;
+    padding: 10px 18px;
+    background: rgba(0,180,220,.07);
+    border-top: 1px solid rgba(0,180,220,.15);
+    border-bottom: 1px solid rgba(0,180,220,.15);
+    flex-shrink: 0;
+  }
+  .vd-ad-banner.visible { display: flex; }
+  .vd-ad-banner-row1 {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .vd-ad-banner-mode {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: rgba(0,200,230,.9);
+  }
+  .vd-ad-banner-sep { color: var(--fg-muted); opacity: 0.4; font-size: 11px; }
+  .vd-ad-banner-dest {
+    font-size: 12px; font-weight: 600; color: var(--fg-muted);
+    padding: 2px 7px; border-radius: 20px;
+    background: rgba(255,255,255,.05);
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .vd-ad-banner-dest.active {
+    color: rgba(0,210,240,1);
+    background: rgba(0,180,220,.18);
+  }
+  .vd-ad-banner-arrow { color: var(--fg-muted); opacity: 0.5; font-size: 11px; }
+  .vd-ad-banner-row2 {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .vd-ad-banner-meta {
+    font-size: 10px; color: var(--fg-muted); opacity: 0.75;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .vd-ad-banner-meta strong { color: var(--fg); font-weight: 600; opacity: 1; }
 
   .vd-body {
     flex: 1; overflow-y: auto; padding: 14px 18px;
@@ -5029,6 +5073,47 @@ function _renderVehicleDetail(id) {
     <button class="vd-close" onclick="closeVehicleDetail()" title="Schließen">✕</button>
   `;
 
+  // ── AutoDrive banner (below header) ─────────────────────────────
+  const adBanner = document.getElementById('vd-ad-banner');
+  if (state.adActive === true && adBanner) {
+    const modeName = AD_MODE_LABELS[state.adMode] || '–';
+    const ct = state.adCurrentTarget; // 1, 2, or null
+    const dest1Class = ct === 1 ? 'active' : '';
+    const dest2Class = ct === 2 ? 'active' : '';
+    const dest1Html = state.adDestination
+      ? `<span class="vd-ad-banner-dest ${dest1Class}">${state.adDestination}</span>`
+      : '';
+    const dest2Html = state.adDestination2
+      ? `<span class="vd-ad-banner-arrow">→</span><span class="vd-ad-banner-dest ${dest2Class}">${state.adDestination2}</span>`
+      : '';
+    const fillTypeTitle = state.adFillType
+      ? (appData?.fillTypesByName?.[state.adFillType]?.title || state.adFillType)
+      : null;
+    const fillHtml = fillTypeTitle
+      ? `<span class="vd-ad-banner-meta">Ware: <strong>${fillTypeTitle}</strong></span>`
+      : '';
+    const loopHtml = state.adLoopCounter
+      ? `<span class="vd-ad-banner-meta">Runden: <strong>${state.adLoopsDone ?? 0} / ${state.adLoopCounter}</strong></span>`
+      : '';
+    const timeStr = formatAdTime(state.adRemainingTime);
+    const timeHtml = timeStr
+      ? `<span class="vd-ad-banner-meta">Ankunft: <strong>${timeStr}</strong></span>`
+      : '';
+    const hasMeta = fillHtml || loopHtml || timeHtml;
+    adBanner.className = 'vd-ad-banner visible';
+    adBanner.innerHTML = `
+      <div class="vd-ad-banner-row1">
+        <span class="vd-ad-banner-mode">${modeName}</span>
+        <span class="vd-ad-banner-sep">·</span>
+        ${dest1Html}${dest2Html}
+      </div>
+      ${hasMeta ? `<div class="vd-ad-banner-row2">${fillHtml}${loopHtml}${timeHtml}</div>` : ''}
+    `;
+  } else if (adBanner) {
+    adBanner.className = 'vd-ad-banner';
+    adBanner.innerHTML = '';
+  }
+
   // ── Body ────────────────────────────────────────────────────────
   let sections = '';
 
@@ -5143,28 +5228,12 @@ function _renderVehicleDetail(id) {
     </div>`;
   }
 
-  // AutoDrive
-  if (state.adActive != null) {
-    const isOn = state.adActive === true;
-    const dot = `<span class="ad-dot ${isOn ? 'on' : ''}"></span>`;
-    let adBody = '';
-    if (isOn) {
-      const modeName = AD_MODE_LABELS[state.adMode] || '–';
-      const driverStr = state.adDriverName ? `<span class="vd-stat-sub">${state.adDriverName}</span>` : '';
-      const dest1 = state.adDestination || '–';
-      const timeStr = formatAdTime(state.adRemainingTime);
-      adBody = `<div class="vd-stat-grid">
-        <div class="vd-stat"><span class="vd-stat-label">Modus</span><span class="vd-stat-value">${modeName}</span>${driverStr}</div>
-        <div class="vd-stat"><span class="vd-stat-label">Ziel</span><span class="vd-stat-value">${dest1}</span></div>
-        ${state.adDestination2 ? `<div class="vd-stat"><span class="vd-stat-label">Entladeziel</span><span class="vd-stat-value">${state.adDestination2}</span></div>` : ''}
-        ${timeStr ? `<div class="vd-stat"><span class="vd-stat-label">Ankunft in</span><span class="vd-stat-value">${timeStr}</span></div>` : ''}
-      </div>`;
-    } else {
-      adBody = `<span class="vd-section-hint">Inaktiv</span>`;
-    }
+  // AutoDrive — shown in banner above body; show inaktiv hint in body when AD present but off
+  if (state.adActive != null && state.adActive !== true) {
+    const dot = `<span class="ad-dot"></span>`;
     sections += `<div class="vd-section">
       <div class="vd-section-label">AutoDrive ${dot}</div>
-      ${adBody}
+      <span class="vd-section-hint">Inaktiv</span>
     </div>`;
   }
 
@@ -5352,6 +5421,10 @@ function renderVehicleFleet(appData) {
       }
     }
 
+    const driverTag = state.isEntered && state.driverName
+      ? `<span class="fleet-driver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>${state.driverName}</span>`
+      : '';
+
     const speedBlock = isMotorized
       ? `<div class="fleet-left-col">
            <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}">
@@ -5434,13 +5507,14 @@ function renderVehicleFleet(appData) {
         <div class="fleet-cell-body">
           <div class="fleet-cell-top">
             <div class="fleet-identity">
+              ${driverTag}
               <div class="fleet-brand-row">
-                ${catLabel ? `<span class="fleet-cat-badge">${catLabel}</span>` : ''}
                 <span class="fleet-brand">${meta.brand || ''}</span>
+                ${catLabel ? `<span class="fleet-cat-badge">${catLabel}</span>` : ''}
+                ${motorStr}
               </div>
               <span class="fleet-name" title="${meta.name || ''}">${meta.name || '–'}</span>
             </div>
-            ${motorStr}
             ${badgesHtml}
           </div>
           ${bottomParts ? `<div class="fleet-cell-bottom">${bottomParts}</div>` : ''}
@@ -5667,6 +5741,7 @@ connect();
     <!-- Main content column -->
     <div class="vd-main">
       <div class="vd-header" id="vd-header"></div>
+      <div class="vd-ad-banner" id="vd-ad-banner"></div>
       <div class="vd-body"  id="vd-body"></div>
       <div class="vd-actions" id="vd-actions"></div>
     </div>

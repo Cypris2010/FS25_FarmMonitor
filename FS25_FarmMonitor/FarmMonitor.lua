@@ -850,6 +850,10 @@ function FarmMonitor:collectVehicles()
             local adDestination   = nil
             local adDestination2  = nil
             local adRemainingTime = nil
+            local adFillType      = nil
+            local adLoopCounter   = nil
+            local adLoopsDone     = nil
+            local adCurrentTarget = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -862,6 +866,28 @@ function FarmMonitor:collectVehicles()
                     end
                     local t = sm.remainingDriveTime
                     if t and t > 0 then adRemainingTime = MathUtil.round(t) end
+                    -- Fill type (nil if "all" or unset)
+                    local ftIdx = sm:getFillType()
+                    if ftIdx and ftIdx > 1 then
+                        local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+                        if ft then adFillType = ft.name end
+                    end
+                    -- Loop counter
+                    local lc = sm:getLoopCounter()
+                    if lc and lc > 0 then
+                        adLoopCounter = lc
+                        adLoopsDone   = sm:getLoopsDone() or 0
+                    end
+                    -- Current active target leg (mode 2 = PickupAndDeliver only)
+                    if adMode == 2 then
+                        local modeObj = sm:getCurrentMode()
+                        if modeObj and modeObj.state then
+                            local s = modeObj.state
+                            if s == 2 or s == 8 then adCurrentTarget = 1
+                            elseif s == 3 or s == 7 then adCurrentTarget = 2
+                            end
+                        end
+                    end
                 end)
             end
 
@@ -896,7 +922,11 @@ function FarmMonitor:collectVehicles()
                 "adDriverName",     adDriverName,
                 "adDestination",    adDestination,
                 "adDestination2",   adDestination2,
-                "adRemainingTime",  adRemainingTime
+                "adRemainingTime",  adRemainingTime,
+                "adFillType",       adFillType,
+                "adLoopCounter",    adLoopCounter,
+                "adLoopsDone",      adLoopsDone,
+                "adCurrentTarget",  adCurrentTarget
             ))
         end
     end
