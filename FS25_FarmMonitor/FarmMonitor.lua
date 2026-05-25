@@ -744,17 +744,16 @@ function FarmMonitor:collectVehicles()
                             fuelLevel = fuelLevel + level
                             fuelCap   = fuelCap   + cap
                         elseif cap > 0 then
-                            -- per-tank entry: only include if tank has content or is non-trivial
+                            -- per-tank entry: immer exportieren, auch wenn leer/UNKNOWN
                             local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fu.fillType)
                             local ftName = ft and ft.name or ""
-                            if ftName ~= "" and ftName ~= "UNKNOWN" then
-                                table.insert(tanks, FarmMonitor.obj(
-                                    "name",  ftName,
-                                    "pct",   MathUtil.round(level / cap * 100),
-                                    "liter", MathUtil.round(level),
-                                    "cap",   MathUtil.round(cap)
-                                ))
-                            end
+                            if ftName == "UNKNOWN" then ftName = "" end
+                            table.insert(tanks, FarmMonitor.obj(
+                                "name",  ftName,
+                                "pct",   MathUtil.round(level / cap * 100),
+                                "liter", MathUtil.round(level),
+                                "cap",   MathUtil.round(cap)
+                            ))
                         end
                     end
                 end
@@ -767,6 +766,61 @@ function FarmMonitor:collectVehicles()
                     fuelLiter = MathUtil.round(fuelLevel)
                 end
             end
+
+            -- ── Loaded pallets ───────────────────────────────────────────
+            local pallets = FarmMonitor.arr()
+            pcall(function()
+                local palletMap = {}
+                local function addPalletObj(obj)
+                    if obj == nil or not obj.isPallet then return end
+                    local spec = obj.spec_fillUnit
+                    if spec == nil or spec.fillUnits == nil then return end
+                    for _, fu in ipairs(spec.fillUnits) do
+                        local cap = fu.capacity or 0
+                        if cap > 0 then
+                            local ftIdx = fu.fillType or 0
+                            local level = MathUtil.round(fu.fillLevel or 0)
+                            local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ftIdx)
+                            local ftName  = (ft and ft.name) or ""
+                            if ftName == "UNKNOWN" then ftName = "" end
+                            local ftTitle = (ft and ft.title) or ftName
+                            if palletMap[ftIdx] == nil then
+                                palletMap[ftIdx] = {name = ftName, title = ftTitle, count = 0, litersEach = MathUtil.round(cap), totalLiters = 0}
+                            end
+                            palletMap[ftIdx].count = palletMap[ftIdx].count + 1
+                            palletMap[ftIdx].totalLiters = palletMap[ftIdx].totalLiters + level
+                            break -- one entry per pallet
+                        end
+                    end
+                end
+                -- Method 1: dynamic mount attacher (object IS the key)
+                if vehicle.spec_dynamicMountAttacher ~= nil then
+                    local mounts = vehicle.spec_dynamicMountAttacher.dynamicMountedObjects
+                    if mounts ~= nil then
+                        for obj, _ in pairs(mounts) do
+                            addPalletObj(obj)
+                        end
+                    end
+                end
+                -- Method 2: tension belts (pallets strapped to flatbed)
+                if vehicle.spec_tensionBelts ~= nil then
+                    local spec = vehicle.spec_tensionBelts
+                    if spec.objectsToJoint ~= nil then
+                        for _, objectData in pairs(spec.objectsToJoint) do
+                            addPalletObj(objectData.object)
+                        end
+                    end
+                end
+                for _, pd in pairs(palletMap) do
+                    table.insert(pallets, FarmMonitor.obj(
+                        "name",        pd.name,
+                        "title",       pd.title,
+                        "count",       pd.count,
+                        "litersEach",  pd.litersEach,
+                        "totalLiters", pd.totalLiters
+                    ))
+                end
+            end)
 
             local damage = 0
             local wear   = 0
@@ -917,6 +971,7 @@ function FarmMonitor:collectVehicles()
                 "fuelPct",     fuelPct,
                 "fuelLiter",   fuelLiter,
                 "tanks",       tanks,
+                "pallets",     pallets,
                 "damage",      damage,
                 "wear",        wear,
                 "isEntered",   isEntered,
