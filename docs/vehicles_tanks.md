@@ -8,21 +8,19 @@ Jedes Fahrzeug kann mehrere Fülleinheiten (`fillUnit`) haben: Kraftstofftank, H
 
 ## Klassifizierung
 
-| Gruppe | Fülltypen | Anzeige |
+| Gruppe | Erkennungsmerkmal | Anzeige |
 |---|---|---|
-| **Kraftstoff** | `DIESEL`, `ELECTRICCHARGE`, `METHANE` | Eigene Kraftstoffzeile (grüner Balken) |
-| **Hilfsstoff** | `DEF`, `ADBLUE`, `COMPRESSEDAIR`, `AIR`, `OIL`, `HYDRAULIC_OIL` | Im Tank-Bereich, nur wenn nicht leer |
-| **Haupttank** | Alles andere mit Kapazität > 0 | Immer sichtbar, leer → roter Balken |
+| **Kraftstoff** | Fülltyp `DIESEL`, `ELECTRICCHARGE` oder `METHANE` | Eigene Kraftstoffzeile (grüner Balken) |
+| **Haupttank** | `showOnHud == true` im Spiel-HUD, kein Kraftstofftyp | Immer sichtbar, leer → roter Balken |
+| **Sonstige Tanks** | Alle anderen Tanks mit Kapazität > 0 | Nur wenn Füllstand > 0 % |
 
-Der **Haupttank** ist der Tank mit der größten Kapazität, der kein Kraftstoff- und kein Hilfsstofftank ist. Typische Beispiele:
+Der **Haupttank** wird direkt vom Spiel bestimmt: FS25 markiert genau die Fülleinheit(en) als `showOnHud`, die es selbst im HUD anzeigt — also die primäre Ladeluke. Typische Beispiele:
 
 - Getreidewagen → Getreidetank
 - Mähdrescher → Kornkorb
 - Sprühgerät → Spritztank
 - Güllewagen → Gülletank
 - Tankwagen → Wassertank
-
-> **Hinweis:** Wasser (`WATER`) ist absichtlich kein Hilfsstoff — Tankwagen transportieren Wasser als Primärladung.
 
 ---
 
@@ -68,4 +66,4 @@ Identische Logik. DEF und Druckluft erscheinen in einem schmaleren 2-spaltigen H
 
 ## Rationale
 
-Ohne diese Klassifizierung würden Fahrzeuge mit AdBlue-Tank, Hydrauliköl oder Druckluftreservoir ständig leere Balken anzeigen, die im landwirtschaftlichen Betrieb irrelevant sind. Die „größter Tank = Haupttank"-Heuristik trifft in der Praxis zuverlässig zu und braucht keine manuelle Konfiguration.
+Ohne diese Klassifizierung würden Fahrzeuge mit AdBlue-Tank, Hydrauliköl oder Druckluftreservoir ständig leere Balken anzeigen, die im landwirtschaftlichen Betrieb irrelevant sind. Die Nutzung des `showOnHud`-Flags aus dem Spiel ist präziser als eine Kapazitätsheuristik — das Spiel selbst entscheidet, welcher Tank die primäre Ladeluke ist.

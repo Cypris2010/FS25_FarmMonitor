@@ -63,7 +63,7 @@ sm:getFirstMarker()       -- table: Marker-Objekt mit .id (waypoint), .name, .gr
 | 2 | PickupAndDeliver | Abholpunkt | Lieferpunkt | ✓ |
 | 3 | DeliverTo | Lieferpunkt | — | ✓ |
 | 4 | Load | Ladepunkt | — | ✓ |
-| 5 | CombineUnloader | Entladeort | Wartepunkt | — |
+| 5 | CombineUnloader | Wartepunkt | Entladeort | — |
 
 Modus 6 (BGA) ist vollautomatisch und wird in FarmMonitor nicht unterstützt.
 
@@ -88,16 +88,18 @@ Vergleich funktioniert via Klassen-Metatable: `modeObj.state == modeObj.STATE_DR
 (identisch zu `self.state == self.STATE_DRIVE_TO_UNLOAD` im AutoDrive-Code selbst).
 
 ```lua
--- STATE_DRIVE_TO_UNLOAD → fährt zu Entladeort (Dest 1)
--- STATE_DRIVE_TO_START  → fährt zu Wartepunkt (Dest 2)
--- STATE_WAIT_TO_BE_CALLED → wartet am Wartepunkt (Dest 2)
+-- Marker 1 (firstMarker)  = Wartepunkt (Warteposition nahe Feld)
+-- Marker 2 (secondMarker) = Entladeort (Ablieferungsstation)
+-- STATE_DRIVE_TO_UNLOAD       → fährt zu Entladeort  → adCurrentTarget = 2
+-- STATE_DRIVE_TO_START        → fährt zu Wartepunkt  → adCurrentTarget = 1
+-- STATE_WAIT_TO_BE_CALLED     → wartet am Wartepunkt → adCurrentTarget = 1
 local modeObj = sm:getCurrentMode()
 if modeObj and modeObj.state then
     if modeObj.state == modeObj.STATE_DRIVE_TO_UNLOAD then
-        adCurrentTarget = 1
+        adCurrentTarget = 2   -- Entladeort = Marker 2 (secondMarker)
     elseif modeObj.state == modeObj.STATE_DRIVE_TO_START
         or modeObj.state == modeObj.STATE_WAIT_TO_BE_CALLED then
-        adCurrentTarget = 2
+        adCurrentTarget = 1   -- Wartepunkt = Marker 1 (firstMarker)
     end
 end
 ```

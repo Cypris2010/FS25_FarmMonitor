@@ -1551,10 +1551,8 @@
   .fleet-speed-action-row {
     display: flex; align-items: flex-start; gap: 6px;
   }
-  .fleet-left-col > .fleet-badge {
-    white-space: normal; text-align: center; justify-content: center;
-    max-width: 86px; word-break: break-word;
-  }
+  .fleet-footer-sep { color: var(--fg-muted); opacity: 0.5; }
+  .fleet-status-row { display: flex; align-items: center; }
   .fleet-speed-block {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     flex-shrink: 0; width: 44px; min-height: 38px; padding: 5px 4px;
@@ -4933,19 +4931,31 @@ function closeVehicleDetail() {
 // ── AutoDrive badge helper ─────────────────────────────────────────
 function _adStatusBadge(state) {
   const ms = state.adModeState;
-  if (state.adError)                        return '<span class="fleet-badge badge-ad-alert">AD Fehler</span>';
-  if (ms === 'reverseFromBadLocation')      return '<span class="fleet-badge badge-ad-warn">AD Rückwärts</span>';
-  if (state.adBlocked)                      return '<span class="fleet-badge badge-ad-alert">AD Blockiert</span>';
-  if (state.adOnRouteToRefuel)              return '<span class="fleet-badge badge-ad-warn">AD Tankt</span>';
-  if (state.adOnRouteToPark)                return '<span class="fleet-badge badge-ad-warn">AD Parkt</span>';
-  if (state.adIsLoading)                    return '<span class="fleet-badge badge-ad-work">AD Lädt</span>';
-  if (state.adIsUnloading)                  return '<span class="fleet-badge badge-ad-work">AD Entlädt</span>';
-  if (ms === 'waitToBeCalled')              return '<span class="fleet-badge badge-ad">AD Wartet auf Ernter</span>';
-  if (ms === 'driveToCombine')              return '<span class="fleet-badge badge-ad">AD Fährt zum Ernter</span>';
-  if (ms === 'followCombine')               return '<span class="fleet-badge badge-ad">AD Folgt Ernter</span>';
-  if (ms === 'driveToUnload')               return '<span class="fleet-badge badge-ad">AD Fährt zum Entladen</span>';
-  if (ms === 'driveToStart')                return '<span class="fleet-badge badge-ad">AD Fährt zu Start</span>';
-  return '<span class="fleet-badge badge-ad">AD</span>';
+  // Pick destination based on adCurrentTarget (set by Lua per mode/state).
+  // Mode 5: Marker 1 = Wartepunkt, Marker 2 = Entladeort (secondMarker = unload point)
+  const dest = state.adCurrentTarget === 2
+    ? (state.adDestination2 || state.adDestination)
+    : (state.adCurrentTarget === 1
+        ? state.adDestination
+        : (state.adDestination || state.adDestination2));
+  const d = dest ? ` · ${dest}` : '';
+
+  const b = (cls, label) => `<span class="fleet-badge ${cls}">${label}${d}</span>`;
+  const bn = (cls, label) => `<span class="fleet-badge ${cls}">${label}</span>`; // no dest
+
+  if (state.adError)               return bn('badge-ad-alert', 'AD Fehler');
+  if (ms === 'reverseFromBadLocation') return bn('badge-ad-warn', 'AD Rückwärts');
+  if (state.adBlocked)             return bn('badge-ad-alert', 'AD Blockiert');
+  if (state.adOnRouteToRefuel)     return bn('badge-ad-warn',  'AD Tankt');
+  if (state.adOnRouteToPark)       return bn('badge-ad-warn',  'AD Parkt');
+  if (state.adIsLoading)           return b ('badge-ad-work',  'AD Lädt');
+  if (state.adIsUnloading)         return b ('badge-ad-work',  'AD Entlädt');
+  if (ms === 'waitToBeCalled')     return b ('badge-ad',       'AD Wartet auf Ernter');
+  if (ms === 'driveToCombine')     return b ('badge-ad',       'AD Fährt zum Ernter');
+  if (ms === 'followCombine')      return b ('badge-ad',       'AD Folgt Ernter');
+  if (ms === 'driveToUnload')      return b ('badge-ad',       'AD Fährt zum Entladen');
+  if (ms === 'driveToStart')       return b ('badge-ad',       'AD Fährt zu Start');
+  return b('badge-ad', 'AD');
 }
 
 const CP_ALERT_TEXTS = new Set(['IS_STUCK','ERROR_STOPPED','ERROR_NO_PATH_FOUND','IS_COMPLETELY_BROKEN','FUEL_IS_EMPTY','NEEDS_FILLING','ERROR_CUTTER_NOT_SUPPORTED','ERROR_WRONG_SEASON','ERROR_WRONG_MISSION_FRUIT_TYPE','ERROR_PALLETS_ARE_FULL','ERROR_PALLETS_ARE_EMPTY','ERROR_TOO_FAR_FROM_FIELD','ERROR_GROUND_UNLOAD_NOT_SUPPORTED']);
@@ -5841,7 +5851,6 @@ function renderVehicleFleet(appData) {
              </div>
              ${actionBtn}
            </div>
-           ${statusLabel}
          </div>`
       : actionBtn
         ? `<div class="fleet-left-col">${actionBtn}</div>`
@@ -5902,22 +5911,20 @@ function renderVehicleFleet(appData) {
     if (fss.showHours && meta.opHours > 0) footerParts.push(`${meta.opHours} Bh.`);
     if (fss.showAge   && meta.age > 0)     footerParts.push(`${meta.age} Mon.`);
 
-    if (state.adActive && state.adDestination) {
-      const adLabel = AD_MODE_LABELS[state.adMode] || 'AD';
-      const timeStr = formatAdTime(state.adRemainingTime);
-      footerParts.push(`${adLabel}: ${state.adDestination}${timeStr ? ' · ' + timeStr : ''}`);
+    // AD/CP status is shown in the dedicated status pill row — not repeated here
+    // Location only on root vehicle — attached implements are at the same spot
+    if (!isAttached) {
+      const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots, appData?.fields?.fields);
+      if (near) footerParts.push(near.text);
     }
-    if (state.cpActive) {
-      const jobLabel = state.cpJobType ? (CP_JOB_LABELS[state.cpJobType] || `CP ${state.cpJobType}`) : 'CP';
-      const wpStr = state.cpWaypointCurrent && state.cpWaypointTotal
-        ? ` · ${state.cpWaypointCurrent}/${state.cpWaypointTotal}` : '';
-      const timeStr = state.cpRemainingTime ? ` · ${state.cpRemainingTime}` : '';
-      footerParts.push(`${jobLabel}${wpStr}${timeStr}`);
-    }
-    const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots, appData?.fields?.fields);
-    if (near) footerParts.push(near.text);
 
-    const bottomParts = bars + (footerParts.length ? `<div class="fleet-cell-footer">${footerParts.map(p => `<span>${p}</span>`).join('<span>·</span>')}</div>` : '');
+    const footerHtml = footerParts.length
+      ? `<div class="fleet-cell-footer">${footerParts.map(p => `<span>${p}</span>`).join('<span class="fleet-footer-sep">·</span>')}</div>`
+      : '';
+    const statusRow = statusLabel
+      ? `<div class="fleet-status-row">${statusLabel}</div>`
+      : '';
+    const bottomParts = bars + footerHtml + statusRow;
 
     return `<div class="fleet-cell card" data-id="${id}" onclick="openVehicleDetail('${id}')" style="cursor:pointer${colorVars}">
       <div class="fleet-cell-inner">

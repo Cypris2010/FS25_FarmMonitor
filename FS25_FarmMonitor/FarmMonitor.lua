@@ -706,12 +706,6 @@ function FarmMonitor:collectVehicles()
 
     -- Build fuel fillType index lookup once for the whole loop
     local fuelFillTypeIndices = {}
-    -- Auxiliary (non-cargo) fill type names — excluded from main-tank detection.
-    -- Water is intentionally NOT excluded (tankers haul it as primary cargo).
-    local auxFillTypeNames = {
-        DEF=true, ADBLUE=true, COMPRESSEDAIR=true, AIR=true,
-        OIL=true, HYDRAULIC_OIL=true,
-    }
     if g_fillTypeManager and g_fillTypeManager.fillTypes then
         for idx, ft in ipairs(g_fillTypeManager.fillTypes) do
             if ft.name == "DIESEL" or ft.name == "ELECTRICCHARGE" or ft.name == "METHANE" then
@@ -739,8 +733,7 @@ function FarmMonitor:collectVehicles()
             if vehicle.spec_fillUnit ~= nil and vehicle.spec_fillUnit.fillUnits ~= nil then
                 local totalLevel, totalCap = 0, 0
                 local fuelLevel,  fuelCap  = 0, 0
-                local mainTankEntry = nil   -- largest non-fuel, non-aux tank entry
-                local mainTankCap   = 0
+                local mainTankEntry = nil   -- showOnHud non-fuel tank (game-defined primary cargo)
                 for _, fu in ipairs(vehicle.spec_fillUnit.fillUnits) do
                     local level = fu.fillLevel or 0
                     local cap   = fu.capacity  or 0
@@ -763,9 +756,8 @@ function FarmMonitor:collectVehicles()
                                 "cap",   MathUtil.round(cap)
                             )
                             table.insert(tanks, entry)
-                            -- Track main cargo tank: largest non-auxiliary tank
-                            if not auxFillTypeNames[ftName] and cap > mainTankCap then
-                                mainTankCap   = cap
+                            -- Main cargo tank = first showOnHud non-fuel unit (game-defined)
+                            if mainTankEntry == nil and fu.showOnHud == true then
                                 mainTankEntry = entry
                             end
                         end
@@ -1031,13 +1023,15 @@ function FarmMonitor:collectVehicles()
                         end
                     elseif adMode == 5 and adDestination2 ~= nil then
                         -- CombineUnloader: table-based states, compare via class metatable
+                        -- Marker 1 (firstMarker)  = Wartepunkt (wait/start near field)
+                        -- Marker 2 (secondMarker) = Entladeort (unload delivery point)
                         local modeObj = sm:getCurrentMode()
                         if modeObj and modeObj.state then
                             if modeObj.state == modeObj.STATE_DRIVE_TO_UNLOAD then
-                                adCurrentTarget = 1
+                                adCurrentTarget = 2   -- driving to unload = Marker 2
                             elseif modeObj.state == modeObj.STATE_DRIVE_TO_START
                                 or modeObj.state == modeObj.STATE_WAIT_TO_BE_CALLED then
-                                adCurrentTarget = 2
+                                adCurrentTarget = 1   -- at/towards wait point = Marker 1
                             end
                         end
                     end
