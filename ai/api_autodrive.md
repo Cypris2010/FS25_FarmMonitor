@@ -67,6 +67,48 @@ sm:getFirstMarker()       -- table: Marker-Objekt mit .id (waypoint), .name, .gr
 
 Modus 6 (BGA) ist vollautomatisch und wird in FarmMonitor nicht unterstützt.
 
+## Aktives Fahrziel erkennen (`adCurrentTarget`)
+
+Für die Hervorhebung des gerade angefahrenen Ziels muss `modeObj.state` ausgewertet werden.
+`modeObj = sm:getCurrentMode()` — zugänglich aus FarmMonitor-Sandbox.
+
+### Modus 2 — PickupAndDeliver
+States sind **Integer** (`PickupAndDeliverMode.STATE_* = 1/2/3/...`):
+```lua
+-- STATE_PICKUP = 2, STATE_PICKUP_FROM_NEXT_TARGET = 8 → Ziel 1
+-- STATE_DELIVER = 3, STATE_DELIVER_TO_NEXT_TARGET = 7 → Ziel 2
+if s == 2 or s == 8 then adCurrentTarget = 1
+elseif s == 3 or s == 7 then adCurrentTarget = 2
+end
+```
+
+### Modus 5 — CombineUnloader
+States sind **Lua-Tabellen** (`CombineUnloaderMode.STATE_* = {}`), **keine Integer**.
+Vergleich funktioniert via Klassen-Metatable: `modeObj.state == modeObj.STATE_DRIVE_TO_UNLOAD`
+(identisch zu `self.state == self.STATE_DRIVE_TO_UNLOAD` im AutoDrive-Code selbst).
+
+```lua
+-- STATE_DRIVE_TO_UNLOAD → fährt zu Entladeort (Dest 1)
+-- STATE_DRIVE_TO_START  → fährt zu Wartepunkt (Dest 2)
+-- STATE_WAIT_TO_BE_CALLED → wartet am Wartepunkt (Dest 2)
+local modeObj = sm:getCurrentMode()
+if modeObj and modeObj.state then
+    if modeObj.state == modeObj.STATE_DRIVE_TO_UNLOAD then
+        adCurrentTarget = 1
+    elseif modeObj.state == modeObj.STATE_DRIVE_TO_START
+        or modeObj.state == modeObj.STATE_WAIT_TO_BE_CALLED then
+        adCurrentTarget = 2
+    end
+end
+```
+
+### Modi 1 / 3 / 4 (ein Ziel)
+Kein State-Check nötig — `adCurrentTarget = 1` als Fallback wenn AD aktiv.
+
+### Wichtig: `sm:getFirstMarkerName()` ist statisch
+Gibt immer den **konfigurierten** Marker 1 zurück, nicht das aktuell angefahrene Ziel.
+Nicht geeignet für Ziel-Erkennung während der Fahrt.
+
 ## Start / Stop
 
 ```lua
