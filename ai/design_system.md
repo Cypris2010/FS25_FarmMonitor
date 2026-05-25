@@ -138,13 +138,14 @@ border-radius: var(--radius);           /* 18px */
 
 ## Farbstreifen auf Fahrzeug-Cards
 
-Kein SVG-Kreis. Stattdessen `::before`-Pseudo-Element am linken Rand der Card.
+Kein SVG-Kreis. Stattdessen `::before`-Pseudo-Element am **rechten** Rand der Card.
+Zwei Farben = diagonal geteilt (Haupt- und Sekundärfarbe des Fahrzeugs).
 
 ```css
 .fleet-cell::before {
   content: '';
   position: absolute;
-  left: 0; top: 0; bottom: 0; width: 8px;
+  right: 0; top: 0; bottom: 0; width: 8px;
   background: linear-gradient(to right, var(--vc1) 50%, var(--vc2) 50%);
 }
 ```

@@ -706,6 +706,12 @@ function FarmMonitor:collectVehicles()
 
     -- Build fuel fillType index lookup once for the whole loop
     local fuelFillTypeIndices = {}
+    -- Auxiliary (non-cargo) fill type names — excluded from main-tank detection.
+    -- Water is intentionally NOT excluded (tankers haul it as primary cargo).
+    local auxFillTypeNames = {
+        DEF=true, ADBLUE=true, COMPRESSEDAIR=true, AIR=true,
+        OIL=true, HYDRAULIC_OIL=true,
+    }
     if g_fillTypeManager and g_fillTypeManager.fillTypes then
         for idx, ft in ipairs(g_fillTypeManager.fillTypes) do
             if ft.name == "DIESEL" or ft.name == "ELECTRICCHARGE" or ft.name == "METHANE" then
@@ -733,6 +739,8 @@ function FarmMonitor:collectVehicles()
             if vehicle.spec_fillUnit ~= nil and vehicle.spec_fillUnit.fillUnits ~= nil then
                 local totalLevel, totalCap = 0, 0
                 local fuelLevel,  fuelCap  = 0, 0
+                local mainTankEntry = nil   -- largest non-fuel, non-aux tank entry
+                local mainTankCap   = 0
                 for _, fu in ipairs(vehicle.spec_fillUnit.fillUnits) do
                     local level = fu.fillLevel or 0
                     local cap   = fu.capacity  or 0
@@ -748,14 +756,25 @@ function FarmMonitor:collectVehicles()
                             local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fu.fillType)
                             local ftName = ft and ft.name or ""
                             if ftName == "UNKNOWN" then ftName = "" end
-                            table.insert(tanks, FarmMonitor.obj(
+                            local entry = FarmMonitor.obj(
                                 "name",  ftName,
                                 "pct",   MathUtil.round(level / cap * 100),
                                 "liter", MathUtil.round(level),
                                 "cap",   MathUtil.round(cap)
-                            ))
+                            )
+                            table.insert(tanks, entry)
+                            -- Track main cargo tank: largest non-auxiliary tank
+                            if not auxFillTypeNames[ftName] and cap > mainTankCap then
+                                mainTankCap   = cap
+                                mainTankEntry = entry
+                            end
                         end
                     end
+                end
+                -- Mark main cargo tank so the dashboard can highlight it
+                if mainTankEntry ~= nil then
+                    mainTankEntry.main = true
+                    table.insert(mainTankEntry.__order, "main")
                 end
                 if totalCap > 0 then
                     fillPct   = MathUtil.round(totalLevel / totalCap * 100)

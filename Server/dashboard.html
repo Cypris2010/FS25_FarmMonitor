@@ -825,7 +825,7 @@
     line-height: 0;
   }
   .tp-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,.22); opacity: 1; transform: scale(1.06); }
-  .fleet-cell-inner > .tp-btn { width: 36px; height: 36px; border-radius: 9px; margin-left: 0; }
+  .fleet-speed-action-row > .tp-btn { width: 36px; height: 36px; border-radius: 9px; margin-left: 0; }
 
   .fleet-action-btn {
     display: inline-flex; align-items: center; gap: 4px;
@@ -1538,15 +1538,22 @@
   .fleet-cell::before {
     content: '';
     position: absolute;
-    left: 0; top: 0; bottom: 0; width: 4px;
+    right: 0; top: 0; bottom: 0; width: 8px;
     background: linear-gradient(to right, var(--vc1) 50%, var(--vc2) 50%);
-    pointer-events: none; width: 8px;
+    pointer-events: none;
   }
   .fleet-cell-inner { display: flex; align-items: flex-start; gap: 12px; }
   .fleet-cell-body  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-  /* Left column: speed block + status badge */
+  /* Left column: [speed + tp-btn] row, then badge below both */
   .fleet-left-col {
-    display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: stretch; gap: 5px; flex-shrink: 0;
+  }
+  .fleet-speed-action-row {
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .fleet-left-col > .fleet-badge {
+    white-space: normal; text-align: center; justify-content: center;
+    max-width: 86px; word-break: break-word;
   }
   .fleet-speed-block {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1640,6 +1647,7 @@
   .fleet-bar-fill.fuel.warn { background: #ffa726; }
   .fleet-bar-fill.fuel.low  { background: #ef5350; }
   .fleet-bar-fill.cargo     { background: #5c8fd6; }
+  .fleet-bar-fill.cargo.low { background: #ef5350; }
   .fleet-cell-footer { display: flex; gap: 6px; font-size: 10px; color: var(--fg-muted); white-space: nowrap; }
 
   /* Fleet settings button */
@@ -1998,6 +2006,7 @@
   .vd-tank-fill.fuel.warn { background: #ffa726; }
   .vd-tank-fill.fuel.low  { background: #ef5350; }
   .vd-tank-fill.cargo     { background: #5c8fd6; }
+  .vd-tank-fill.cargo.low { background: #ef5350; }
   .vd-tank-fill.damage    { background: #ef5350; }
   .vd-tank-track.slim { height: 4px; border-radius: 2px; }
   /* Location */
@@ -5321,11 +5330,11 @@ function _renderVehicleDetail(id) {
        </div>`
     : '';
 
-  const near = nearestHotspot(rootId, rootState?.x, rootState?.z, rootState?.speed, appData?.hotspots?.hotspots);
+  const near = nearestHotspot(rootId, rootState?.x, rootState?.z, rootState?.speed, appData?.hotspots?.hotspots, appData?.fields?.fields);
   const nearTag = near
     ? `<span class="vd-loc-tag">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${near.dist} m ${near.dir} · ${near.name}
+        ${near.text}
        </span>`
     : '';
 
@@ -5448,15 +5457,18 @@ function _renderVehicleDetail(id) {
   for (const tank of (rootState.tanks || [])) {
     const isDef = DEF_FILL_TYPES.has(tank.name);
     const isAir = AIR_FILL_TYPES.has(tank.name);
+    // Non-main tanks: only show when they have content
+    if (!tank.main && tank.pct === 0) continue;
     const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
     const tankLabel = tank.liter != null && tank.cap != null ? `${tank.liter} / ${tank.cap} L` : `${tank.pct}%`;
+    const emptyClass = tank.main && tank.pct === 0 ? ' low' : '';
     if (isDef || isAir) {
       betriebRows.push(`<div class="vd-tank">
         <div class="vd-tank-label-row">
           <span class="vd-tank-name">${title}</span>
           <span class="vd-tank-val">${tankLabel}</span>
         </div>
-        <div class="vd-tank-track slim"><div class="vd-tank-fill cargo" style="width:${tank.pct}%"></div></div>
+        <div class="vd-tank-track slim"><div class="vd-tank-fill cargo${emptyClass}" style="width:${tank.pct}%"></div></div>
       </div>`);
     } else {
       tankRows.push(`<div class="vd-tank">
@@ -5464,7 +5476,7 @@ function _renderVehicleDetail(id) {
           <span class="vd-tank-name">${title}</span>
           <span class="vd-tank-val">${tankLabel}</span>
         </div>
-        <div class="vd-tank-track"><div class="vd-tank-fill cargo" style="width:${tank.pct}%"></div></div>
+        <div class="vd-tank-track"><div class="vd-tank-fill cargo${emptyClass}" style="width:${tank.pct}%"></div></div>
       </div>`);
     }
   }
@@ -5626,25 +5638,74 @@ function fleetCategoryIcon(cat) {
 
 const _nearestHotspotCache = new Map(); // vehicleId → { x, z, result }
 
-function nearestHotspot(vehicleId, vx, vz, speed, hotspots) {
-  if (!hotspots || !hotspots.length || vx == null || vz == null) return null;
+// Hotspot types never used as anchor (train loading stations appear as MISC)
+const _HS_EXCLUDED = new Set(['MISC', 'BEE']);
+
+function _cardinal(dx, dz) {
+  const deg = ((Math.atan2(dx, -dz) * 180 / Math.PI) + 360) % 360;
+  return ['N','NO','O','SO','S','SW','W','NW'][Math.round(deg / 45) % 8];
+}
+
+function _pointInPoly(px, pz, xs, zs) {
+  let inside = false;
+  for (let i = 0, j = xs.length - 1; i < xs.length; j = i++) {
+    const xi = xs[i], zi = zs[i], xj = xs[j], zj = zs[j];
+    if (((zi > pz) !== (zj > pz)) && (px < (xj - xi) * (pz - zi) / (zj - zi) + xi))
+      inside = !inside;
+  }
+  return inside;
+}
+
+function nearestHotspot(vehicleId, vx, vz, speed, hotspots, fields) {
+  if (vx == null || vz == null) return null;
   const cached = _nearestHotspotCache.get(vehicleId);
-  // Skip recalculation if parked and already have a result
   if (cached && (speed == null || speed <= 0.5)) return cached.result;
-  let best = null, bestDist = Infinity;
-  for (const h of hotspots) {
+
+  const allFields = (fields || []).filter(f => f.cx != null && f.cz != null);
+
+  // 1. Check if vehicle is ON a field (point-in-polygon)
+  for (const f of allFields) {
+    if (!f.polygon?.x?.length) continue;
+    if (_pointInPoly(vx, vz, f.polygon.x, f.polygon.z)) {
+      const dx = vx - f.cx, dz = vz - f.cz;
+      const dist = Math.sqrt(dx*dx + dz*dz);
+      const label = dist < 30
+        ? `Mitte Feld ${f.id}`
+        : `${_cardinal(dx, dz)} auf Feld ${f.id}`;
+      const result = { text: label };
+      _nearestHotspotCache.set(vehicleId, { x: vx, z: vz, result });
+      return result;
+    }
+  }
+
+  // 2. Nearest field center (outside)
+  let nearField = null, nearFieldDist = Infinity;
+  for (const f of allFields) {
+    const dx = f.cx - vx, dz = f.cz - vz;
+    const d = Math.sqrt(dx*dx + dz*dz);
+    if (d < nearFieldDist) { nearFieldDist = d; nearField = f; }
+  }
+
+  // 3. Nearest non-excluded hotspot
+  let nearHs = null, nearHsDist = Infinity;
+  for (const h of (hotspots || [])) {
+    if (_HS_EXCLUDED.has(h.type)) continue;
     const dx = h.x - vx, dz = h.z - vz;
     const d = Math.sqrt(dx*dx + dz*dz);
-    if (d < bestDist) { bestDist = d; best = h; }
+    if (d < nearHsDist) { nearHsDist = d; nearHs = h; }
   }
-  if (!best) return null;
-  const dx = best.x - vx, dz = best.z - vz;
-  const angle = Math.atan2(dx, -dz) * 180 / Math.PI;
-  const deg = (angle + 360) % 360;
-  const dirs = ['N','NO','O','SO','S','SW','W','NW'];
-  const dir = dirs[Math.round(deg / 45) % 8];
-  const result = { name: best.name, dist: Math.round(bestDist), dir };
-  _nearestHotspotCache.set(vehicleId, { x: vx, z: vz, result });
+
+  // 4. Prefer field unless a hotspot is less than half the field's distance
+  let result = null;
+  if (nearField && (!nearHs || nearFieldDist < nearHsDist * 2)) {
+    const dx = nearField.cx - vx, dz = nearField.cz - vz;
+    result = { text: `${Math.round(nearFieldDist)} m ${_cardinal(dx, dz)} v Feld ${nearField.id}` };
+  } else if (nearHs) {
+    const dx = nearHs.x - vx, dz = nearHs.z - vz;
+    result = { text: `${Math.round(nearHsDist)} m ${_cardinal(dx, dz)} · ${nearHs.name}` };
+  }
+
+  if (result) _nearestHotspotCache.set(vehicleId, { x: vx, z: vz, result });
   return result;
 }
 
@@ -5758,15 +5819,33 @@ function renderVehicleFleet(appData) {
       ? `<span class="fleet-driver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>${state.driverName}</span>`
       : '';
 
+    // Action button: enter (motorized) or teleport (unattached non-motorized)
+    const isAttached = state && state.rootId && state.rootId !== id;
+    let actionBtn = '';
+    if (isMotorized) {
+      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleEnter('${id}')" title="Einsteigen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      </button>`;
+    } else if (!isAttached) {
+      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleTeleport('${id}')" title="Hinfahren">
+        ${_tpIcon}
+      </button>`;
+    }
+
     const speedBlock = isMotorized
       ? `<div class="fleet-left-col">
-           <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}">
-             <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
-             <span class="fleet-speed-unit">km/h</span>
+           <div class="fleet-speed-action-row">
+             <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}">
+               <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
+               <span class="fleet-speed-unit">km/h</span>
+             </div>
+             ${actionBtn}
            </div>
            ${statusLabel}
          </div>`
-      : '';
+      : actionBtn
+        ? `<div class="fleet-left-col">${actionBtn}</div>`
+        : '';
 
     // Remaining badges (damage, leased) — still inline in top row
     let extraBadges = '';
@@ -5794,13 +5873,16 @@ function renderVehicleFleet(appData) {
       if (isDef  && !fss.showDef)   continue;
       if (isAir  && !fss.showAir)   continue;
       if (!isDef && !isAir && !fss.showCargo) continue;
+      // Non-main tanks: only show when they have content — no empty-clutter
+      if (!tank.main && tank.pct === 0) continue;
       const title = appData?.fillTypesByName?.[tank.name]?.title || tank.name;
       const tankLabel = tank.liter != null && tank.cap != null
         ? `${tank.liter} / ${tank.cap} L`
         : `${tank.pct}%`;
+      const tc = tank.main && tank.pct === 0 ? 'low' : '';
       bars += `<span class="fleet-bar-inline">
         <span>${title}</span>
-        <span class="fleet-bar-track-inline"><span class="fleet-bar-fill cargo" style="width:${tank.pct}%"></span></span>
+        <span class="fleet-bar-track-inline"><span class="fleet-bar-fill cargo ${tc}" style="width:${tank.pct}%"></span></span>
         <span>${tankLabel}</span>
       </span>`;
     }
@@ -5832,28 +5914,14 @@ function renderVehicleFleet(appData) {
       const timeStr = state.cpRemainingTime ? ` · ${state.cpRemainingTime}` : '';
       footerParts.push(`${jobLabel}${wpStr}${timeStr}`);
     }
-    const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots);
-    if (near) footerParts.push(`${near.dist} m ${near.dir} · ${near.name}`);
+    const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots, appData?.fields?.fields);
+    if (near) footerParts.push(near.text);
 
     const bottomParts = bars + (footerParts.length ? `<div class="fleet-cell-footer">${footerParts.map(p => `<span>${p}</span>`).join('<span>·</span>')}</div>` : '');
-
-    // Action button: enter (motorized) or teleport (unattached non-motorized)
-    const isAttached = state && state.rootId && state.rootId !== id;
-    let actionBtn = '';
-    if (isMotorized) {
-      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleEnter('${id}')" title="Einsteigen">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-      </button>`;
-    } else if (!isAttached) {
-      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleTeleport('${id}')" title="Hinfahren">
-        ${_tpIcon}
-      </button>`;
-    }
 
     return `<div class="fleet-cell card" data-id="${id}" onclick="openVehicleDetail('${id}')" style="cursor:pointer${colorVars}">
       <div class="fleet-cell-inner">
         ${speedBlock}
-        ${actionBtn}
         <div class="fleet-cell-body">
           <div class="fleet-cell-top">
             <div class="fleet-identity">

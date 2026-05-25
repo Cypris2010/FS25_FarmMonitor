@@ -105,3 +105,75 @@ AD hat Vorrang: wenn `adActive`, wird `ad-active` gesetzt, nicht `cp-active`.
 | 3 | Liefern |
 | 4 | Laden |
 | 5 | Ernter-Begleiter |
+
+---
+
+## Fleet Card Layout
+
+### Struktur (motorisierte Fahrzeuge)
+
+```
+.fleet-left-col                 ← Spalte, flex-direction: column
+  .fleet-speed-action-row       ← Zeile: Geschwindigkeit + Teleport-Button
+    .fleet-speed-block          ← Geschwindigkeitsanzeige
+    .tp-btn                     ← Teleport-Button (36×36 px)
+  .fleet-badge                  ← Statusbadge — volle Breite, bricht bei Bedarf um
+```
+
+Das Badge sitzt **unter beiden** Elementen (Speed + Teleport), nicht nur unter der Geschwindigkeit.
+Bei langem Text (`white-space: normal`) bricht es auf mehrere Zeilen um.
+
+Nicht-motorisierte Fahrzeuge (keine Geschwindigkeitsanzeige): nur `actionBtn` in `.fleet-left-col`,
+kein Badge (kein Motor → kein Status).
+
+### CSS
+
+```css
+.fleet-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.fleet-speed-action-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+/* Badge volle Breite, zentriert, Zeilenumbruch erlaubt */
+.fleet-left-col > .fleet-badge {
+  white-space: normal;
+  text-align: center;
+  justify-content: center;
+}
+/* Teleport-Button innerhalb der Zeile */
+.fleet-speed-action-row > .tp-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  margin-left: 0;
+}
+```
+
+### JS-Template (fleet card render)
+
+```js
+const speedBlock = isMotorized
+  ? `<div class="fleet-left-col">
+       <div class="fleet-speed-action-row">
+         <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}">
+           <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
+           <span class="fleet-speed-unit">km/h</span>
+         </div>
+         ${actionBtn}
+       </div>
+       ${statusLabel}
+     </div>`
+  : actionBtn
+    ? `<div class="fleet-left-col">${actionBtn}</div>`
+    : '';
+```
+
+`statusLabel` = Badge-HTML aus `_adStatusBadge()` / `_cpStatusBadge()` / allgemeiner Status-Logik.
+`actionBtn` = Teleport-Button (`.tp-btn`) oder leer wenn Fahrzeug nicht begehbar.
