@@ -898,16 +898,23 @@ function FarmMonitor:collectVehicles()
             end
 
             -- ── AutoDrive (optional mod) ─────────────────────────────────
-            local adActive        = nil
-            local adMode          = nil
-            local adDriverName    = nil
-            local adDestination   = nil
-            local adDestination2  = nil
-            local adRemainingTime = nil
-            local adFillType      = nil
-            local adLoopCounter   = nil
-            local adLoopsDone     = nil
-            local adCurrentTarget = nil
+            local adActive          = nil
+            local adMode            = nil
+            local adDriverName      = nil
+            local adDestination     = nil
+            local adDestination2    = nil
+            local adRemainingTime   = nil
+            local adFillType        = nil
+            local adLoopCounter     = nil
+            local adLoopsDone       = nil
+            local adCurrentTarget   = nil
+            local adBlocked         = nil
+            local adError           = nil
+            local adOnRouteToRefuel = nil
+            local adOnRouteToPark   = nil
+            local adIsLoading       = nil
+            local adIsUnloading     = nil
+            local adModeState       = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -956,6 +963,33 @@ function FarmMonitor:collectVehicles()
                             end
                         end
                     end
+                    -- Extended AD state fields
+                    if vehicle.ad.isStoppingWithError == true then adError = true end
+                    if vehicle.ad.onRouteToRefuel == true then adOnRouteToRefuel = true end
+                    if vehicle.ad.onRouteToPark   == true then adOnRouteToPark   = true end
+                    if vehicle.ad.specialDrivingModule ~= nil
+                        and vehicle.ad.specialDrivingModule.isBlocked == true then
+                        adBlocked = true
+                    end
+                    if vehicle.ad.trailerModule ~= nil then
+                        if vehicle.ad.trailerModule.isLoading   == true then adIsLoading   = true end
+                        if vehicle.ad.trailerModule.isUnloading == true then adIsUnloading = true end
+                    end
+                    -- Mode state string (CombineUnloader mode 5 — table-based states)
+                    if adActive and adMode == 5 then
+                        local ms = sm:getCurrentMode()
+                        if ms and ms.state then
+                            if     ms.state == ms.STATE_WAIT_TO_BE_CALLED          then adModeState = "waitToBeCalled"
+                            elseif ms.state == ms.STATE_DRIVE_TO_COMBINE           then adModeState = "driveToCombine"
+                            elseif ms.state == ms.STATE_FOLLOW_COMBINE
+                                or ms.state == ms.STATE_ACTIVE_UNLOAD_COMBINE
+                                or ms.state == ms.STATE_FOLLOW_CURRENT_UNLOADER    then adModeState = "followCombine"
+                            elseif ms.state == ms.STATE_DRIVE_TO_UNLOAD            then adModeState = "driveToUnload"
+                            elseif ms.state == ms.STATE_DRIVE_TO_START             then adModeState = "driveToStart"
+                            elseif ms.state == ms.STATE_REVERSE_FROM_BAD_LOCATION  then adModeState = "reverseFromBadLocation"
+                            end
+                        end
+                    end
                 end)
             end
 
@@ -995,7 +1029,14 @@ function FarmMonitor:collectVehicles()
                 "adFillType",       adFillType,
                 "adLoopCounter",    adLoopCounter,
                 "adLoopsDone",      adLoopsDone,
-                "adCurrentTarget",  adCurrentTarget
+                "adCurrentTarget",   adCurrentTarget,
+                "adBlocked",         adBlocked,
+                "adError",           adError,
+                "adOnRouteToRefuel", adOnRouteToRefuel,
+                "adOnRouteToPark",   adOnRouteToPark,
+                "adIsLoading",       adIsLoading,
+                "adIsUnloading",     adIsUnloading,
+                "adModeState",       adModeState
             ))
         end
     end
