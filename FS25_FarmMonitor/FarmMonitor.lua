@@ -898,6 +898,65 @@ function FarmMonitor:collectVehicles()
             end
 
             -- ── AutoDrive (optional mod) ─────────────────────────────────
+            -- ── Courseplay (optional mod) ─────────────────────────────────
+            local cpActive               = nil
+            local cpJobType              = nil
+            local cpInfoText             = nil
+            local cpWaypointCurrent      = nil
+            local cpWaypointTotal        = nil
+            local cpRemainingTime        = nil
+            local cpNumBalesLeft         = nil
+            local cpWaitingForUnload     = nil
+            local cpHarvesterManeuvering = nil
+            if vehicle.getIsCpActive ~= nil then
+                pcall(function()
+                    if not vehicle:getIsCpActive() then return end
+                    cpActive = true
+                    if vehicle:getIsCpFieldWorkActive() then
+                        cpJobType = "fieldWork"
+                    elseif vehicle:getIsCpCombineUnloaderActive() then
+                        cpJobType = "combineUnloader"
+                    else
+                        local j = vehicle.getJob and vehicle:getJob()
+                        if j and j.name then cpJobType = j.name end
+                    end
+                    if vehicle.getCpStatus then
+                        local st = vehicle:getCpStatus()
+                        if st then
+                            if st.currentWaypointIx and st.currentWaypointIx > 0 then
+                                cpWaypointCurrent = st.currentWaypointIx
+                            end
+                            if st.numberOfWaypoints and st.numberOfWaypoints > 0 then
+                                cpWaypointTotal = st.numberOfWaypoints
+                            end
+                            if st.remainingTimeText and st.remainingTimeText ~= "" then
+                                cpRemainingTime = st.remainingTimeText
+                            end
+                            if st.numBalesLeftOver and st.numBalesLeftOver > 0 then
+                                cpNumBalesLeft = st.numBalesLeftOver
+                            end
+                        end
+                    end
+                    if vehicle.getCpActiveInfoTexts then
+                        local texts = vehicle:getCpActiveInfoTexts()
+                        for _, t in pairs(texts) do
+                            if t and t.name then
+                                cpInfoText = t.name
+                                break
+                            end
+                        end
+                    end
+                    if vehicle.getIsCpHarvesterWaitingForUnload then
+                        if vehicle:getIsCpHarvesterWaitingForUnload() then
+                            cpWaitingForUnload = true
+                        end
+                        if vehicle:getIsCpHarvesterManeuvering() then
+                            cpHarvesterManeuvering = true
+                        end
+                    end
+                end)
+            end
+
             local adActive          = nil
             local adMode            = nil
             local adDriverName      = nil
@@ -1036,7 +1095,16 @@ function FarmMonitor:collectVehicles()
                 "adOnRouteToPark",   adOnRouteToPark,
                 "adIsLoading",       adIsLoading,
                 "adIsUnloading",     adIsUnloading,
-                "adModeState",       adModeState
+                "adModeState",           adModeState,
+                "cpActive",              cpActive,
+                "cpJobType",             cpJobType,
+                "cpInfoText",            cpInfoText,
+                "cpWaypointCurrent",     cpWaypointCurrent,
+                "cpWaypointTotal",       cpWaypointTotal,
+                "cpRemainingTime",       cpRemainingTime,
+                "cpNumBalesLeft",        cpNumBalesLeft,
+                "cpWaitingForUnload",    cpWaitingForUnload,
+                "cpHarvesterManeuvering", cpHarvesterManeuvering
             ))
         end
     end

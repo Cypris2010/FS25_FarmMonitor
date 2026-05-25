@@ -69,7 +69,7 @@ Volles Abhol-/Lieferprogramm: laden → entladen → wiederholen.
 | STATE_FINISHED | Modus abgeschlossen |
 
 ### Modus 5 — CombineUnloader (komplexester Modus)
-Folgt Mähdrescher und entleert aktiv.
+Folgt Ernter und entleert aktiv.
 
 **Primäre States:**
 
@@ -158,12 +158,14 @@ Priorität von oben nach unten — erster Match gewinnt:
 | 5 | AD Parkt | `badge-ad-warn` (lime) | `state.adOnRouteToPark` |
 | 6 | AD Lädt | `badge-ad-work` (teal) | `state.adIsLoading` |
 | 7 | AD Entlädt | `badge-ad-work` (teal) | `state.adIsUnloading` |
-| 8 | Wartet auf Mähdrescher | `badge-ad` (cyan) | `adModeState === 'waitToBeCalled'` |
-| 9 | Fährt zum Mähdrescher | `badge-ad` (cyan) | `adModeState === 'driveToCombine'` |
-| 10 | Folgt Mähdrescher | `badge-ad` (cyan) | `adModeState === 'followCombine'` |
-| 11 | Fährt zum Entladen | `badge-ad` (cyan) | `adModeState === 'driveToUnload'` |
-| 12 | Kehrt zurück | `badge-ad` (cyan) | `adModeState === 'driveToStart'` |
-| 13 | AutoDrive | `badge-ad` (cyan) | Fallback |
+| 8 | AD Wartet auf Ernter | `badge-ad` (cyan) | `adModeState === 'waitToBeCalled'` |
+| 9 | AD Fährt zum Ernter | `badge-ad` (cyan) | `adModeState === 'driveToCombine'` |
+| 10 | AD Folgt Ernter | `badge-ad` (cyan) | `adModeState === 'followCombine'` |
+| 11 | AD Fährt zum Entladen | `badge-ad` (cyan) | `adModeState === 'driveToUnload'` |
+| 12 | AD Fährt zu Start | `badge-ad` (cyan) | `adModeState === 'driveToStart'` |
+| 13 | AD | `badge-ad` (cyan) | Fallback |
+
+Vollständige Badge-Liste inkl. CP und allgemeine States: `ai/dashboard_status_badges.md`
 
 ### Badge-Farben (CSS)
 

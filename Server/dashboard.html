@@ -1563,6 +1563,9 @@
   .fleet-speed-block.ad-active { background: rgba(0,188,212,.12); }
   .fleet-speed-block.ad-active .fleet-speed-val  { color: #4dd0e1; }
   .fleet-speed-block.ad-active .fleet-speed-unit { color: #4dd0e1; opacity: 0.8; }
+  .fleet-speed-block.cp-active { background: rgba(255,183,77,.12); }
+  .fleet-speed-block.cp-active .fleet-speed-val  { color: #ffb74d; }
+  .fleet-speed-block.cp-active .fleet-speed-unit { color: #ffb74d; opacity: 0.8; }
   .fleet-speed-block .fleet-badge { font-size: 8px; padding: 1px 4px; line-height: 1.5; }
   .fleet-driver {
     display: flex; align-items: center; gap: 3px;
@@ -1611,6 +1614,9 @@
   .fleet-badge.badge-ad-alert { background: rgba(244,143,177,.15); border-color: rgba(244,143,177,.4); color: #f48fb1; }
   .fleet-badge.badge-ad-warn  { background: rgba(198,230,77,.13);  border-color: rgba(198,230,77,.35); color: #c6e64d; }
   .fleet-badge.badge-ad-work  { background: rgba(77,182,172,.15);  border-color: rgba(77,182,172,.4);  color: #4db6ac; }
+  .fleet-badge.badge-cp       { background: rgba(255,183,77,.15);  border-color: rgba(255,183,77,.4);  color: #ffb74d; }
+  .fleet-badge.badge-cp-alert { background: rgba(244,143,177,.15); border-color: rgba(244,143,177,.4); color: #f48fb1; }
+  .fleet-badge.badge-cp-warn  { background: rgba(255,224,130,.15); border-color: rgba(255,224,130,.4); color: #ffe082; }
   .fleet-speed {
     display: flex; align-items: baseline; gap: 2px; flex-shrink: 0;
     padding: 1px 8px; border-radius: 20px;
@@ -1849,6 +1855,9 @@
   .vd-header-speed.ad-active { background: rgba(0,188,212,.12); }
   .vd-header-speed.ad-active .vd-header-speed-val  { color: #4dd0e1; }
   .vd-header-speed.ad-active .vd-header-speed-unit { color: #4dd0e1; opacity: 0.85; }
+  .vd-header-speed.cp-active { background: rgba(255,183,77,.12); }
+  .vd-header-speed.cp-active .vd-header-speed-val  { color: #ffb74d; }
+  .vd-header-speed.cp-active .vd-header-speed-unit { color: #ffb74d; opacity: 0.85; }
 
   .vd-close {
     flex-shrink: 0; background: none; border: none; color: var(--fg-muted);
@@ -1895,6 +1904,33 @@
     display: flex; align-items: center; gap: 4px;
   }
   .vd-ad-banner-meta strong { color: var(--fg); font-weight: 600; opacity: 1; }
+
+  /* Courseplay status banner (between header and body) */
+  .vd-cp-banner {
+    display: none; flex-direction: column; gap: 6px;
+    padding: 10px 18px;
+    background: rgba(255,183,77,.07);
+    border-top: 1px solid rgba(255,183,77,.15);
+    border-bottom: 1px solid rgba(255,183,77,.15);
+    flex-shrink: 0;
+  }
+  .vd-cp-banner.visible { display: flex; }
+  .vd-cp-banner-row1 {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .vd-cp-banner-job {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: rgba(255,190,80,.9);
+  }
+  .vd-cp-banner-sep { color: var(--fg-muted); opacity: 0.4; font-size: 11px; }
+  .vd-cp-banner-row2 {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .vd-cp-banner-meta {
+    font-size: 10px; color: var(--fg-muted); opacity: 0.75;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .vd-cp-banner-meta strong { color: var(--fg); font-weight: 600; opacity: 1; }
 
   .vd-body {
     flex: 1; overflow-y: auto; padding: 14px 18px;
@@ -4895,12 +4931,39 @@ function _adStatusBadge(state) {
   if (state.adOnRouteToPark)                return '<span class="fleet-badge badge-ad-warn">AD Parkt</span>';
   if (state.adIsLoading)                    return '<span class="fleet-badge badge-ad-work">AD Lädt</span>';
   if (state.adIsUnloading)                  return '<span class="fleet-badge badge-ad-work">AD Entlädt</span>';
-  if (ms === 'waitToBeCalled')              return '<span class="fleet-badge badge-ad">Wartet auf Mähdrescher</span>';
-  if (ms === 'driveToCombine')              return '<span class="fleet-badge badge-ad">Fährt zum Mähdrescher</span>';
-  if (ms === 'followCombine')               return '<span class="fleet-badge badge-ad">Folgt Mähdrescher</span>';
-  if (ms === 'driveToUnload')               return '<span class="fleet-badge badge-ad">Fährt zum Entladen</span>';
-  if (ms === 'driveToStart')                return '<span class="fleet-badge badge-ad">Kehrt zurück</span>';
-  return '<span class="fleet-badge badge-ad">AutoDrive</span>';
+  if (ms === 'waitToBeCalled')              return '<span class="fleet-badge badge-ad">AD Wartet auf Ernter</span>';
+  if (ms === 'driveToCombine')              return '<span class="fleet-badge badge-ad">AD Fährt zum Ernter</span>';
+  if (ms === 'followCombine')               return '<span class="fleet-badge badge-ad">AD Folgt Ernter</span>';
+  if (ms === 'driveToUnload')               return '<span class="fleet-badge badge-ad">AD Fährt zum Entladen</span>';
+  if (ms === 'driveToStart')                return '<span class="fleet-badge badge-ad">AD Fährt zu Start</span>';
+  return '<span class="fleet-badge badge-ad">AD</span>';
+}
+
+const CP_ALERT_TEXTS = new Set(['IS_STUCK','ERROR_STOPPED','ERROR_NO_PATH_FOUND','IS_COMPLETELY_BROKEN','FUEL_IS_EMPTY','NEEDS_FILLING','ERROR_CUTTER_NOT_SUPPORTED','ERROR_WRONG_SEASON','ERROR_WRONG_MISSION_FRUIT_TYPE','ERROR_PALLETS_ARE_FULL','ERROR_PALLETS_ARE_EMPTY','ERROR_TOO_FAR_FROM_FIELD','ERROR_GROUND_UNLOAD_NOT_SUPPORTED']);
+const CP_WARN_TEXTS  = new Set(['NEEDS_UNLOADING','FUEL_IS_LOW','BLOCKED_BY_OBJECT','OUT_OF_MONEY','WRONG_BALE_WRAP_TYPE','WAITING_FOR_RAIN_TO_FINISH','WAITING_FOR_SNOW_TO_CLEAR']);
+const CP_JOB_LABELS  = { fieldWork: 'CP Feldarbeit', combineUnloader: 'CP Entlader', baleFinder: 'CP Ballen', bunkerSilo: 'CP Silo', siloLoader: 'CP Laden' };
+
+function _cpStatusBadge(state) {
+  const info = state.cpInfoText;
+  if (info && CP_ALERT_TEXTS.has(info)) {
+    const label = info === 'IS_STUCK' ? 'CP Feststeckend'
+      : info === 'ERROR_NO_PATH_FOUND' ? 'CP Kein Pfad'
+      : info === 'FUEL_IS_EMPTY' ? 'CP Tank leer'
+      : info === 'IS_COMPLETELY_BROKEN' ? 'CP Reparatur'
+      : 'CP Fehler';
+    return `<span class="fleet-badge badge-cp-alert">${label}</span>`;
+  }
+  if (info && CP_WARN_TEXTS.has(info)) {
+    const label = info === 'NEEDS_UNLOADING' ? 'CP Voll'
+      : info === 'FUEL_IS_LOW' ? 'CP Tankt'
+      : info === 'BLOCKED_BY_OBJECT' ? 'CP Blockiert'
+      : info.startsWith('WAITING_FOR_RAIN') || info.startsWith('WAITING_FOR_SNOW') ? 'CP Wetter'
+      : 'CP Wartet';
+    return `<span class="fleet-badge badge-cp-warn">${label}</span>`;
+  }
+  if (state.cpWaitingForUnload) return '<span class="fleet-badge badge-cp-warn">CP Wartet auf Entlader</span>';
+  const jobLabel = state.cpJobType ? (CP_JOB_LABELS[state.cpJobType] || `CP ${state.cpJobType}`) : 'CP';
+  return `<span class="fleet-badge badge-cp">${jobLabel}</span>`;
 }
 
 // ── AutoDrive sub-panel ────────────────────────────────────────────
@@ -4953,7 +5016,7 @@ const AD_MODES = [
   { id: 2, label: 'Abholen & Liefern',    m1: 'Ladeort',           m2: 'Entladeort',  ft: true  },
   { id: 3, label: 'Liefern zu',           m1: 'Entladeort',        m2: null,          ft: false },
   { id: 4, label: 'Laden',                m1: 'Ladeort',           m2: 'Entladeort',  ft: true  },
-  { id: 5, label: 'Drescher-Begleiter',   m1: 'Entladeort',        m2: 'Wartepunkt',  ft: false },
+  { id: 5, label: 'Ernter-Begleiter',     m1: 'Entladeort',        m2: 'Wartepunkt',  ft: false },
 ];
 
 function _renderAdPanel(id) {
@@ -5238,6 +5301,8 @@ function _renderVehicleDetail(id) {
   if (isMotorized) {
     if (rootState.adActive) {
       statusBadge = _adStatusBadge(rootState);
+    } else if (rootState.cpActive) {
+      statusBadge = _cpStatusBadge(rootState);
     } else if (rootState.motorRunning) {
       if (rootState.isAIActive)      statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
       else if (rootState.isEntered)  statusBadge = '<span class="fleet-badge badge-active">In Betrieb</span>';
@@ -5265,7 +5330,7 @@ function _renderVehicleDetail(id) {
     : '';
 
   const speedBlock = isMotorized ? `
-    <div class="vd-header-speed ${isMoving ? 'moving' : ''}${rootState.adActive ? ' ad-active' : ''}">
+    <div class="vd-header-speed ${isMoving ? 'moving' : ''}${rootState.adActive ? ' ad-active' : ''}${rootState.cpActive ? ' cp-active' : ''}">
       <span class="vd-header-speed-val">${isMoving ? speed : '0'}</span>
       <span class="vd-header-speed-unit">km/h</span>
     </div>` : '';
@@ -5328,6 +5393,37 @@ function _renderVehicleDetail(id) {
   } else if (adBanner) {
     adBanner.className = 'vd-ad-banner';
     adBanner.innerHTML = '';
+  }
+
+  // ── Courseplay banner (below header) ────────────────────────────
+  const cpBanner = document.getElementById('vd-cp-banner');
+  if (rootState.cpActive === true && cpBanner) {
+    const jobLabel = rootState.cpJobType ? (CP_JOB_LABELS[rootState.cpJobType] || `CP ${rootState.cpJobType}`) : 'CP';
+    const wpHtml = rootState.cpWaypointCurrent && rootState.cpWaypointTotal
+      ? `<span class="vd-cp-banner-meta">Wegpunkt: <strong>${rootState.cpWaypointCurrent} / ${rootState.cpWaypointTotal}</strong></span>`
+      : '';
+    const timeHtml = rootState.cpRemainingTime
+      ? `<span class="vd-cp-banner-meta">Verbleibend: <strong>${rootState.cpRemainingTime}</strong></span>`
+      : '';
+    const balesHtml = rootState.cpNumBalesLeft
+      ? `<span class="vd-cp-banner-meta">Ballen: <strong>${rootState.cpNumBalesLeft}</strong></span>`
+      : '';
+    const infoHtml = rootState.cpInfoText
+      ? `<span class="vd-cp-banner-meta">${rootState.cpInfoText}</span>`
+      : '';
+    const hasMeta = wpHtml || timeHtml || balesHtml || infoHtml;
+    cpBanner.className = 'vd-cp-banner visible';
+    cpBanner.innerHTML = `
+      <div class="vd-cp-banner-row1">
+        <span class="vd-cp-banner-job">${jobLabel}</span>
+        ${rootState.cpHarvesterManeuvering ? '<span class="vd-cp-banner-sep">·</span><span class="vd-cp-banner-meta">Manövriert</span>' : ''}
+        ${rootState.cpWaitingForUnload ? '<span class="vd-cp-banner-sep">·</span><span class="vd-cp-banner-meta">Wartet auf Entlader</span>' : ''}
+      </div>
+      ${hasMeta ? `<div class="vd-cp-banner-row2">${wpHtml}${timeHtml}${balesHtml}${infoHtml}</div>` : ''}
+    `;
+  } else if (cpBanner) {
+    cpBanner.className = 'vd-cp-banner';
+    cpBanner.innerHTML = '';
   }
 
   // ── Body ────────────────────────────────────────────────────────
@@ -5647,6 +5743,8 @@ function renderVehicleFleet(appData) {
     if (isMotorized) {
       if (state.adActive) {
         statusLabel = _adStatusBadge(state);
+      } else if (state.cpActive) {
+        statusLabel = _cpStatusBadge(state);
       } else if (state.motorRunning) {
         if (state.isAIActive)      statusLabel = '<span class="fleet-badge badge-ai">KI aktiv</span>';
         else if (state.isEntered)  statusLabel = '<span class="fleet-badge badge-active">In Betrieb</span>';
@@ -5662,7 +5760,7 @@ function renderVehicleFleet(appData) {
 
     const speedBlock = isMotorized
       ? `<div class="fleet-left-col">
-           <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}">
+           <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}">
              <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
              <span class="fleet-speed-unit">km/h</span>
            </div>
@@ -5726,6 +5824,13 @@ function renderVehicleFleet(appData) {
       const adLabel = AD_MODE_LABELS[state.adMode] || 'AD';
       const timeStr = formatAdTime(state.adRemainingTime);
       footerParts.push(`${adLabel}: ${state.adDestination}${timeStr ? ' · ' + timeStr : ''}`);
+    }
+    if (state.cpActive) {
+      const jobLabel = state.cpJobType ? (CP_JOB_LABELS[state.cpJobType] || `CP ${state.cpJobType}`) : 'CP';
+      const wpStr = state.cpWaypointCurrent && state.cpWaypointTotal
+        ? ` · ${state.cpWaypointCurrent}/${state.cpWaypointTotal}` : '';
+      const timeStr = state.cpRemainingTime ? ` · ${state.cpRemainingTime}` : '';
+      footerParts.push(`${jobLabel}${wpStr}${timeStr}`);
     }
     const near = nearestHotspot(id, state?.x, state?.z, state?.speed, appData?.hotspots?.hotspots);
     if (near) footerParts.push(`${near.dist} m ${near.dir} · ${near.name}`);
@@ -5988,6 +6093,7 @@ connect();
     <div class="vd-main">
       <div class="vd-header" id="vd-header"></div>
       <div class="vd-ad-banner" id="vd-ad-banner"></div>
+      <div class="vd-cp-banner" id="vd-cp-banner"></div>
       <div class="vd-body"  id="vd-body"></div>
       <div class="vd-actions" id="vd-actions"></div>
     </div>
