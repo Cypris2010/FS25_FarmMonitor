@@ -2004,7 +2004,7 @@
   }
 
   /* Pallet cards */
-  .vd-pallet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vd-pallet-grid { display: grid; grid-template-columns: repeat(var(--pallet-cols, 2), 1fr); gap: 8px; }
   .vd-pallet-card {
     background: rgba(255,255,255,.04); border: 1px solid var(--line);
     border-radius: 8px; padding: 9px 11px;
@@ -5125,7 +5125,8 @@ function _renderImplCard(implId, implMeta, implState) {
   // Paletten-Kacheln
   const implPallets = implState.pallets || [];
   if (implPallets.length) {
-    sectionHtml += `<div class="vd-pallet-grid">` + implPallets.map(p => {
+    const implPalletCols = Math.min(implPallets.length, 3);
+    sectionHtml += `<div class="vd-pallet-grid" style="--pallet-cols:${implPalletCols}">` + implPallets.map(p => {
       const title = appData?.fillTypesByName?.[p.name]?.title || p.title || p.name || '—';
       const liters = p.totalLiters > 0 ? `<span class="vd-pallet-card-liters">${fmtLiters(p.totalLiters)}</span>` : '';
       return `<div class="vd-pallet-card">
@@ -5346,21 +5347,26 @@ function _renderVehicleDetail(id) {
     ? `<div style="display:grid;grid-template-columns:${betriebRows.length > 1 ? '1fr 1fr' : '1fr'};gap:10px">${betriebRows.join('')}</div>`
     : '';
   // Pallet cards
-  const palletCards = (rootState.pallets || []).map(p => {
-    const title = appData?.fillTypesByName?.[p.name]?.title || p.title || p.name || '—';
-    const liters = p.totalLiters > 0 ? `${fmtLiters(p.totalLiters)}` : '';
-    return `<div class="vd-pallet-card">
-      <span class="vd-pallet-card-name">${title}</span>
-      <span class="vd-pallet-card-count">${p.count} Palette${p.count !== 1 ? 'n' : ''}</span>
-      ${liters ? `<span class="vd-pallet-card-liters">${liters}</span>` : ''}
-    </div>`;
-  });
+  const _palletCards = (palletArr) => {
+    const cols = Math.min(palletArr.length, 3);
+    const cards = palletArr.map(p => {
+      const title = appData?.fillTypesByName?.[p.name]?.title || p.title || p.name || '—';
+      const liters = p.totalLiters > 0 ? `${fmtLiters(p.totalLiters)}` : '';
+      return `<div class="vd-pallet-card">
+        <span class="vd-pallet-card-name">${title}</span>
+        <span class="vd-pallet-card-count">${p.count} Palette${p.count !== 1 ? 'n' : ''}</span>
+        ${liters ? `<span class="vd-pallet-card-liters">${liters}</span>` : ''}
+      </div>`;
+    });
+    return `<div class="vd-pallet-grid" style="--pallet-cols:${cols}">${cards.join('')}</div>`;
+  };
+  const palletCards = rootState.pallets?.length ? [_palletCards(rootState.pallets)] : [];
 
   if (tankRows.length || betriebRows.length || palletCards.length) {
     sections += `<div class="vd-section">
       ${tankRows.join('')}
       ${betriebGrid}
-      ${palletCards.length ? `<div class="vd-pallet-grid">${palletCards.join('')}</div>` : ''}
+      ${palletCards.join('')}
     </div>`;
   }
 
