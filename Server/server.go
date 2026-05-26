@@ -15,6 +15,7 @@ import (
 	"image/png"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -831,11 +832,41 @@ func main() {
 	mux.HandleFunc("/api/map/overview", handleMapOverview(mc))
 	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
 
-	log.Printf("Settings: %s", settingsPath())
+	fmt.Print(`
+▄▖▄▖▄▖▄▖  ▄▖       ▖  ▖    ▘▗       ▄▖
+▙▖▚ ▄▌▙▖  ▙▖▀▌▛▘▛▛▌▛▖▞▌▛▌▛▌▌▜▘▛▌▛▘  ▚ █▌▛▘▌▌█▌▛▘
+▌ ▄▌▙▖▄▌  ▌ █▌▌ ▌▌▌▌▝ ▌▙▌▌▌▌▐▖▙▌▌   ▄▌▙▖▌ ▚▘▙▖▌
+
+`)
+	fmt.Println("─────────────────────────────────────────")
+	fmt.Println("FarmMonitor Dashboard available at:")
+	fmt.Printf("  http://localhost:%d\n", *port)
+	if ifaces, err := net.Interfaces(); err == nil {
+		for _, iface := range ifaces {
+			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+				continue
+			}
+			addrs, _ := iface.Addrs()
+			for _, a := range addrs {
+				var ip net.IP
+				switch v := a.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				}
+				if ip == nil || ip.IsLoopback() || ip.To4() == nil {
+					continue
+				}
+				fmt.Printf("  http://%s:%d  (%s)\n", ip, *port, iface.Name)
+			}
+		}
+	}
+	fmt.Println("─────────────────────────────────────────")
+	fmt.Println()
 
 	addr := fmt.Sprintf("%s:%d", *host, *port)
-	log.Printf("FarmMonitor dashboard → http://localhost:%d", *port)
-	log.Printf("Data directory: %s", dataDir)
+	log.Printf("Settings: %s", settingsPath())
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
