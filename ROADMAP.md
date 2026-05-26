@@ -72,6 +72,15 @@
 - ✅ **Dashboard:** Flottenkarte zeigt Courseplay-Status mit detaillierten Badges (Feststeckend, Kein Pfad, Tank leer, Reparatur, Fehler, Voll, Tankt, Blockiert, Wetter, Job-Typen)
 - ✅ **Dashboard:** Courseplay-Banner im Fahrzeug-Detailpanel mit Job-Typ, Wegpunkt-Fortschritt, verbleibender Zeit
 
+### Fahrzeuge-View
+- ✅ **Lua:** `vehicles.json` exportiert alle Fahrzeuge der Farm alle 2s: Name, Typ, Geschwindigkeit, Füllstände (Kraftstoff/Harnstoff/Strom/Methan), Schaden, Betriebsstunden, Fahrer, Motor-Status, Position & Rotation
+- ✅ **Lua:** `vehicleMeta.json` exportiert statische Metadaten alle 10s: Marke, Shop-Kategorie, Kaufpreis, Eigentumsart (Kauf/Leasing), Alter, Motorleistung (kW), Arbeitsbreite, Fahrzeugfarben (Hex, diagonal geteilter Kreis)
+- ✅ **Lua:** `vehicleCategories.json` exportiert Shop-Kategorien einmalig via `g_storeManager` + `ShopMenu`
+- ✅ **Dashboard:** View „Fahrzeuge" — Flottenkarten mit Name, Marke, Typ-Icon, Geschwindigkeit, Kraftstoff, Schaden, Fahrer
+- ✅ **Dashboard:** Fahrzeug-Detailpanel — Tanks, Anbaugeräte, Betriebsstunden, Kaufpreis, Arbeitsbreite, Fahrzeugfarbe
+- ✅ **Dashboard:** Fahrzeug-Positionsanzeige „Nearby" — zeigt nächstgelegenes Feld oder Hotspot
+- ✅ **Dashboard:** Gespann-Ansicht — Stammfahrzeug + angehängte Geräte als gestapelte Sektionen
+
 ### Fahrzeuge-View Erweiterungen
 - ✅ **Dashboard:** Kategorie-Filter-Buttons (dynamisch, nur vorhandene Kategorien)
 - ✅ **Dashboard:** Freitext-Suche, Status-Filter, Zustand-Filter
