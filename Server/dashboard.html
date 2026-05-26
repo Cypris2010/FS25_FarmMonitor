@@ -1571,6 +1571,21 @@
   .fleet-speed-block.cp-active { background: rgba(255,183,77,.12); }
   .fleet-speed-block.cp-active .fleet-speed-val  { color: #ffb74d; }
   .fleet-speed-block.cp-active .fleet-speed-unit { color: #ffb74d; opacity: 0.8; }
+
+  @keyframes pulse-ad-done {
+    0%, 100% { background: transparent; }
+    50%       { background: rgba(0,188,212,.22); }
+  }
+  @keyframes pulse-cp-done {
+    0%, 100% { background: transparent; }
+    50%       { background: rgba(255,183,77,.22); }
+  }
+  .fleet-speed-block.ad-done { animation: pulse-ad-done 2s ease-in-out infinite; }
+  .fleet-speed-block.ad-done .fleet-speed-val  { color: #4dd0e1; opacity: 0.6; }
+  .fleet-speed-block.ad-done .fleet-speed-unit { color: #4dd0e1; opacity: 0.5; }
+  .fleet-speed-block.cp-done { animation: pulse-cp-done 2s ease-in-out infinite; }
+  .fleet-speed-block.cp-done .fleet-speed-val  { color: #ffb74d; opacity: 0.6; }
+  .fleet-speed-block.cp-done .fleet-speed-unit { color: #ffb74d; opacity: 0.5; }
   .fleet-speed-block .fleet-badge { font-size: 8px; padding: 1px 4px; line-height: 1.5; }
   .fleet-driver {
     display: flex; align-items: center; gap: 3px;
@@ -1659,7 +1674,9 @@
   .fleet-settings-btn:hover { background: rgba(255,255,255,0.1); color: var(--fg); }
 
   /* Fleet filter bar — category buttons row */
-  #fleet-filter-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px 0 2px; }
+  .fleet-section-head { flex-direction: column; gap: 10px; }
+  .fleet-section-head .fleet-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; width: 100%; flex-wrap: nowrap; }
+  #fleet-filter-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 28px; }
   .fleet-cat-btn {
     padding: 6px 14px; border-radius: 10px; border: 1px solid var(--line);
     background: rgba(255,255,255,.035); color: var(--text);
@@ -1689,7 +1706,7 @@
     background: linear-gradient(180deg, rgba(30,36,30,.98), rgba(16,20,16,.98));
     border: 1px solid var(--line); border-radius: 14px;
     box-shadow: 0 24px 60px rgba(0,0,0,0.6);
-    width: 340px; max-width: 90vw; overflow: hidden;
+    width: 520px; max-width: 92vw; overflow: hidden;
   }
   .fsm-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -2465,38 +2482,40 @@
     <!-- View: Fahrzeuge -->
     <div id="view-vehicles" class="view" style="display:none; flex-direction:column; gap:18px;">
       <section class="section-shell">
-        <div class="section-head">
-          <div class="section-title-group">
-            <span class="icon-box" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>
-            </span>
-            <div class="section-title-text">
-              <h2>Fahrzeuge</h2>
-              <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
+        <div class="section-head fleet-section-head">
+          <div class="fleet-title-row">
+            <div class="section-title-group">
+              <span class="icon-box" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>
+              </span>
+              <div class="section-title-text">
+                <h2>Fahrzeuge</h2>
+                <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
+              </div>
+            </div>
+            <div class="goods-controls">
+              <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" id="fleet-search-input"
+                oninput="setFleetSearch(this.value)">
+              <select class="filter-btn" id="fleet-status-select" onchange="setFleetStatusFilter(this.value)">
+                <option value="all">Alle Status</option>
+                <option value="active">Aktiv</option>
+                <option value="parked">Geparkt</option>
+              </select>
+              <select class="filter-btn" id="fleet-condition-select" onchange="setFleetConditionFilter(this.value)">
+                <option value="all">Alle Zustände</option>
+                <option value="damage10">Schaden &gt;10%</option>
+                <option value="damage30">Schaden &gt;30%</option>
+                <option value="fuel20">Kraftstoff &lt;20%</option>
+                <option value="fuel40">Kraftstoff &lt;40%</option>
+              </select>
+              <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Anzeige
+              </button>
             </div>
           </div>
-          <div class="goods-controls">
-            <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" id="fleet-search-input"
-              oninput="setFleetSearch(this.value)">
-            <select class="filter-btn" id="fleet-status-select" onchange="setFleetStatusFilter(this.value)">
-              <option value="all">Alle Status</option>
-              <option value="active">Aktiv</option>
-              <option value="parked">Geparkt</option>
-            </select>
-            <select class="filter-btn" id="fleet-condition-select" onchange="setFleetConditionFilter(this.value)">
-              <option value="all">Alle Zustände</option>
-              <option value="damage10">Schaden &gt;10%</option>
-              <option value="damage30">Schaden &gt;30%</option>
-              <option value="fuel20">Kraftstoff &lt;20%</option>
-              <option value="fuel40">Kraftstoff &lt;40%</option>
-            </select>
-            <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Anzeige
-            </button>
-          </div>
+          <div id="fleet-filter-bar"></div>
         </div>
-        <div id="fleet-filter-bar"></div>
         <div id="fleet-content">
           <div class="state-box"><span>Lade Fahrzeuge …</span></div>
         </div>
@@ -4888,8 +4907,29 @@ const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas
 // Fleet display settings
 const FLEET_SETTINGS_DEFAULTS = {
   showColor: true, showPower: true, showPs: false, showDamage: false, showHours: false, showAge: false,
-  showFuel: true, showDef: false, showAir: false, showCargo: true
+  showFuel: true, showDef: false, showAir: false, showCargo: true,
+  sortMode: 'default', donePulseDuration: 120
 };
+
+// Tracks last timestamp (ms) when each vehicle had speed > 0
+const fleetLastMoved   = {};
+// Tracks when AD/CP last finished (active → inactive transition)
+const fleetLastAdDone  = {};
+const fleetLastCpDone  = {};
+const fleetPrevAdActive = {};
+const fleetPrevCpActive = {};
+
+function updateFleetLastMoved(stateList) {
+  const now = Date.now();
+  for (const s of stateList) {
+    if ((s.speed || 0) > 0.5) fleetLastMoved[s.id] = now;
+    // AD finished detection
+    if (fleetPrevAdActive[s.id] === true && !s.adActive) fleetLastAdDone[s.id] = now;
+    if (fleetPrevCpActive[s.id] === true && !s.cpActive) fleetLastCpDone[s.id] = now;
+    fleetPrevAdActive[s.id] = !!s.adActive;
+    fleetPrevCpActive[s.id] = !!s.cpActive;
+  }
+}
 const DEF_FILL_TYPES = new Set(['DEF', 'ADBLUE']);
 const AIR_FILL_TYPES = new Set(['COMPRESSEDAIR', 'AIR']);
 
@@ -4913,6 +4953,8 @@ function saveFleetSettings() {
     showDef:    document.getElementById('fss-def').checked,
     showAir:    document.getElementById('fss-air').checked,
     showCargo:  document.getElementById('fss-cargo').checked,
+    sortMode:          document.getElementById('fss-sort').value,
+    donePulseDuration: parseInt(document.getElementById('fss-pulse-dur').value) || 0,
   };
   localStorage.setItem(fleetSettingsKey(), JSON.stringify(s));
   if (currentView === 'vehicles') renderVehicleFleet(appData);
@@ -4929,6 +4971,8 @@ function openFleetSettings() {
   document.getElementById('fss-def').checked    = s.showDef;
   document.getElementById('fss-air').checked    = s.showAir;
   document.getElementById('fss-cargo').checked  = s.showCargo;
+  document.getElementById('fss-sort').value      = s.sortMode || 'default';
+  document.getElementById('fss-pulse-dur').value = s.donePulseDuration ?? 120;
   document.getElementById('fleet-settings-modal').style.display = 'flex';
 }
 function closeFleetSettings() {
@@ -5759,16 +5803,15 @@ function nearestHotspot(vehicleId, vx, vz, speed, hotspots, fields) {
 
 // ── Fleet category groups ─────────────────────────────────────────
 const FLEET_CAT_GROUPS = [
-  { id: 'g_tractors',  label: 'Traktoren',       cats: new Set(['tractors','smallTractors','compactTractors','largeTractors']) },
-  { id: 'g_harvesters',label: 'Mähdrescher',      cats: new Set(['combines','harvesters','cottonHarvesters']) },
-  { id: 'g_forage',    label: 'Häcksler',         cats: new Set(['forageHarvesters']) },
-  { id: 'g_loaders',   label: 'Lader',            cats: new Set(['loaders','telehandlers']) },
-  { id: 'g_trucks',    label: 'LKW',              cats: new Set(['trucks','smallTrucks','largeTrucks','truckTrailers']) },
-  { id: 'g_cars',      label: 'PKW',              cats: new Set(['cars']) },
-  { id: 'g_harvest',   label: 'Ernte',            cats: new Set(['mowers','tedders','windrowers','balers','mulchers','cutters','headers']) },
-  { id: 'g_fieldwork', label: 'Bodenbearbeitung', cats: new Set(['ploughs','cultivators','sowingMachines','fertilizingSpreaders','sprayers','subsoilers','stonePickers']) },
-  { id: 'g_transport', label: 'Transport',        cats: new Set(['trailers','tipper','liquidManureTanks','manureSpreaders','slurryTankers']) },
-  { id: 'g_misc',      label: 'Sonstiges',        cats: new Set(['frontloaderTools','misc','cranes','miscItems']) },
+  { id: 'g_tractors',  label: 'Traktoren',       cats: new Set(['TRACTORSL','TRACTORSM','TRACTORSS']) },
+  { id: 'g_harvesters',label: 'Mähdrescher',      cats: new Set(['HARVESTERS','COTTONHARVESTERS','POTATOHARVESTING']) },
+  { id: 'g_forage',    label: 'Häcksler',         cats: new Set(['FORAGEHARVESTERS']) },
+  { id: 'g_trucks',    label: 'LKW',              cats: new Set(['TRUCKS']) },
+  { id: 'g_cars',      label: 'PKW',              cats: new Set(['CARS']) },
+  { id: 'g_harvest',   label: 'Ernte',            cats: new Set(['CUTTERS','BALERSSQUARE','BALELOADERS','CUTTERTRAILERS','AUGERWAGONS','BELTS']) },
+  { id: 'g_fieldwork', label: 'Bodenbearbeitung', cats: new Set(['PLOWS','PLANTERS','SPRAYERS','FERTILIZERSPREADERS','WEEDERS','ROLLERS','POTATOPLANTING']) },
+  { id: 'g_transport', label: 'Transport',        cats: new Set(['TRAILERS','TRAILERSSEMI','SLURRYTRANSPORT','COTTONTRANSPORT','ANIMALTRANSPORT','BARRELS']) },
+  { id: 'g_misc',      label: 'Sonstiges',        cats: new Set(['LOADERS','TELEHANDLERS','FRONTLOADERTOOLS','CRANES','MISC']) },
 ];
 
 // ── Fleet filter state ────────────────────────────────────────────
@@ -5884,15 +5927,23 @@ function renderVehicleFleet(appData) {
     const s = stateById[id];
     return s && (s.motorRunning || s.isEntered || s.isAIActive);
   });
+  const sortMode = (loadFleetSettings().sortMode) || 'default';
   rootIds.sort((a, b) => {
     const aIds = groups[a];
     const bIds = groups[b];
     const aActive   = isGroupActive(aIds);
     const bActive   = isGroupActive(bIds);
-    const aHasMotor = aIds.some(id => stateById[id]?.motorized || metaById[id]?.motorKw != null);
-    const bHasMotor = bIds.some(id => stateById[id]?.motorized || metaById[id]?.motorKw != null);
+    // Active always first regardless of sort mode
     if (aActive && !bActive) return -1;
     if (!aActive && bActive) return 1;
+    if (sortMode === 'lastMoved') {
+      // Among non-active: sort by last moved timestamp descending
+      const aT = Math.max(...aIds.map(id => fleetLastMoved[id] || 0));
+      const bT = Math.max(...bIds.map(id => fleetLastMoved[id] || 0));
+      if (aT !== bT) return bT - aT;
+    }
+    const aHasMotor = aIds.some(id => stateById[id]?.motorized || metaById[id]?.motorKw != null);
+    const bHasMotor = bIds.some(id => stateById[id]?.motorized || metaById[id]?.motorKw != null);
     if (aHasMotor && !bHasMotor) return -1;
     if (!aHasMotor && bHasMotor) return 1;
     return (metaById[a]?.name || '').localeCompare(metaById[b]?.name || '');
@@ -6003,7 +6054,7 @@ function renderVehicleFleet(appData) {
     const speedBlock = isMotorized
       ? `<div class="fleet-left-col">
            <div class="fleet-speed-action-row">
-             <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}">
+             <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}${(() => { const dur = (fss.donePulseDuration||0)*1000; if(dur>0 && !state.adActive && !state.cpActive){ const now=Date.now(); if(fleetLastAdDone[state.id] && now-fleetLastAdDone[state.id]<dur) return ' ad-done'; if(fleetLastCpDone[state.id] && now-fleetLastCpDone[state.id]<dur) return ' cp-done'; } return ''; })()}" style="${(() => { const dur = (fss.donePulseDuration||0)*1000; if(dur>0 && !state.adActive && !state.cpActive){ const now=Date.now(); const t = fleetLastAdDone[state.id] || fleetLastCpDone[state.id]; if(t && now-t<dur) return 'animation-delay:-' + ((now-t) % 2000) + 'ms'; } return ''; })()}">
                <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
                <span class="fleet-speed-unit">km/h</span>
              </div>
@@ -6148,6 +6199,7 @@ function startVehicleTracking() {
       const data = await res.json();
       if (data) {
         appData.vehicles = data;
+        updateFleetLastMoved(data.vehicles || []);
         if (currentView === 'map' && appData?.mapMeta)
           updateVehicles(data, appData.mapMeta.terrainSize || 2048);
         if (currentView === 'vehicles')
@@ -6356,18 +6408,43 @@ connect();
       <button class="fsm-close" onclick="closeFleetSettings()">✕</button>
     </div>
     <div class="fsm-body">
-      <div class="fsm-group-label">Allgemein</div>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-color" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugfarbe</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Motorleistung (kW)</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-ps" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>PS zusätzlich anzeigen</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-damage" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Schaden-Badge</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-hours" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Betriebsstunden</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-age" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugalter</span></label>
-      <div class="fsm-group-label" style="margin-top:14px">Füllstandsbalken</div>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-fuel" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Kraftstoff / Strom / Gas</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-def" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Harnstofflösung (DEF)</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-air" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Druckluft</span></label>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-cargo" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Ladung (sonstige Tanks)</span></label>
+      <div class="fsm-group-label">Sortierung &amp; Verhalten</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:12px;color:var(--fg-dim);white-space:nowrap;min-width:90px">Reihenfolge</label>
+        <select id="fss-sort" class="filter-btn" style="flex:1" onchange="saveFleetSettings()">
+          <option value="default">Standard (Aktiv → Motorisiert → Alphabetisch)</option>
+          <option value="lastMoved">Zuletzt bewegt (Aktiv → Zuletzt gefahren → Alphabetisch)</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:12px;color:var(--fg-dim);white-space:nowrap;min-width:90px">AD/CP Fertig-Puls</label>
+        <select id="fss-pulse-dur" class="filter-btn" style="flex:1" onchange="saveFleetSettings()">
+          <option value="0">Aus</option>
+          <option value="30">30 Sekunden</option>
+          <option value="60">1 Minute</option>
+          <option value="120">2 Minuten</option>
+          <option value="300">5 Minuten</option>
+          <option value="600">10 Minuten</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-top:4px">
+        <div>
+          <div class="fsm-group-label">Allgemein</div>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-color" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugfarbe</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Motorleistung (kW)</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-ps" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>PS zusätzlich anzeigen</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-damage" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Schaden-Badge</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-hours" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Betriebsstunden</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-age" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugalter</span></label>
+        </div>
+        <div>
+          <div class="fsm-group-label">Füllstandsbalken</div>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-fuel" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Kraftstoff / Strom / Gas</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-def" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Harnstofflösung (DEF)</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-air" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Druckluft</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-cargo" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Ladung (sonstige Tanks)</span></label>
+        </div>
+      </div>
     </div>
   </div>
 </div>
