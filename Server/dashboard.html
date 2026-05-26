@@ -1674,19 +1674,20 @@
   .fleet-settings-btn:hover { background: rgba(255,255,255,0.1); color: var(--fg); }
 
   /* Fleet filter bar — category buttons row */
-  .fleet-section-head { flex-direction: column; gap: 10px; }
+  .fleet-section-head { flex-direction: row; }
   .fleet-section-head .fleet-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; width: 100%; flex-wrap: nowrap; }
-  #fleet-filter-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 28px; }
+  .fleet-goods-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  #fleet-filter-bar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
   .fleet-cat-btn {
-    padding: 6px 14px; border-radius: 10px; border: 1px solid var(--line);
-    background: rgba(255,255,255,.035); color: var(--text);
-    font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    padding: 3px 9px; border-radius: 7px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.035); color: var(--fg-muted);
+    font-size: 11px; font-weight: 500; cursor: pointer; white-space: nowrap;
     transition: border-color .18s, color .18s, background .18s;
   }
   .fleet-cat-btn:hover { border-color: rgba(154,227,58,.4); color: var(--green); }
   .fleet-cat-btn.active {
     border-color: rgba(154,227,58,.7); color: var(--green);
-    background: rgba(154,227,58,.07); box-shadow: inset 0 0 14px rgba(154,227,58,.06);
+    background: rgba(154,227,58,.07);
   }
   .fleet-filter-count { font-size: 13px; color: var(--muted); white-space: nowrap; margin-left: 4px; }
   .fleet-filter-reset {
@@ -2493,28 +2494,30 @@
                 <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
               </div>
             </div>
-            <div class="goods-controls">
-              <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" id="fleet-search-input"
-                oninput="setFleetSearch(this.value)">
-              <select class="filter-btn" id="fleet-status-select" onchange="setFleetStatusFilter(this.value)">
-                <option value="all">Alle Status</option>
-                <option value="active">Aktiv</option>
-                <option value="parked">Geparkt</option>
-              </select>
-              <select class="filter-btn" id="fleet-condition-select" onchange="setFleetConditionFilter(this.value)">
-                <option value="all">Alle Zustände</option>
-                <option value="damage10">Schaden &gt;10%</option>
-                <option value="damage30">Schaden &gt;30%</option>
-                <option value="fuel20">Kraftstoff &lt;20%</option>
-                <option value="fuel40">Kraftstoff &lt;40%</option>
-              </select>
-              <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                Anzeige
-              </button>
+            <div class="goods-controls fleet-goods-controls">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
+                <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" id="fleet-search-input"
+                  oninput="setFleetSearch(this.value)">
+                <select class="filter-btn" id="fleet-status-select" onchange="setFleetStatusFilter(this.value)">
+                  <option value="all">Alle Status</option>
+                  <option value="active">Aktiv</option>
+                  <option value="parked">Geparkt</option>
+                </select>
+                <select class="filter-btn" id="fleet-condition-select" onchange="setFleetConditionFilter(this.value)">
+                  <option value="all">Alle Zustände</option>
+                  <option value="damage10">Schaden &gt;10%</option>
+                  <option value="damage30">Schaden &gt;30%</option>
+                  <option value="fuel20">Kraftstoff &lt;20%</option>
+                  <option value="fuel40">Kraftstoff &lt;40%</option>
+                </select>
+                <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  Anzeige
+                </button>
+              </div>
+              <div id="fleet-filter-bar"></div>
             </div>
           </div>
-          <div id="fleet-filter-bar"></div>
         </div>
         <div id="fleet-content">
           <div class="state-box"><span>Lade Fahrzeuge …</span></div>
@@ -5864,14 +5867,12 @@ function _renderFleetFilterBar(sortedCats, totalCount, shownCount) {
     return `<button class="fleet-cat-btn${active ? ' active' : ''}" onclick="${onclick}">${label}</button>`;
   }).join('');
 
-  const countHtml = isActive
-    ? `<span class="fleet-filter-count">${shownCount} / ${totalCount} Fahrzeuge</span>`
-    : '';
-  const resetBtn = isActive
-    ? `<button class="fleet-filter-reset" onclick="resetFleetFilter()">✕ Filter</button>`
+  const meta = isActive
+    ? `<span style="font-size:10px;color:var(--fg-muted);white-space:nowrap">${shownCount}/${totalCount}</span>
+       <button class="fleet-cat-btn" style="color:var(--fg-muted)" onclick="resetFleetFilter()">✕</button>`
     : '';
 
-  bar.innerHTML = catBtns + countHtml + resetBtn;
+  bar.innerHTML = meta + (meta ? '<span style="width:4px;display:inline-block"></span>' : '') + catBtns;
 }
 
 function renderVehicleFleet(appData) {
