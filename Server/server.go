@@ -838,9 +838,12 @@ func main() {
 ▌ ▄▌▙▖▄▌  ▌ █▌▌ ▌▌▌▌▝ ▌▙▌▌▌▌▐▖▙▌▌   ▄▌▙▖▌ ▚▘▙▖▌
 
 `)
+	printLink := func(url, label string) {
+		fmt.Printf("  \033]8;;%s\033\\%s\033]8;;\033\\  %s\n", url, url, label)
+	}
 	fmt.Println("─────────────────────────────────────────")
 	fmt.Println("FarmMonitor Dashboard available at:")
-	fmt.Printf("  http://localhost:%d\n", *port)
+	printLink(fmt.Sprintf("http://localhost:%d", *port), "")
 	if ifaces, err := net.Interfaces(); err == nil {
 		for _, iface := range ifaces {
 			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
@@ -858,7 +861,7 @@ func main() {
 				if ip == nil || ip.IsLoopback() || ip.To4() == nil {
 					continue
 				}
-				fmt.Printf("  http://%s:%d  (%s)\n", ip, *port, iface.Name)
+				printLink(fmt.Sprintf("http://%s:%d", ip, *port), fmt.Sprintf("(%s)", iface.Name))
 			}
 		}
 	}
