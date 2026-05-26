@@ -58,16 +58,16 @@
 - ✅ **Dashboard:** Flottenkarte zeigt AutoDrive-Status (aktiv/Ziel)
 
 ## v0.4.0 — Object Storages (Paletten & Ballenlager)
-- **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
-  - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
-  - Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
-  - Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
-  - Mistlager (`spec_manureHeap`)
-  - Bienenstock-Paletten (`spec_beehivePalletSpawner`)
-- **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
-- **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
-- **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
-- **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
+- ✅ **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
+  - ✅ Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
+  - ✅ Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
+  - ✅ Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
+  - ✅ Mistlager (`spec_manureHeap`)
+  - **Bienenstock-Paletten (`spec_beehivePalletSpawner`) — pendingLiters nur in goods.json, kein eigener Silos-View-Eintrag**
+- ✅ **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
+- ✅ **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
+- ✅ **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
+- ✅ **Dashboard:** Silos-View zeigt alle Lagertypen (Fahrsilos, Paletten-/Ballenlager, Mistlager) mit Filter-Buttons + Fermentierungsanzeige — kein separater „Lager"-View nötig
 
 
 ## v0.6.0 — Feldübersicht Erweiterungen
