@@ -79,8 +79,7 @@
 - ✅ **Dashboard:** AD/CP Fertig-Puls — km/h-Block pulsiert nach AD/CP-Stop (konfigurierbar)
 - ✅ **Dashboard:** Anzeigeoptionen-Modal überarbeitet (breiter, 2-Spalten-Layout)
 
-## v0.5.0 — Karten-View
-
+### Karten-View
 - ✅ **Lua:** `mapMeta.json` exportiert einmalig: `terrainSize`, `mapName`, `overviewDdsPath`, `savegameDir`
 - ✅ **Lua:** `hotspots.json` exportiert alle Karten-Hotspots einmalig: Name, Typ (SELLING_STATION, PRODUCTION_POINT, FUEL, SHOP, BEE, MISC, Tierhaltungstyp), Weltkoordinaten
 - ✅ **Lua:** `fields.json` enthält Feldpolygon (`densityMapPolygon.pointsX/Z`) pro Feld für Kartenüberlagerung
