@@ -79,6 +79,25 @@
 - ✅ **Dashboard:** AD/CP Fertig-Puls — km/h-Block pulsiert nach AD/CP-Stop (konfigurierbar)
 - ✅ **Dashboard:** Anzeigeoptionen-Modal überarbeitet (breiter, 2-Spalten-Layout)
 
+## v0.5.0 — Karten-View
+
+- ✅ **Lua:** `mapMeta.json` exportiert einmalig: `terrainSize`, `mapName`, `overviewDdsPath`, `savegameDir`
+- ✅ **Lua:** `hotspots.json` exportiert alle Karten-Hotspots einmalig: Name, Typ (SELLING_STATION, PRODUCTION_POINT, FUEL, SHOP, BEE, MISC, Tierhaltungstyp), Weltkoordinaten
+- ✅ **Lua:** `fields.json` enthält Feldpolygon (`densityMapPolygon.pointsX/Z`) pro Feld für Kartenüberlagerung
+- ✅ **Lua:** `vehicles.json` enthält Fahrzeugposition (`x`, `z`) und Fahrtrichtung (`rot`) für Live-Tracking auf der Karte
+- ✅ **Lua:** Spielerpositionen in `vehicles.json` enthalten (`playerSystem.players`)
+- ✅ **Server:** `/api/map/overview` — liest `overview.dds` aus Karten-Verzeichnis oder ZIP, dekodiert DDS → PNG, cached im Arbeitsspeicher
+- ✅ **Server:** `/api/map/heightmap` — Höhenkarten-Endpunkt
+- ✅ **Dashboard:** View „Karte" — Kartenübersicht als Hintergrundbild (`overview.dds` → PNG)
+- ✅ **Dashboard:** SVG-Overlay mit drei Layern: Feldpolygone, Hotspot-Pins, Fahrzeug-Pins
+- ✅ **Dashboard:** Feldpolygone aus `densityMapPolygon` korrekt in Kartenkoordinaten projiziert
+- ✅ **Dashboard:** Hotspot-Pins farbcodiert nach Typ mit Tooltip
+- ✅ **Dashboard:** Fahrzeug-Pins live aktualisiert via SSE — farbkodiert nach Typ (Traktor/Mähdrescher/LKW/Anhänger/Spieler), mit Richtungspfeil
+- ✅ **Dashboard:** Fahrzeug-Pins mit weicher CSS-Bewegungsinterpolation (`transform 2s linear`)
+- ✅ **Dashboard:** Zoom (Mausrad + Buttons), Pan (Drag), Pinch-to-zoom (Touch)
+- ✅ **Dashboard:** IPC-Command `player.teleportToPlaceable` — Spieler zu Hotspot teleportieren
+- ✅ **Dashboard:** IPC-Command `vehicle.teleport` — Spieler zu Fahrzeug teleportieren
+
 ## v0.6.0 — Feldübersicht Erweiterungen
 - **Lua:** Optional mit PrecisionFarming DLC (`g_modIsLoaded["FS25_precisionFarming"]`):
   - Bodenfeuchtigkeit
