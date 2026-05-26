@@ -1524,6 +1524,8 @@
   .vehicle-rot-scale {
     pointer-events: all;
   }
+  #layer-fields polygon { pointer-events: all; }
+  #layer-hotspots .hotspot-pin { pointer-events: all; }
 
   /* ── Fleet (Fahrzeuge) view ── */
   .fleet-list { display: flex; flex-direction: column; gap: 8px; }
@@ -2128,10 +2130,71 @@
     display: flex; align-items: center; justify-content: center;
   }
   .map-btn:hover { background: rgba(50,70,50,.9); }
+  #view-map { position: relative; }
+
+  /* ── Map Detail Panel (slides from right) ───────────────── */
+  .mdp-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0);
+    transition: background .28s;
+    z-index: 24;
+    pointer-events: none;
+  }
+  .mdp-backdrop.open {
+    background: rgba(0,0,0,0.5);
+    pointer-events: auto;
+    cursor: default;
+  }
+  .mdp {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 380px;
+    background: linear-gradient(160deg, rgba(22,28,22,.98) 0%, rgba(13,17,13,.98) 100%);
+    border-left: 1px solid rgba(255,255,255,.1);
+    box-shadow: -10px 0 30px rgba(0,0,0,.55);
+    transform: translateX(100%);
+    transition: transform .28s cubic-bezier(0.32,0,0.15,1);
+    z-index: 25;
+    display: flex; flex-direction: column;
+    pointer-events: none;
+  }
+  .mdp.open { transform: translateX(0); pointer-events: auto; }
+  .mdp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    flex-shrink: 0;
+  }
+  .mdp-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .mdp-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 6px;
+  }
+  .mdp-close:hover { background: rgba(255,255,255,.08); color: var(--fg); }
+  .mdp-body {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+  }
+  .mdp-body .card {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+  }
+  .mdp-body .card::before { content: none; }
+
   .map-legend {
     position: absolute;
     top: 16px;
-    right: 16px;
+    left: 16px;
     background: rgba(20,28,20,.85);
     border: 1px solid rgba(255,255,255,.1);
     border-radius: 8px;
@@ -2149,18 +2212,7 @@
     flex-shrink: 0;
     border: 1px solid rgba(0,0,0,.4);
   }
-  .map-status {
-    position: absolute;
-    top: 16px; left: 16px;
-    background: rgba(20,28,20,.85);
-    border: 1px solid rgba(255,255,255,.1);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 11px;
-    color: var(--muted);
-    z-index: 10;
-  }
-  .map-status strong { color: var(--fg); }
+
 </style>
 </head>
 <body>
@@ -2517,7 +2569,7 @@
           </svg>
         </div>
       </div>
-      <div class="map-status" id="map-status">Lade Karte …</div>
+
       <div class="map-controls">
         <button class="map-btn" id="map-zoom-in"  title="Rein">+</button>
         <button class="map-btn" id="map-zoom-out" title="Raus">−</button>
@@ -2533,6 +2585,16 @@
         <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Mähdrescher</div>
         <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Anhänger/Gerät</div>
         <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
+      </div>
+
+      <!-- Map Detail Backdrop + Panel -->
+      <div id="mdp-backdrop" class="mdp-backdrop" onclick="closeMapDetail()"></div>
+      <div id="map-detail-panel" class="mdp">
+        <div class="mdp-header">
+          <span class="mdp-title" id="mdp-title">—</span>
+          <button class="mdp-close" onclick="closeMapDetail()" title="Schließen">×</button>
+        </div>
+        <div class="mdp-body" id="mdp-body"></div>
       </div>
     </div>
 
@@ -3367,10 +3429,14 @@ function renderProductions(data) {
   }).join('');
 
   // Cards
-  el.innerHTML = prodsToShow.map((pp, idx) => {
-    const hidden = !isVisible(pp.uniqueId);
+  el.innerHTML = prodsToShow.map((pp, idx) => _productionCardHtml(pp, idx)).join('');
+}
+
+function _productionCardHtml(pp, idx) {
+  const _idx = idx ?? pp.uniqueId ?? pp.name;
+  const hidden = !isVisible(pp.uniqueId);
     const activeChains = (pp.productions || []).filter(c => c.status !== 'inactive');
-    let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}${teleportBtn(pp.uniqueId)}</h3>`;
+    let html = `<article id="prod-card-${_idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}${teleportBtn(pp.uniqueId)}</h3>`;
     const relevantInputs = (pp.inputs || []).filter(i => i.level > 0 || i.needed);
     if (relevantInputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
@@ -3433,7 +3499,6 @@ function renderProductions(data) {
     }
     html += '</article>';
     return html;
-  }).join('');
 }
 
 function updateSeedResult(select, fieldId, fieldAreaHa) {
@@ -3525,7 +3590,15 @@ function renderFields(data) {
   });
 
   // Cards
-  el.innerHTML = filtered.map((f, idx) => {
+  el.innerHTML = filtered.map((f, idx) => _fieldCardHtml(f, idx, fruitTypeLookup)).join('');
+}
+
+function _fieldCardHtml(f, idx, fruitTypeLookup) {
+  if (!fruitTypeLookup) {
+    fruitTypeLookup = {};
+    (appData?.fruitTypes?.fruitTypes ?? []).forEach(ft => { if (ft.name) fruitTypeLookup[ft.name] = ft; });
+  }
+  const _idx = idx ?? f.id;
     // Header badges
     let badges = '';
     if (f.harvestReady)       badges += '<span class="badge green">Erntereif!</span>';
@@ -3662,7 +3735,7 @@ function renderFields(data) {
 
     const fieldHidden = !isFieldVisible(f.farmlandId);
     return `
-      <article id="field-card-${idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
+      <article id="field-card-${_idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
         <div class="field-card-head">
           <div class="field-id-area">
             <span class="field-num">Feld ${f.id}</span>
@@ -3676,7 +3749,6 @@ function renderFields(data) {
         <div class="soil-bars" style="margin-top:6px">${chipsExtra}</div>
         ${needSection}
       </article>`;
-  }).join('');
 }
 
 function collectAllAlerts(data) {
@@ -3915,6 +3987,15 @@ function chainRowHtml(c, key) {
 function toggleProdInactive(uniqueId) {
   if (prodInactiveExpanded.has(uniqueId)) prodInactiveExpanded.delete(uniqueId);
   else prodInactiveExpanded.add(uniqueId);
+  // Wenn die Card im Map-Panel angezeigt wird, Panel-Inhalt neu rendern
+  const panel = document.getElementById('map-detail-panel');
+  if (panel?.classList.contains('open')) {
+    const pp = (appData?.productions?.productions || []).find(p => p.uniqueId === uniqueId);
+    if (pp) {
+      document.getElementById('mdp-body').innerHTML = _productionCardHtml(pp, null);
+      return;
+    }
+  }
   renderProductions(appData?.productions);
 }
 
@@ -4573,6 +4654,7 @@ function initMapInteraction() {
   document.getElementById('map-zoom-out').addEventListener('click', () => { mapZoom = Math.max(mapZoom * 0.77, 0.15); applyMapTransform(); });
   document.getElementById('map-center')  .addEventListener('click', centerMap);
 
+
   // Touch: one-finger pan, two-finger pinch-zoom
   let touchPanX0, touchPanY0, touchStartX, touchStartY, pinchDist0, pinchZoom0, pinchMidX, pinchMidY;
 
@@ -4616,6 +4698,37 @@ function initMapInteraction() {
       applyMapTransform();
     }
   }, { passive: false });
+
+  // Finger losgelassen: bei 2→1 Pan-Referenz auf verbleibenden Finger neu setzen
+  container.addEventListener('touchend', e => {
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchPanX0  = mapPanX;
+      touchPanY0  = mapPanY;
+    }
+  }, { passive: true });
+}
+
+// Tap-safe click: adds both mouse click and touch tap (touchstart/touchend)
+// Needed because the map container calls e.preventDefault() on touchstart,
+// which suppresses the synthetic click event on touch devices.
+function addTapListener(el, callback) {
+  el.addEventListener('click', e => { e.stopPropagation(); callback(); });
+  let _tapX, _tapY;
+  el.addEventListener('touchstart', e => {
+    _tapX = e.touches[0].clientX;
+    _tapY = e.touches[0].clientY;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - _tapX;
+    const dy = e.changedTouches[0].clientY - _tapY;
+    if (Math.sqrt(dx*dx + dy*dy) < 10) {
+      e.stopPropagation();
+      e.preventDefault();
+      callback();
+    }
+  });
 }
 
 function renderFieldPolygons(fieldsData, terrainSize) {
@@ -4635,6 +4748,8 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     el.setAttribute('fill', fill);
     el.setAttribute('stroke', stroke);
     el.setAttribute('stroke-width', '1.5');
+    el.style.cursor = 'pointer';
+    addTapListener(el, () => openMapDetail('field', f.id));
     const title = document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent = `Feld ${f.id}${f.fruitTitle ? ' – ' + f.fruitTitle : ''}`;
     el.appendChild(title);
@@ -4673,8 +4788,10 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     CHICKEN:'#fde68a', HORSE:'#b45309', GOOSE:'#94a3b8',
     RABBIT:'#c084fc', BEE:'#fbbf24',
   };
-  for (const hs of (hotspotsData?.hotspots || [])) {
-    if (hs.type === 'MISC') continue;
+  const hsClickable = new Set(['PRODUCTION_POINT','SELLING_STATION',
+    'COW','PIG','SHEEP','CHICKEN','HORSE','GOOSE','RABBIT','BEE']);
+  (hotspotsData?.hotspots || []).forEach((hs, hsIdx) => {
+    if (hs.type === 'MISC') return;
     const p = worldToMap(hs.x, hs.z, terrainSize);
     const color = colors[hs.type] || 'rgba(255,255,255,0.5)';
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -4682,6 +4799,10 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     g.dataset.x = p.x.toFixed(1);
     g.dataset.y = p.y.toFixed(1);
     g.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px) scale(${(1/mapZoom).toFixed(4)})`;
+    if (hsClickable.has(hs.type)) {
+      g.style.cursor = 'pointer';
+      addTapListener(g, () => openMapDetail('hotspot', hsIdx));
+    }
     const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
     c.setAttribute('cx', '0');
     c.setAttribute('cy', '0');
@@ -4693,7 +4814,7 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     t.textContent = `${hs.name} (${hs.type})`;
     g.appendChild(c); g.appendChild(t);
     layer.appendChild(g);
-  }
+  });
 }
 
 function updateVehicles(vehiclesData, terrainSize) {
@@ -4721,6 +4842,10 @@ function updateVehicles(vehiclesData, terrainSize) {
       el = document.createElementNS('http://www.w3.org/2000/svg','g');
       el.id = 'vm-' + v.id;
       el.classList.add('vehicle-pos');
+      if (v.type !== 'PLAYER') {
+        el.style.cursor = 'pointer';
+        addTapListener(el, () => openMapDetail('vehicle', v.id));
+      }
 
       // Inner: rotate + scale (no transition — zoom updates this instantly)
       const inner = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -4773,9 +4898,6 @@ function updateVehicles(vehiclesData, terrainSize) {
     if (!seen.has(el.id.slice(3))) el.remove();
   });
 
-  const n = vehicles.filter(v => v.type !== 'TOOL' && v.type !== 'TRAILER').length;
-  document.getElementById('map-status').innerHTML =
-    `<strong>${appData?.mapMeta?.mapName || 'Karte'}</strong> &nbsp;·&nbsp; ${n} Fahrzeuge`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -5998,6 +6120,59 @@ function startVehicleTracking() {
 
 function stopVehicleTracking() {
   if (vehicleEventSource) { vehicleEventSource.close(); vehicleEventSource = null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Map Detail Panel
+// ═══════════════════════════════════════════════════════════
+function openMapDetail(type, id) {
+  if (type === 'vehicle') {
+    openVehicleDetail(id);
+    return;
+  }
+  const panel = document.getElementById('map-detail-panel');
+  const body  = document.getElementById('mdp-body');
+  const title = document.getElementById('mdp-title');
+  let html = '', titleStr = '';
+
+  if (type === 'field') {
+    const f = (appData?.fields?.fields || []).find(f => String(f.id) === String(id));
+    if (!f) return;
+    titleStr = `Feld ${f.id}`;
+    html = _fieldCardHtml(f, null, null);
+
+  } else if (type === 'hotspot') {
+    const hs = (appData?.hotspots?.hotspots || [])[id];
+    if (!hs) return;
+    titleStr = hs.name;
+    const animalTypes = new Set(['COW','PIG','SHEEP','CHICKEN','HORSE','GOOSE','RABBIT','BEE']);
+    if (hs.type === 'PRODUCTION_POINT') {
+      const pp = (appData?.productions?.productions || []).find(p => p.name === hs.name);
+      if (pp) html = _productionCardHtml(pp, null);
+      else html = `<div class="state-box"><span>${hs.name}</span></div>`;
+    } else if (animalTypes.has(hs.type)) {
+      const h = (appData?.husbandries?.husbandries || []).find(h => h.name === hs.name);
+      if (h) html = renderHusbandryCard(h, null);
+      else html = `<div class="state-box"><span>${hs.name}</span></div>`;
+    } else if (hs.type === 'SELLING_STATION') {
+      // No detailed data in our system — show name + type
+      html = `<article class="card content-card"><h3>${hs.name}</h3>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px">Verkaufsstation</p></article>`;
+    } else {
+      html = `<article class="card content-card"><h3>${hs.name}</h3>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px">${hs.type}</p></article>`;
+    }
+  }
+
+  title.textContent = titleStr;
+  body.innerHTML = html;
+  panel.classList.add('open');
+  document.getElementById('mdp-backdrop').classList.add('open');
+}
+
+function closeMapDetail() {
+  document.getElementById('map-detail-panel').classList.remove('open');
+  document.getElementById('mdp-backdrop').classList.remove('open');
 }
 
 function rerenderCurrentView() {

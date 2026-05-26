@@ -723,7 +723,7 @@ function FarmMonitor:collectVehicles()
         else
             local x, _, z = getWorldTranslation(vehicle.rootNode)
             local dx, _, dz = localDirectionToWorld(vehicle.rootNode, 0, 0, 1)
-            local rot = MathUtil.getYRotationFromDirection(dx, dz) + math.pi
+            local rot = -MathUtil.getYRotationFromDirection(dx, dz) + math.pi
 
             local fillPct = nil
             local fillLiter = nil
