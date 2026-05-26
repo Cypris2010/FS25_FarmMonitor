@@ -1524,8 +1524,6 @@
   .vehicle-rot-scale {
     pointer-events: all;
   }
-  #layer-fields polygon { pointer-events: all; }
-  #layer-hotspots .hotspot-pin { pointer-events: all; }
 
   /* ── Fleet (Fahrzeuge) view ── */
   .fleet-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1659,6 +1657,27 @@
     transition: background .15s, color .15s;
   }
   .fleet-settings-btn:hover { background: rgba(255,255,255,0.1); color: var(--fg); }
+
+  /* Fleet filter bar — category buttons row */
+  #fleet-filter-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px 0 2px; }
+  .fleet-cat-btn {
+    padding: 6px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.035); color: var(--text);
+    font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: border-color .18s, color .18s, background .18s;
+  }
+  .fleet-cat-btn:hover { border-color: rgba(154,227,58,.4); color: var(--green); }
+  .fleet-cat-btn.active {
+    border-color: rgba(154,227,58,.7); color: var(--green);
+    background: rgba(154,227,58,.07); box-shadow: inset 0 0 14px rgba(154,227,58,.06);
+  }
+  .fleet-filter-count { font-size: 13px; color: var(--muted); white-space: nowrap; margin-left: 4px; }
+  .fleet-filter-reset {
+    padding: 6px 14px; border-radius: 10px;
+    border: 1px solid rgba(229,57,53,.3); background: rgba(229,57,53,.08);
+    color: #ef9a9a; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: border-color .18s;
+  }
 
   /* Fleet settings modal */
   .fsm-overlay {
@@ -2130,71 +2149,10 @@
     display: flex; align-items: center; justify-content: center;
   }
   .map-btn:hover { background: rgba(50,70,50,.9); }
-  #view-map { position: relative; }
-
-  /* ── Map Detail Panel (slides from right) ───────────────── */
-  .mdp-backdrop {
-    position: absolute; inset: 0;
-    background: rgba(0,0,0,0);
-    transition: background .28s;
-    z-index: 24;
-    pointer-events: none;
-  }
-  .mdp-backdrop.open {
-    background: rgba(0,0,0,0.5);
-    pointer-events: auto;
-    cursor: default;
-  }
-  .mdp {
-    position: absolute; top: 0; right: 0; bottom: 0;
-    width: 380px;
-    background: linear-gradient(160deg, rgba(22,28,22,.98) 0%, rgba(13,17,13,.98) 100%);
-    border-left: 1px solid rgba(255,255,255,.1);
-    box-shadow: -10px 0 30px rgba(0,0,0,.55);
-    transform: translateX(100%);
-    transition: transform .28s cubic-bezier(0.32,0,0.15,1);
-    z-index: 25;
-    display: flex; flex-direction: column;
-    pointer-events: none;
-  }
-  .mdp.open { transform: translateX(0); pointer-events: auto; }
-  .mdp-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px 10px 16px;
-    border-bottom: 1px solid rgba(255,255,255,.1);
-    flex-shrink: 0;
-  }
-  .mdp-title {
-    font-size: 11px; font-weight: 700; letter-spacing: .07em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .mdp-close {
-    background: none; border: none; color: var(--muted);
-    font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    width: 28px; height: 28px; border-radius: 6px;
-  }
-  .mdp-close:hover { background: rgba(255,255,255,.08); color: var(--fg); }
-  .mdp-body {
-    flex: 1; min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 12px;
-  }
-  .mdp-body .card {
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    margin: 0;
-    padding: 0;
-  }
-  .mdp-body .card::before { content: none; }
-
   .map-legend {
     position: absolute;
     top: 16px;
-    left: 16px;
+    right: 16px;
     background: rgba(20,28,20,.85);
     border: 1px solid rgba(255,255,255,.1);
     border-radius: 8px;
@@ -2212,7 +2170,18 @@
     flex-shrink: 0;
     border: 1px solid rgba(0,0,0,.4);
   }
-
+  .map-status {
+    position: absolute;
+    top: 16px; left: 16px;
+    background: rgba(20,28,20,.85);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    z-index: 10;
+  }
+  .map-status strong { color: var(--fg); }
 </style>
 </head>
 <body>
@@ -2506,11 +2475,28 @@
               <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
             </div>
           </div>
-          <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Anzeige
-          </button>
+          <div class="goods-controls">
+            <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" id="fleet-search-input"
+              oninput="setFleetSearch(this.value)">
+            <select class="filter-btn" id="fleet-status-select" onchange="setFleetStatusFilter(this.value)">
+              <option value="all">Alle Status</option>
+              <option value="active">Aktiv</option>
+              <option value="parked">Geparkt</option>
+            </select>
+            <select class="filter-btn" id="fleet-condition-select" onchange="setFleetConditionFilter(this.value)">
+              <option value="all">Alle Zustände</option>
+              <option value="damage10">Schaden &gt;10%</option>
+              <option value="damage30">Schaden &gt;30%</option>
+              <option value="fuel20">Kraftstoff &lt;20%</option>
+              <option value="fuel40">Kraftstoff &lt;40%</option>
+            </select>
+            <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Anzeige
+            </button>
+          </div>
         </div>
+        <div id="fleet-filter-bar"></div>
         <div id="fleet-content">
           <div class="state-box"><span>Lade Fahrzeuge …</span></div>
         </div>
@@ -2569,7 +2555,7 @@
           </svg>
         </div>
       </div>
-
+      <div class="map-status" id="map-status">Lade Karte …</div>
       <div class="map-controls">
         <button class="map-btn" id="map-zoom-in"  title="Rein">+</button>
         <button class="map-btn" id="map-zoom-out" title="Raus">−</button>
@@ -2585,16 +2571,6 @@
         <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Mähdrescher</div>
         <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Anhänger/Gerät</div>
         <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
-      </div>
-
-      <!-- Map Detail Backdrop + Panel -->
-      <div id="mdp-backdrop" class="mdp-backdrop" onclick="closeMapDetail()"></div>
-      <div id="map-detail-panel" class="mdp">
-        <div class="mdp-header">
-          <span class="mdp-title" id="mdp-title">—</span>
-          <button class="mdp-close" onclick="closeMapDetail()" title="Schließen">×</button>
-        </div>
-        <div class="mdp-body" id="mdp-body"></div>
       </div>
     </div>
 
@@ -3429,14 +3405,10 @@ function renderProductions(data) {
   }).join('');
 
   // Cards
-  el.innerHTML = prodsToShow.map((pp, idx) => _productionCardHtml(pp, idx)).join('');
-}
-
-function _productionCardHtml(pp, idx) {
-  const _idx = idx ?? pp.uniqueId ?? pp.name;
-  const hidden = !isVisible(pp.uniqueId);
+  el.innerHTML = prodsToShow.map((pp, idx) => {
+    const hidden = !isVisible(pp.uniqueId);
     const activeChains = (pp.productions || []).filter(c => c.status !== 'inactive');
-    let html = `<article id="prod-card-${_idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}${teleportBtn(pp.uniqueId)}</h3>`;
+    let html = `<article id="prod-card-${idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}${teleportBtn(pp.uniqueId)}</h3>`;
     const relevantInputs = (pp.inputs || []).filter(i => i.level > 0 || i.needed);
     if (relevantInputs.length) {
       html += '<div class="sub-label">Eingänge</div>';
@@ -3499,6 +3471,7 @@ function _productionCardHtml(pp, idx) {
     }
     html += '</article>';
     return html;
+  }).join('');
 }
 
 function updateSeedResult(select, fieldId, fieldAreaHa) {
@@ -3590,15 +3563,7 @@ function renderFields(data) {
   });
 
   // Cards
-  el.innerHTML = filtered.map((f, idx) => _fieldCardHtml(f, idx, fruitTypeLookup)).join('');
-}
-
-function _fieldCardHtml(f, idx, fruitTypeLookup) {
-  if (!fruitTypeLookup) {
-    fruitTypeLookup = {};
-    (appData?.fruitTypes?.fruitTypes ?? []).forEach(ft => { if (ft.name) fruitTypeLookup[ft.name] = ft; });
-  }
-  const _idx = idx ?? f.id;
+  el.innerHTML = filtered.map((f, idx) => {
     // Header badges
     let badges = '';
     if (f.harvestReady)       badges += '<span class="badge green">Erntereif!</span>';
@@ -3735,7 +3700,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
 
     const fieldHidden = !isFieldVisible(f.farmlandId);
     return `
-      <article id="field-card-${_idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
+      <article id="field-card-${idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
         <div class="field-card-head">
           <div class="field-id-area">
             <span class="field-num">Feld ${f.id}</span>
@@ -3749,6 +3714,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
         <div class="soil-bars" style="margin-top:6px">${chipsExtra}</div>
         ${needSection}
       </article>`;
+  }).join('');
 }
 
 function collectAllAlerts(data) {
@@ -3987,15 +3953,6 @@ function chainRowHtml(c, key) {
 function toggleProdInactive(uniqueId) {
   if (prodInactiveExpanded.has(uniqueId)) prodInactiveExpanded.delete(uniqueId);
   else prodInactiveExpanded.add(uniqueId);
-  // Wenn die Card im Map-Panel angezeigt wird, Panel-Inhalt neu rendern
-  const panel = document.getElementById('map-detail-panel');
-  if (panel?.classList.contains('open')) {
-    const pp = (appData?.productions?.productions || []).find(p => p.uniqueId === uniqueId);
-    if (pp) {
-      document.getElementById('mdp-body').innerHTML = _productionCardHtml(pp, null);
-      return;
-    }
-  }
   renderProductions(appData?.productions);
 }
 
@@ -4654,7 +4611,6 @@ function initMapInteraction() {
   document.getElementById('map-zoom-out').addEventListener('click', () => { mapZoom = Math.max(mapZoom * 0.77, 0.15); applyMapTransform(); });
   document.getElementById('map-center')  .addEventListener('click', centerMap);
 
-
   // Touch: one-finger pan, two-finger pinch-zoom
   let touchPanX0, touchPanY0, touchStartX, touchStartY, pinchDist0, pinchZoom0, pinchMidX, pinchMidY;
 
@@ -4698,37 +4654,6 @@ function initMapInteraction() {
       applyMapTransform();
     }
   }, { passive: false });
-
-  // Finger losgelassen: bei 2→1 Pan-Referenz auf verbleibenden Finger neu setzen
-  container.addEventListener('touchend', e => {
-    if (e.touches.length === 1) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      touchPanX0  = mapPanX;
-      touchPanY0  = mapPanY;
-    }
-  }, { passive: true });
-}
-
-// Tap-safe click: adds both mouse click and touch tap (touchstart/touchend)
-// Needed because the map container calls e.preventDefault() on touchstart,
-// which suppresses the synthetic click event on touch devices.
-function addTapListener(el, callback) {
-  el.addEventListener('click', e => { e.stopPropagation(); callback(); });
-  let _tapX, _tapY;
-  el.addEventListener('touchstart', e => {
-    _tapX = e.touches[0].clientX;
-    _tapY = e.touches[0].clientY;
-  }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - _tapX;
-    const dy = e.changedTouches[0].clientY - _tapY;
-    if (Math.sqrt(dx*dx + dy*dy) < 10) {
-      e.stopPropagation();
-      e.preventDefault();
-      callback();
-    }
-  });
 }
 
 function renderFieldPolygons(fieldsData, terrainSize) {
@@ -4748,8 +4673,6 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     el.setAttribute('fill', fill);
     el.setAttribute('stroke', stroke);
     el.setAttribute('stroke-width', '1.5');
-    el.style.cursor = 'pointer';
-    addTapListener(el, () => openMapDetail('field', f.id));
     const title = document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent = `Feld ${f.id}${f.fruitTitle ? ' – ' + f.fruitTitle : ''}`;
     el.appendChild(title);
@@ -4788,10 +4711,8 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     CHICKEN:'#fde68a', HORSE:'#b45309', GOOSE:'#94a3b8',
     RABBIT:'#c084fc', BEE:'#fbbf24',
   };
-  const hsClickable = new Set(['PRODUCTION_POINT','SELLING_STATION',
-    'COW','PIG','SHEEP','CHICKEN','HORSE','GOOSE','RABBIT','BEE']);
-  (hotspotsData?.hotspots || []).forEach((hs, hsIdx) => {
-    if (hs.type === 'MISC') return;
+  for (const hs of (hotspotsData?.hotspots || [])) {
+    if (hs.type === 'MISC') continue;
     const p = worldToMap(hs.x, hs.z, terrainSize);
     const color = colors[hs.type] || 'rgba(255,255,255,0.5)';
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -4799,10 +4720,6 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     g.dataset.x = p.x.toFixed(1);
     g.dataset.y = p.y.toFixed(1);
     g.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px) scale(${(1/mapZoom).toFixed(4)})`;
-    if (hsClickable.has(hs.type)) {
-      g.style.cursor = 'pointer';
-      addTapListener(g, () => openMapDetail('hotspot', hsIdx));
-    }
     const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
     c.setAttribute('cx', '0');
     c.setAttribute('cy', '0');
@@ -4814,7 +4731,7 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     t.textContent = `${hs.name} (${hs.type})`;
     g.appendChild(c); g.appendChild(t);
     layer.appendChild(g);
-  });
+  }
 }
 
 function updateVehicles(vehiclesData, terrainSize) {
@@ -4842,10 +4759,6 @@ function updateVehicles(vehiclesData, terrainSize) {
       el = document.createElementNS('http://www.w3.org/2000/svg','g');
       el.id = 'vm-' + v.id;
       el.classList.add('vehicle-pos');
-      if (v.type !== 'PLAYER') {
-        el.style.cursor = 'pointer';
-        addTapListener(el, () => openMapDetail('vehicle', v.id));
-      }
 
       // Inner: rotate + scale (no transition — zoom updates this instantly)
       const inner = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -4898,6 +4811,9 @@ function updateVehicles(vehiclesData, terrainSize) {
     if (!seen.has(el.id.slice(3))) el.remove();
   });
 
+  const n = vehicles.filter(v => v.type !== 'TOOL' && v.type !== 'TRAILER').length;
+  document.getElementById('map-status').innerHTML =
+    `<strong>${appData?.mapMeta?.mapName || 'Karte'}</strong> &nbsp;·&nbsp; ${n} Fahrzeuge`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -5841,6 +5757,80 @@ function nearestHotspot(vehicleId, vx, vz, speed, hotspots, fields) {
   return result;
 }
 
+// ── Fleet category groups ─────────────────────────────────────────
+const FLEET_CAT_GROUPS = [
+  { id: 'g_tractors',  label: 'Traktoren',       cats: new Set(['tractors','smallTractors','compactTractors','largeTractors']) },
+  { id: 'g_harvesters',label: 'Mähdrescher',      cats: new Set(['combines','harvesters','cottonHarvesters']) },
+  { id: 'g_forage',    label: 'Häcksler',         cats: new Set(['forageHarvesters']) },
+  { id: 'g_loaders',   label: 'Lader',            cats: new Set(['loaders','telehandlers']) },
+  { id: 'g_trucks',    label: 'LKW',              cats: new Set(['trucks','smallTrucks','largeTrucks','truckTrailers']) },
+  { id: 'g_cars',      label: 'PKW',              cats: new Set(['cars']) },
+  { id: 'g_harvest',   label: 'Ernte',            cats: new Set(['mowers','tedders','windrowers','balers','mulchers','cutters','headers']) },
+  { id: 'g_fieldwork', label: 'Bodenbearbeitung', cats: new Set(['ploughs','cultivators','sowingMachines','fertilizingSpreaders','sprayers','subsoilers','stonePickers']) },
+  { id: 'g_transport', label: 'Transport',        cats: new Set(['trailers','tipper','liquidManureTanks','manureSpreaders','slurryTankers']) },
+  { id: 'g_misc',      label: 'Sonstiges',        cats: new Set(['frontloaderTools','misc','cranes','miscItems']) },
+];
+
+// ── Fleet filter state ────────────────────────────────────────────
+let fleetFilter = { search: '', category: null, status: 'all', condition: 'all' };
+
+function setFleetCatFilter(cat) {
+  fleetFilter.category = (fleetFilter.category === cat) ? null : cat;
+  renderVehicleFleet(appData);
+}
+function setFleetStatusFilter(val) {
+  fleetFilter.status = val;
+  renderVehicleFleet(appData);
+}
+function setFleetConditionFilter(val) {
+  fleetFilter.condition = val;
+  renderVehicleFleet(appData);
+}
+function setFleetSearch(val) {
+  fleetFilter.search = val.toLowerCase();
+  renderVehicleFleet(appData);
+}
+function resetFleetFilter() {
+  fleetFilter = { search: '', category: null, status: 'all', condition: 'all' };
+  const si = document.getElementById('fleet-search-input');
+  if (si) si.value = '';
+  const ss = document.getElementById('fleet-status-select');
+  if (ss) ss.value = 'all';
+  const cs = document.getElementById('fleet-condition-select');
+  if (cs) cs.value = 'all';
+  renderVehicleFleet(appData);
+}
+
+function _renderFleetFilterBar(sortedCats, totalCount, shownCount) {
+  const bar = document.getElementById('fleet-filter-bar');
+  if (!bar) return;
+  const ff = fleetFilter;
+  const isActive = ff.search !== '' || ff.category !== null || ff.status !== 'all' || ff.condition !== 'all';
+
+  // Sync active class on static dropdowns
+  const ss = document.getElementById('fleet-status-select');
+  if (ss) ss.className = 'filter-btn' + (ff.status !== 'all' ? ' active' : '');
+  const cs = document.getElementById('fleet-condition-select');
+  if (cs) cs.className = 'filter-btn' + (ff.condition !== 'all' ? ' active' : '');
+
+  const catBtns = [null, ...sortedCats].map(grp => {
+    const isAll = grp === null;
+    const label = isAll ? 'Alle' : grp.label;
+    const active = isAll ? ff.category === null : ff.category === grp.id;
+    const onclick = isAll ? `setFleetCatFilter(null)` : `setFleetCatFilter('${grp.id}')`;
+    return `<button class="fleet-cat-btn${active ? ' active' : ''}" onclick="${onclick}">${label}</button>`;
+  }).join('');
+
+  const countHtml = isActive
+    ? `<span class="fleet-filter-count">${shownCount} / ${totalCount} Fahrzeuge</span>`
+    : '';
+  const resetBtn = isActive
+    ? `<button class="fleet-filter-reset" onclick="resetFleetFilter()">✕ Filter</button>`
+    : '';
+
+  bar.innerHTML = catBtns + countHtml + resetBtn;
+}
+
 function renderVehicleFleet(appData) {
   const el = document.getElementById('fleet-content');
   if (!el) return;
@@ -5907,6 +5897,52 @@ function renderVehicleFleet(appData) {
     if (!aHasMotor && bHasMotor) return 1;
     return (metaById[a]?.name || '').localeCompare(metaById[b]?.name || '');
   });
+
+  // Collect available category groups (root vehicles only, in FLEET_CAT_GROUPS order)
+  const availableCats = new Set();
+  for (const rootId of rootIds) {
+    const cat = metaById[rootId]?.category;
+    if (cat) availableCats.add(cat);
+  }
+  const sortedCats = FLEET_CAT_GROUPS.filter(g => [...g.cats].some(c => availableCats.has(c)));
+  console.log('[Fleet] availableCats:', [...availableCats], 'groups matched:', sortedCats.map(g=>g.id));
+
+  // Apply filters
+  const ff = fleetFilter;
+  const _fsearch = ff.search.trim();
+  const filteredRootIds = rootIds.filter(rootId => {
+    const ids = groups[rootId];
+    if (_fsearch) {
+      const matches = ids.some(id => {
+        const m = metaById[id];
+        return (m?.name || '').toLowerCase().includes(_fsearch)
+            || (m?.brand || '').toLowerCase().includes(_fsearch);
+      });
+      if (!matches) return false;
+    }
+    if (ff.category !== null) {
+      const grp = FLEET_CAT_GROUPS.find(g => g.id === ff.category);
+      if (!grp || !grp.cats.has(metaById[rootId]?.category)) return false;
+    }
+    if (ff.status !== 'all') {
+      const rs = stateById[rootId] || {};
+      const isActive = rs.motorRunning || rs.isEntered || rs.isAIActive || rs.adActive || rs.cpActive;
+      if (ff.status === 'active' && !isActive) return false;
+      if (ff.status === 'parked' &&  isActive) return false;
+    }
+    if (ff.condition !== 'all') {
+      const rs = stateById[rootId] || {};
+      const rm = metaById[rootId] || {};
+      const maxDmg = Math.max(...ids.map(id => stateById[id]?.damage || 0));
+      if (ff.condition === 'damage10' && maxDmg <= 10) return false;
+      if (ff.condition === 'damage30' && maxDmg <= 30) return false;
+      if (ff.condition === 'fuel20' && (!rm.fuelCap || rs.fuelPct == null || rs.fuelPct >= 20)) return false;
+      if (ff.condition === 'fuel40' && (!rm.fuelCap || rs.fuelPct == null || rs.fuelPct >= 40)) return false;
+    }
+    return true;
+  });
+
+  _renderFleetFilterBar(sortedCats, rootIds.length, filteredRootIds.length);
 
   const fss = loadFleetSettings();
 
@@ -6071,8 +6107,13 @@ function renderVehicleFleet(appData) {
     </div>`;
   }
 
+  if (filteredRootIds.length === 0) {
+    el.innerHTML = '<div class="state-box"><span>Keine Fahrzeuge gefunden</span></div>';
+    return;
+  }
+
   let html = '<div class="fleet-list">';
-  for (const rootId of rootIds) {
+  for (const rootId of filteredRootIds) {
     const ids = groups[rootId].filter(id => metaById[id]);
     if (ids.length === 0) continue;
     html += `<div class="fleet-row">${ids.map(renderCell).join('')}</div>`;
@@ -6120,59 +6161,6 @@ function startVehicleTracking() {
 
 function stopVehicleTracking() {
   if (vehicleEventSource) { vehicleEventSource.close(); vehicleEventSource = null; }
-}
-
-// ═══════════════════════════════════════════════════════════
-// Map Detail Panel
-// ═══════════════════════════════════════════════════════════
-function openMapDetail(type, id) {
-  if (type === 'vehicle') {
-    openVehicleDetail(id);
-    return;
-  }
-  const panel = document.getElementById('map-detail-panel');
-  const body  = document.getElementById('mdp-body');
-  const title = document.getElementById('mdp-title');
-  let html = '', titleStr = '';
-
-  if (type === 'field') {
-    const f = (appData?.fields?.fields || []).find(f => String(f.id) === String(id));
-    if (!f) return;
-    titleStr = `Feld ${f.id}`;
-    html = _fieldCardHtml(f, null, null);
-
-  } else if (type === 'hotspot') {
-    const hs = (appData?.hotspots?.hotspots || [])[id];
-    if (!hs) return;
-    titleStr = hs.name;
-    const animalTypes = new Set(['COW','PIG','SHEEP','CHICKEN','HORSE','GOOSE','RABBIT','BEE']);
-    if (hs.type === 'PRODUCTION_POINT') {
-      const pp = (appData?.productions?.productions || []).find(p => p.name === hs.name);
-      if (pp) html = _productionCardHtml(pp, null);
-      else html = `<div class="state-box"><span>${hs.name}</span></div>`;
-    } else if (animalTypes.has(hs.type)) {
-      const h = (appData?.husbandries?.husbandries || []).find(h => h.name === hs.name);
-      if (h) html = renderHusbandryCard(h, null);
-      else html = `<div class="state-box"><span>${hs.name}</span></div>`;
-    } else if (hs.type === 'SELLING_STATION') {
-      // No detailed data in our system — show name + type
-      html = `<article class="card content-card"><h3>${hs.name}</h3>
-        <p style="font-size:12px;color:var(--muted);margin-top:8px">Verkaufsstation</p></article>`;
-    } else {
-      html = `<article class="card content-card"><h3>${hs.name}</h3>
-        <p style="font-size:12px;color:var(--muted);margin-top:8px">${hs.type}</p></article>`;
-    }
-  }
-
-  title.textContent = titleStr;
-  body.innerHTML = html;
-  panel.classList.add('open');
-  document.getElementById('mdp-backdrop').classList.add('open');
-}
-
-function closeMapDetail() {
-  document.getElementById('map-detail-panel').classList.remove('open');
-  document.getElementById('mdp-backdrop').classList.remove('open');
 }
 
 function rerenderCurrentView() {
