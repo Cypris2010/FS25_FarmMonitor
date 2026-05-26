@@ -2853,18 +2853,27 @@ function FarmMonitor:cmdSpawnPallets(cmd)
     amount = math.min(amount, maxP)
     if amount <= 0 then error("Nothing to spawn for fillType: " .. tostring(cmd.fillType)) end
 
-    pp:ReceiveSpawnEvent(
-        g_currentMission:getFarmId(),
-        ft.index,
-        info.capacity * amount,  -- pendingLiters: Gesamtmenge für alle Paletten
-        info.width, info.height, info.length,
-        info.capacity,
-        1,
-        info.customEnvironment,
-        nil,
-        amount,
-        0, 0, 0
-    )
+    local farmId       = g_currentMission:getFarmId()
+    local pendingLiters = info.capacity * amount
+
+    if g_currentMission.isServer then
+        -- Server (listen-server host): autoritativer Direktaufruf
+        pp:ReceiveSpawnEvent(
+            farmId, ft.index, pendingLiters,
+            info.width, info.height, info.length,
+            info.capacity, 1, info.customEnvironment,
+            nil, amount, 0, 0, 0
+        )
+    else
+        -- Remote-Client: PSC-Netzwerkevent an Server senden
+        -- (ReceiveSpawnEvent direkt aufzurufen erzeugt nur eine lokale Palette ohne Server-Sync)
+        productionStorageControl_EventSpawn.sendEvent(
+            pp, farmId, ft.index, pendingLiters,
+            info.width, info.height, info.length,
+            info.capacity, 1, info.customEnvironment,
+            nil, amount, 0, 0, 0
+        )
+    end
 end
 
 

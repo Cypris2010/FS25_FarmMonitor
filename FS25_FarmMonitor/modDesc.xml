@@ -2,6 +2,7 @@
 <modDesc descVersion="108">
     <iconFilename>icon_FarmMonitor.png</iconFilename>
     <author>FarmMonitor</author>
+    <contributors>Uses public API of FS25_ProductionStorageControl by braeven (no PSC code included)</contributors>
     <version>0.4.1.46</version>
     <title>
         <en>Farm Monitor</en>
