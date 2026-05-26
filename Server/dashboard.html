@@ -5957,7 +5957,6 @@ function renderVehicleFleet(appData) {
     if (cat) availableCats.add(cat);
   }
   const sortedCats = FLEET_CAT_GROUPS.filter(g => [...g.cats].some(c => availableCats.has(c)));
-  console.log('[Fleet] availableCats:', [...availableCats], 'groups matched:', sortedCats.map(g=>g.id));
 
   // Apply filters
   const ff = fleetFilter;
