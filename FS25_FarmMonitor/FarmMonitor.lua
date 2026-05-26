@@ -636,6 +636,12 @@ function FarmMonitor:readSavegameInfo()
     if not ok then
         print("[FarmMonitor] WARNING: Could not read savegame info: " .. tostring(err))
     end
+    -- On MP clients careerSavegame.xml only exists on the host — use fallbacks so we don't retry every tick
+    if name == nil then name = "unknown" end
+    if savegameId == nil then
+        local slot = (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
+        savegameId = (missionInfo.mapId or "unknown") .. "_" .. slot
+    end
     return name, savegameId
 end
 
