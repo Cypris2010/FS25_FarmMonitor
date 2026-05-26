@@ -41,7 +41,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           BRANCH=$(git branch -r --contains HEAD | grep -v HEAD | head -1 | sed 's|origin/||' | xargs)
           git add FS25_FarmMonitor/modDesc.xml
-          git diff --cached --quiet && echo "modDesc already up to date, skipping commit" || (git commit -m "chore: set modDesc version to ${VERSION} [skip ci]" && git push origin HEAD:${BRANCH})
+          git diff --cached --quiet && echo "modDesc already up to date, skipping commit" || (git commit -m "chore: set modDesc version to ${VERSION} [skip ci]" && git fetch origin ${BRANCH} && git rebase origin/${BRANCH} && git push origin HEAD:${BRANCH})
 
       - uses: actions/setup-go@v5
         with:
