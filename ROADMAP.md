@@ -47,6 +47,20 @@
 
 ## v0.4.0 — Object Storages, AutoDrive & Courseplay Integration
 
+### Fahrzeuge-View
+- ✅ **Lua:** `vehicles.json` exportiert alle Fahrzeuge der Farm alle 2s: Name, Typ, Geschwindigkeit, Füllstände (Kraftstoff/Harnstoff/Strom/Methan), Schaden, Betriebsstunden, Fahrer, Motor-Status, Position & Rotation
+- ✅ **Lua:** `vehicleMeta.json` exportiert statische Metadaten alle 10s: Marke, Shop-Kategorie, Kaufpreis, Eigentumsart (Kauf/Leasing), Alter, Motorleistung (kW), Arbeitsbreite, Fahrzeugfarben (Hex, diagonal geteilter Kreis)
+- ✅ **Lua:** `vehicleCategories.json` exportiert Shop-Kategorien einmalig via `g_storeManager` + `ShopMenu`
+- ✅ **Dashboard:** View „Fahrzeuge" — Flottenkarten mit Name, Marke, Typ-Icon, Geschwindigkeit, Kraftstoff, Schaden, Fahrer
+- ✅ **Dashboard:** Fahrzeug-Detailpanel — Tanks, Anbaugeräte, Betriebsstunden, Kaufpreis, Arbeitsbreite, Fahrzeugfarbe
+- ✅ **Dashboard:** Fahrzeug-Positionsanzeige „Nearby" — zeigt nächstgelegenes Feld oder Hotspot
+- ✅ **Dashboard:** Gespann-Ansicht — Stammfahrzeug + angehängte Geräte als gestapelte Sektionen
+- ✅ **Dashboard:** Kategorie-Filter-Buttons (dynamisch, nur vorhandene Kategorien)
+- ✅ **Dashboard:** Freitext-Suche, Status-Filter, Zustand-Filter
+- ✅ **Dashboard:** Sortiermodus „Zuletzt bewegt" (client-seitig getrackt)
+- ✅ **Dashboard:** AD/CP Fertig-Puls — km/h-Block pulsiert nach AD/CP-Stop (konfigurierbar)
+- ✅ **Dashboard:** Anzeigeoptionen-Modal überarbeitet (breiter, 2-Spalten-Layout)
+
 ### Object Storages (Paletten & Ballenlager)
 - ✅ **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
   - ✅ Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
@@ -71,22 +85,6 @@
 - ✅ **Lua:** `vehicles.json` enthält Courseplay-Status pro Fahrzeug: `cpActive`, `cpStatus`, `cpJobType`, `cpWaypointCurrent`, `cpWaypointTotal`, `cpRemainingTime`
 - ✅ **Dashboard:** Flottenkarte zeigt Courseplay-Status mit detaillierten Badges (Feststeckend, Kein Pfad, Tank leer, Reparatur, Fehler, Voll, Tankt, Blockiert, Wetter, Job-Typen)
 - ✅ **Dashboard:** Courseplay-Banner im Fahrzeug-Detailpanel mit Job-Typ, Wegpunkt-Fortschritt, verbleibender Zeit
-
-### Fahrzeuge-View
-- ✅ **Lua:** `vehicles.json` exportiert alle Fahrzeuge der Farm alle 2s: Name, Typ, Geschwindigkeit, Füllstände (Kraftstoff/Harnstoff/Strom/Methan), Schaden, Betriebsstunden, Fahrer, Motor-Status, Position & Rotation
-- ✅ **Lua:** `vehicleMeta.json` exportiert statische Metadaten alle 10s: Marke, Shop-Kategorie, Kaufpreis, Eigentumsart (Kauf/Leasing), Alter, Motorleistung (kW), Arbeitsbreite, Fahrzeugfarben (Hex, diagonal geteilter Kreis)
-- ✅ **Lua:** `vehicleCategories.json` exportiert Shop-Kategorien einmalig via `g_storeManager` + `ShopMenu`
-- ✅ **Dashboard:** View „Fahrzeuge" — Flottenkarten mit Name, Marke, Typ-Icon, Geschwindigkeit, Kraftstoff, Schaden, Fahrer
-- ✅ **Dashboard:** Fahrzeug-Detailpanel — Tanks, Anbaugeräte, Betriebsstunden, Kaufpreis, Arbeitsbreite, Fahrzeugfarbe
-- ✅ **Dashboard:** Fahrzeug-Positionsanzeige „Nearby" — zeigt nächstgelegenes Feld oder Hotspot
-- ✅ **Dashboard:** Gespann-Ansicht — Stammfahrzeug + angehängte Geräte als gestapelte Sektionen
-
-### Fahrzeuge-View Erweiterungen
-- ✅ **Dashboard:** Kategorie-Filter-Buttons (dynamisch, nur vorhandene Kategorien)
-- ✅ **Dashboard:** Freitext-Suche, Status-Filter, Zustand-Filter
-- ✅ **Dashboard:** Sortiermodus „Zuletzt bewegt" (client-seitig getrackt)
-- ✅ **Dashboard:** AD/CP Fertig-Puls — km/h-Block pulsiert nach AD/CP-Stop (konfigurierbar)
-- ✅ **Dashboard:** Anzeigeoptionen-Modal überarbeitet (breiter, 2-Spalten-Layout)
 
 ### Karten-View
 - ✅ **Lua:** `mapMeta.json` exportiert einmalig: `terrainSize`, `mapName`, `overviewDdsPath`, `savegameDir`
