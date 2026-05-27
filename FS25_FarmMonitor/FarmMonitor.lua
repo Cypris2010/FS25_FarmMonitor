@@ -31,6 +31,43 @@ FarmMonitor.palletInfoCache     = nil  -- built once per session by buildPalletI
 addModEventListener(FarmMonitor)
 
 -- ---------------------------------------------------------------------------
+-- Network Event: Savegame Info (Server → Client on join)
+-- ---------------------------------------------------------------------------
+
+FarmMonitorSavegameEvent = {}
+FarmMonitorSavegameEvent_mt = Class(FarmMonitorSavegameEvent, Event)
+InitEventClass(FarmMonitorSavegameEvent, "FarmMonitorSavegameEvent")
+
+function FarmMonitorSavegameEvent.emptyNew()
+    return Event.new(FarmMonitorSavegameEvent_mt)
+end
+
+function FarmMonitorSavegameEvent.new(savegameName, savegameId)
+    local self = FarmMonitorSavegameEvent.emptyNew()
+    self.savegameName = savegameName or "unknown"
+    self.savegameId   = savegameId   or "unknown"
+    return self
+end
+
+function FarmMonitorSavegameEvent:writeStream(streamId, connection)
+    streamWriteString(streamId, self.savegameName)
+    streamWriteString(streamId, self.savegameId)
+end
+
+function FarmMonitorSavegameEvent:readStream(streamId, connection)
+    self.savegameName = streamReadString(streamId)
+    self.savegameId   = streamReadString(streamId)
+    self:run(connection)
+end
+
+function FarmMonitorSavegameEvent:run(connection)
+    -- Called on the client after receiving the event from the server
+    FarmMonitor.savegameName = self.savegameName
+    FarmMonitor.savegameId   = self.savegameId
+    print("[FarmMonitor] Received savegame info from server: name=" .. self.savegameName .. " id=" .. self.savegameId)
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
@@ -60,6 +97,13 @@ end
 function FarmMonitor:deleteMap()
 end
 
+function FarmMonitor:onClientJoined(connection)
+    -- Server sends cached savegame info to the newly connected client
+    if FarmMonitor.savegameName ~= nil and FarmMonitor.savegameId ~= nil then
+        connection:sendEvent(FarmMonitorSavegameEvent.new(FarmMonitor.savegameName, FarmMonitor.savegameId))
+    end
+end
+
 function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
@@ -87,7 +131,17 @@ function FarmMonitor:update(dt)
     end
 
     if FarmMonitor.savegameName == nil then
-        FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
+        if g_currentMission.isServer then
+            -- Server (or singleplayer): read directly from careerSavegame.xml
+            FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
+        else
+            -- MP client: info arrives via FarmMonitorSavegameEvent from server on join.
+            -- Use fallbacks so we don't retry every tick — real values overwrite these once the event arrives.
+            local missionInfo = g_currentMission.missionInfo
+            FarmMonitor.savegameName = "unknown"
+            local slot = missionInfo and (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
+            FarmMonitor.savegameId   = ((missionInfo and missionInfo.mapId) or "unknown") .. "_" .. slot
+        end
     end
 
     if not FarmMonitor.fillTypesExported then
@@ -635,12 +689,6 @@ function FarmMonitor:readSavegameInfo()
     end)
     if not ok then
         print("[FarmMonitor] WARNING: Could not read savegame info: " .. tostring(err))
-    end
-    -- On MP clients careerSavegame.xml only exists on the host — use fallbacks so we don't retry every tick
-    if name == nil then name = "unknown" end
-    if savegameId == nil then
-        local slot = (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
-        savegameId = (missionInfo.mapId or "unknown") .. "_" .. slot
     end
     return name, savegameId
 end
