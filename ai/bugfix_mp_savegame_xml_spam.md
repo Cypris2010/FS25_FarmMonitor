@@ -12,44 +12,65 @@ Ca. alle 40ms — also jeden Update-Tick. Der Mod läuft trotzdem, aber die Log-
 
 ## Ursache
 
-`readSavegameInfo()` (`FarmMonitor.lua:621`) liest `careerSavegame.xml` um `savegameName` und `savegameId` für die JSON-Metadaten zu ermitteln. Die Datei existiert nur auf der Host-Maschine, nicht auf dem Client.
+`readSavegameInfo()` liest `careerSavegame.xml` um `savegameName` und `savegameId` für die JSON-Metadaten zu ermitteln. Die Datei existiert nur auf der Host-Maschine, nicht auf dem Client.
 
-`XMLFile.load()` gibt `nil` zurück wenn die Datei fehlt — das Giants-Engine loggt dabei selbst den Fehler. Die Funktion gibt daraufhin `nil, nil` zurück.
-
-In `update()` steht:
-
-```lua
-if FarmMonitor.savegameName == nil then
-    FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
-end
-```
-
-Da `savegameName` nach dem fehlgeschlagenen Read weiterhin `nil` ist, wiederholt sich der Versuch jeden Tick.
+`XMLFile.load()` gibt `nil` zurück wenn die Datei fehlt — das Giants-Engine loggt dabei selbst den Fehler. Die Funktion gab `nil, nil` zurück, `savegameName` blieb `nil`, und `update()` wiederholte den Versuch jeden Tick.
 
 ## Abhängigkeiten
 
-`savegameName` / `savegameId` sind reine Metadaten-Felder die in fast alle JSON-Exports eingebettet werden (`silos.json`, `productions.json`, `fields.json`, `vehicles.json` usw.). Sie werden vom Server und Dashboard nicht funktional ausgewertet, dienen nur zur Identifikation des aktiven Savegames.
+`savegameName` / `savegameId` sind Metadaten-Felder in fast allen JSON-Exports (`silos.json`, `productions.json`, `fields.json`, `vehicles.json` usw.). Sie werden vom Dashboard nicht funktional ausgewertet — dienen nur zur Identifikation des aktiven Savegames.
 
-Der Savegame-Wechsel-Mechanismus selbst (der `savegameDirectory`-Vergleich und die `*Exported`-Flags) funktioniert auf dem Client korrekt — nur der nachgelagerte `readSavegameInfo()`-Call ist das Problem.
+Der Savegame-Wechsel-Mechanismus (der `savegameDirectory`-Vergleich + `*Exported`-Flags) funktioniert auch ohne diese Werte korrekt.
 
-## Fix (`FarmMonitor.lua:640-641`)
+## Lösung (implementiert in v0.4.4)
 
-Nach dem `pcall` Fallback-Werte setzen wenn die XML nicht gelesen werden konnte:
+### Schritt 1: Fallbacks statt Retry-Loop
+
+`readSavegameInfo()` wird auf dem Client nicht mehr aufgerufen. Stattdessen setzt `update()` direkt Fallback-Werte wenn `isServer == false`:
 
 ```lua
--- On MP clients careerSavegame.xml only exists on the host — use fallbacks so we don't retry every tick
-if name == nil then name = "unknown" end
-if savegameId == nil then
-    local slot = (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
-    savegameId = (missionInfo.mapId or "unknown") .. "_" .. slot
+FarmMonitor.savegameName = "unknown"
+local slot = missionInfo.savegameDirectory:match("([^/\\]+)$") or "unknown"
+FarmMonitor.savegameId   = (missionInfo.mapId or "unknown") .. "_" .. slot
+-- z.B. "FS25_Haut-Beyleron_savegame0"
+```
+
+### Schritt 2: Echter Wert via Network Event
+
+Der Server überträgt `savegameName` und `savegameId` beim Client-Join via `FarmMonitorSavegameEvent`:
+
+```lua
+-- Server → onClientJoined:
+connection:sendEvent(FarmMonitorSavegameEvent.new(FarmMonitor.savegameName, FarmMonitor.savegameId))
+
+-- Client → Event:run():
+FarmMonitor.savegameName      = self.savegameName
+FarmMonitor.savegameId        = self.savegameId
+FarmMonitor.savegameInfoReady = true
+```
+
+### Schritt 3: Exports blockieren bis Info bereit
+
+Client-seitige Exports starten erst wenn `savegameInfoReady == true`. Timeout nach 10s mit Fallback-Werten, damit nichts dauerhaft blockiert:
+
+```lua
+if not FarmMonitor.savegameInfoReady then
+    if g_currentMission.isServer then
+        FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
+        FarmMonitor.savegameInfoReady = true
+    else
+        FarmMonitor.savegameInfoTimeout = FarmMonitor.savegameInfoTimeout - dt
+        if FarmMonitor.savegameInfoTimeout <= 0 then
+            -- Fallbacks setzen, exports freigeben
+            FarmMonitor.savegameInfoReady = true
+        end
+        return  -- noch nicht exportieren
+    end
 end
 ```
 
-- `name` — auf dem Client unbekannt, bleibt `"unknown"`
-- `savegameId` — die echte ID ist `mapId .. "_" .. creationDate`; auf dem Client ist `creationDate` nicht verfügbar, daher Näherung aus `mapId` + letztem Verzeichnisteil aus `savegameDirectory` (z.B. `savegame0`). Ergibt z.B. `FS25_Haut-Beyleron_savegame0` — eindeutig genug für Metadaten-Zwecke.
-
-Das Giants-Engine-Error tritt damit noch genau einmal auf (beim ersten Versuch), dann hört der Retry auf.
-
 ## Entstehungsgeschichte
 
-Der Bug war latent seit **v0.2.3** (Einführung von `readSavegameInfo` für Savegame-Wechsel-Erkennung), trat aber erst durch das **v0.3.0** Multiplayer-Enable auf.
+- **v0.2.3**: `readSavegameInfo()` eingeführt für Savegame-Wechsel-Erkennung
+- **v0.3.0**: Multiplayer aktiviert — Bug wird sichtbar
+- **v0.4.4**: Vollständige Lösung via Network Event + savegameInfoReady-Flag
