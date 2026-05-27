@@ -24,7 +24,8 @@ Jeder Spieler betreibt seinen eigenen `farmmonitor`-Server (Go-Binary) und sieht
 Der Client blockiert alle JSON-Exports bis das Event empfangen wurde (`savegameInfoReady = true`).
 Timeout: **10 Sekunden** — danach werden Fallback-Werte verwendet:
 - `savegameName` = `"unknown"`
-- `savegameId` = `mapId_savegameSlot` (z.B. `FS25_Haut-Beyleron_savegame0`)
+- `savegameId` = `mapId_unknown` (z.B. `FS25_Haut-Beyleron_unknown`)
+- Hinweis: `careerSavegame.xml` ist auf dem Client nicht verfügbar — das Datum kann nur via Network Event vom Server übertragen werden
 
 ## Dedicated Server
 

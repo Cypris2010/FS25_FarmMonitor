@@ -30,9 +30,10 @@ Der Savegame-Wechsel-Mechanismus (der `savegameDirectory`-Vergleich + `*Exported
 
 ```lua
 FarmMonitor.savegameName = "unknown"
-local slot = missionInfo.savegameDirectory:match("([^/\\]+)$") or "unknown"
-FarmMonitor.savegameId   = (missionInfo.mapId or "unknown") .. "_" .. slot
--- z.B. "FS25_Haut-Beyleron_savegame0"
+FarmMonitor.savegameId   = (missionInfo.mapId or "unknown") .. "_unknown"
+-- z.B. "FS25_Haut-Beyleron_unknown"
+-- NICHT readSavegameInfo() aufrufen — careerSavegame.xml existiert nur auf dem Server
+-- Das echte Datum kommt via FarmMonitorSavegameEvent vom Server
 ```
 
 ### Schritt 2: Echter Wert via Network Event
@@ -55,7 +56,8 @@ Client-seitige Exports starten erst wenn `savegameInfoReady == true`. Timeout na
 
 ```lua
 if not FarmMonitor.savegameInfoReady then
-    if g_currentMission.isServer then
+    if g_server ~= nil then
+        -- g_currentMission.isServer ist in SP false — g_server ~= nil trifft SP und MP-Host
         FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
         FarmMonitor.savegameInfoReady = true
     else

@@ -138,8 +138,8 @@ function FarmMonitor:update(dt)
     end
 
     if not FarmMonitor.savegameInfoReady then
-        if g_currentMission.isServer then
-            -- Server (or singleplayer): read directly from careerSavegame.xml
+        if g_server ~= nil then
+            -- Singleplayer or MP host: read directly from careerSavegame.xml
             FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
             FarmMonitor.savegameInfoReady = true
         else
@@ -148,9 +148,8 @@ function FarmMonitor:update(dt)
             FarmMonitor.savegameInfoTimeout = FarmMonitor.savegameInfoTimeout - dt
             if FarmMonitor.savegameInfoTimeout <= 0 then
                 local missionInfo = g_currentMission.missionInfo
-                local slot = missionInfo and (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
                 FarmMonitor.savegameName      = "unknown"
-                FarmMonitor.savegameId        = ((missionInfo and missionInfo.mapId) or "unknown") .. "_" .. slot
+                FarmMonitor.savegameId        = ((missionInfo and missionInfo.mapId) or "unknown") .. "_unknown"
                 FarmMonitor.savegameInfoReady = true
                 print("[FarmMonitor] WARNING: Timed out waiting for savegame info from server, using fallbacks")
             end
@@ -768,34 +767,6 @@ function FarmMonitor:collectVehicles()
     local hasVehicleInspector = g_modIsLoaded["FS25_VehicleInspector"] == true
     local hasAutoDrive        = g_modIsLoaded["FS25_AutoDrive"]        == true
 
-    -- userId → playerName lookup (for driver identification)
-    local userIdToName = {}
-    if g_currentMission.userManager ~= nil then
-        local ok, users = pcall(function() return g_currentMission.userManager.users end)
-        if ok and users then
-            for _, user in pairs(users) do
-                local uid  = user.userId or user.id
-                local name = (user.getNickname and (pcall(function() return user:getNickname() end) and user:getNickname()))
-                          or user.playerName or user.nickname or user.name
-                if uid and name and name ~= "" then
-                    userIdToName[uid] = name
-                end
-            end
-        end
-    end
-    -- Fallback: iterate playerSystem for networkInformation.playerName
-    if g_currentMission.playerSystem ~= nil then
-        for _, player in pairs(g_currentMission.playerSystem.players) do
-            if player ~= nil then
-                local uid  = player.userId
-                          or (player.networkInformation and player.networkInformation.userId)
-                local name = (player.networkInformation and player.networkInformation.playerName)
-                if uid and name and name ~= "" and not userIdToName[uid] then
-                    userIdToName[uid] = name
-                end
-            end
-        end
-    end
 
     -- Build fuel fillType index lookup once for the whole loop
     local fuelFillTypeIndices = {}
@@ -944,7 +915,10 @@ function FarmMonitor:collectVehicles()
             local driverName   = nil
             if isEntered and vehicle.spec_enterable ~= nil then
                 local uid = vehicle.spec_enterable.controllerUserId
-                if uid then driverName = userIdToName[uid] end
+                if uid and g_currentMission.userManager ~= nil then
+                    local user = g_currentMission.userManager:getUserByUserId(uid)
+                    if user ~= nil then driverName = user:getNickname() end
+                end
             end
             local motorRunning = vehicle.getIsMotorStarted ~= nil and vehicle:getIsMotorStarted() == true
             local motorized    = vehicle.spec_motorized ~= nil
