@@ -26,6 +26,8 @@ FarmMonitor.autoDriveMarkersExported  = false
 FarmMonitor.savegameName        = nil
 FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
+FarmMonitor.savegameInfoReady   = false  -- true once savegame info is known (server: after XML read; client: after event or timeout)
+FarmMonitor.savegameInfoTimeout = 10000  -- ms: give up waiting for server event after this long
 FarmMonitor.palletInfoCache     = nil  -- built once per session by buildPalletInfoCache()
 
 addModEventListener(FarmMonitor)
@@ -62,8 +64,9 @@ end
 
 function FarmMonitorSavegameEvent:run(connection)
     -- Called on the client after receiving the event from the server
-    FarmMonitor.savegameName = self.savegameName
-    FarmMonitor.savegameId   = self.savegameId
+    FarmMonitor.savegameName      = self.savegameName
+    FarmMonitor.savegameId        = self.savegameId
+    FarmMonitor.savegameInfoReady = true
     print("[FarmMonitor] Received savegame info from server: name=" .. self.savegameName .. " id=" .. self.savegameId)
 end
 
@@ -114,8 +117,10 @@ function FarmMonitor:update(dt)
     local currentDir = g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory
     if currentDir ~= FarmMonitor.savegameDirectory then
         FarmMonitor.savegameDirectory  = currentDir
-        FarmMonitor.savegameName       = nil
-        FarmMonitor.savegameId         = nil
+        FarmMonitor.savegameName        = nil
+        FarmMonitor.savegameId          = nil
+        FarmMonitor.savegameInfoReady   = false
+        FarmMonitor.savegameInfoTimeout = 10000
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
         FarmMonitor.fruitTypesExported = false
@@ -130,17 +135,24 @@ function FarmMonitor:update(dt)
         FarmMonitor.vehicleMetaTimer   = FarmMonitor.vehicleMetaInterval -- trigger meta export on next tick
     end
 
-    if FarmMonitor.savegameName == nil then
+    if not FarmMonitor.savegameInfoReady then
         if g_currentMission.isServer then
             -- Server (or singleplayer): read directly from careerSavegame.xml
             FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
+            FarmMonitor.savegameInfoReady = true
         else
-            -- MP client: info arrives via FarmMonitorSavegameEvent from server on join.
-            -- Use fallbacks so we don't retry every tick — real values overwrite these once the event arrives.
-            local missionInfo = g_currentMission.missionInfo
-            FarmMonitor.savegameName = "unknown"
-            local slot = missionInfo and (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
-            FarmMonitor.savegameId   = ((missionInfo and missionInfo.mapId) or "unknown") .. "_" .. slot
+            -- MP client: wait for FarmMonitorSavegameEvent from server.
+            -- Count down timeout — if it expires, proceed with fallbacks so exports aren't blocked forever.
+            FarmMonitor.savegameInfoTimeout = FarmMonitor.savegameInfoTimeout - dt
+            if FarmMonitor.savegameInfoTimeout <= 0 then
+                local missionInfo = g_currentMission.missionInfo
+                local slot = missionInfo and (missionInfo.savegameDirectory or ""):match("([^/\\]+)$") or "unknown"
+                FarmMonitor.savegameName      = "unknown"
+                FarmMonitor.savegameId        = ((missionInfo and missionInfo.mapId) or "unknown") .. "_" .. slot
+                FarmMonitor.savegameInfoReady = true
+                print("[FarmMonitor] WARNING: Timed out waiting for savegame info from server, using fallbacks")
+            end
+            return  -- don't export anything yet
         end
     end
 
