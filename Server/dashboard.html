@@ -2789,15 +2789,17 @@ function outputModeBadge(mode, ppUniqueId, fillType) {
 
 let _popoverClose = null;
 let _popoverTrigger = null;
+let _mdpCurrent = null; // { type, id } of currently open map detail panel
 function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
   event.stopPropagation();
   _popoverTrigger = event.currentTarget;
   const pop = document.getElementById('output-mode-popover');
 
-  // position near the clicked button
   const rect = event.currentTarget.getBoundingClientRect();
-  pop.style.top  = (rect.bottom + 6) + 'px';
-  pop.style.left = (rect.left - 60) + 'px';
+  // hide off-screen until we can measure actual dimensions
+  pop.style.transform = 'none';
+  pop.style.top  = '-9999px';
+  pop.style.left = '-9999px';
 
   // build window
   const ftTitle = (appData?.fillTypesByName?.[fillType]?.title) || fillType;
@@ -2834,6 +2836,23 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
 
   pop.classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  // clamp to viewport after render so the popover never overflows
+  requestAnimationFrame(() => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pw = pop.offsetWidth;
+    const ph = pop.offsetHeight;
+    const margin = 8;
+    let top  = rect.bottom + 6;
+    let left = rect.left - 60;
+    if (left + pw > vw - margin) left = vw - pw - margin;
+    if (left < margin) left = margin;
+    if (top + ph > vh - margin) top = rect.top - ph - 6;
+    if (top < margin) top = margin;
+    pop.style.top  = top + 'px';
+    pop.style.left = left + 'px';
+  });
 
   const backdrop = document.getElementById('output-mode-backdrop');
   backdrop.classList.add('open');
@@ -6347,6 +6366,7 @@ function openMapDetail(type, id) {
     openVehicleDetail(id);
     return;
   }
+  _mdpCurrent = { type, id };
   const panel = document.getElementById('map-detail-panel');
   const body  = document.getElementById('mdp-body');
   const title = document.getElementById('mdp-title');
@@ -6390,6 +6410,7 @@ function openMapDetail(type, id) {
 function closeMapDetail() {
   document.getElementById('map-detail-panel').classList.remove('open');
   document.getElementById('mdp-backdrop').classList.remove('open');
+  _mdpCurrent = null;
 }
 
 function rerenderCurrentView() {
@@ -6404,6 +6425,7 @@ function rerenderCurrentView() {
   if (currentView === 'alerts')      renderAlerts(appData);
   if (currentView === 'settings')    renderSettings();
   if (currentView === 'map')         renderMap(appData);
+  if (_mdpCurrent)                   openMapDetail(_mdpCurrent.type, _mdpCurrent.id);
 }
 
 // ═══════════════════════════════════════════════════════════
