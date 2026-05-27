@@ -1,4 +1,4 @@
-![FS25 FarmMonitor](assets/git-social-banner.jpg)
+![FS25 FarmMonitor](assets/git-social-banner.png)
 
 # FS25 FarmMonitor
 
