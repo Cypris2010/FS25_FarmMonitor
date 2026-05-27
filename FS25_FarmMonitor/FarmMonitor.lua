@@ -16,6 +16,7 @@ FarmMonitor.vehicleMetaTimer    = 10000  -- start at max so first export fires i
 FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
 FarmMonitor.commandTimer      = 0
 FarmMonitor.paths             = {}
+FarmMonitor.modInfoExported       = false
 FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
 FarmMonitor.fruitTypesExported  = false
@@ -92,6 +93,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.vehicleMeta       = outputDir .. "vehicleMeta.json"
     FarmMonitor.paths.vehicleCategories = outputDir .. "vehicleCategories.json"
     FarmMonitor.paths.autoDriveMarkers  = outputDir .. "autoDriveMarkers.json"
+    FarmMonitor.paths.modInfo           = outputDir .. "modInfo.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
@@ -154,6 +156,11 @@ function FarmMonitor:update(dt)
             end
             return  -- don't export anything yet
         end
+    end
+
+    if not FarmMonitor.modInfoExported then
+        FarmMonitor:exportModInfo()
+        FarmMonitor.modInfoExported = true
     end
 
     if not FarmMonitor.fillTypesExported then
@@ -334,6 +341,26 @@ function FarmMonitor:exportVehicleCategories()
         return false
     end
     return result == true
+end
+
+-- ---------------------------------------------------------------------------
+-- Mod info  (written once per session)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportModInfo()
+    local ok, err = pcall(function()
+        local version = ""
+        local mod = g_modManager:getModByName(modName)
+        if mod ~= nil then version = mod.version or "" end
+        FarmMonitor:writeJSON(FarmMonitor.paths.modInfo, FarmMonitor.obj(
+            "modName", modName,
+            "version", version
+        ))
+        print("[FarmMonitor] modInfo.json written (version=" .. version .. ")")
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR writing modInfo.json: " .. tostring(err))
+    end
 end
 
 -- ---------------------------------------------------------------------------

@@ -2312,6 +2312,8 @@
         </span>
         <span class="pill">Update: <strong id="last-update">—</strong></span>
         <span class="pill">Farm <strong id="farm-id">—</strong></span>
+        <span class="pill" id="server-version-pill" style="display:none">Server <strong id="server-version">—</strong></span>
+        <span class="pill" id="mod-version-pill" style="display:none">Mod <strong id="mod-version">—</strong></span>
         <span class="pill">Auto-Refresh: <strong class="c-green">EIN</strong></span>
       </div>
     </header>
@@ -6436,6 +6438,16 @@ async function loadData() {
     }
     const farmId = d.husbandries?.farmId ?? d.silos?.farmId ?? '—';
     document.getElementById('farm-id').textContent = farmId;
+    const serverVer = d.serverVersion;
+    if (serverVer) {
+      document.getElementById('server-version').textContent = serverVer;
+      document.getElementById('server-version-pill').style.display = '';
+    }
+    const modVersion = d.modInfo?.version;
+    if (modVersion) {
+      document.getElementById('mod-version').textContent = modVersion;
+      document.getElementById('mod-version-pill').style.display = '';
+    }
 
     rerenderCurrentView();
   } catch (e) {

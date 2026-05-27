@@ -28,6 +28,9 @@ import (
 //go:embed dashboard.html
 var dashboardHTML []byte
 
+// set via -ldflags "-X main.serverVersion=x.x.x"
+var serverVersion string
+
 // ---------------------------------------------------------------------------
 // SSE broker
 // ---------------------------------------------------------------------------
@@ -657,6 +660,8 @@ func handleData(dataDir string) http.HandlerFunc {
 		VehicleMeta       json.RawMessage `json:"vehicleMeta"`
 		VehicleCategories json.RawMessage `json:"vehicleCategories"`
 		AutoDriveMarkers  json.RawMessage `json:"autoDriveMarkers"`
+		ModInfo           json.RawMessage `json:"modInfo"`
+		ServerVersion     string          `json:"serverVersion"`
 	}
 
 	readFile := func(name string) json.RawMessage {
@@ -685,6 +690,8 @@ func handleData(dataDir string) http.HandlerFunc {
 			VehicleMeta:       readFile("vehicleMeta.json"),
 			VehicleCategories: readFile("vehicleCategories.json"),
 			AutoDriveMarkers:  readFile("autoDriveMarkers.json"),
+			ModInfo:           readFile("modInfo.json"),
+			ServerVersion:     serverVersion,
 		})
 	}
 }
@@ -808,6 +815,7 @@ func main() {
 		filepath.Join(dataDir, "vehicleMeta.json"),
 		filepath.Join(dataDir, "vehicleCategories.json"),
 		filepath.Join(dataDir, "autoDriveMarkers.json"),
+		filepath.Join(dataDir, "modInfo.json"),
 	}
 
 	b := newBroker()

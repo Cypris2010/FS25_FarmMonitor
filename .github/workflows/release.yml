@@ -50,9 +50,10 @@ jobs:
       - name: Build binaries
         run: |
           cd Server
-          GOOS=windows GOARCH=amd64 go build -o farmmonitor-windows.exe .
-          GOOS=darwin  GOARCH=amd64 go build -o farmmonitor-macos-intel .
-          GOOS=darwin  GOARCH=arm64 go build -o farmmonitor-macos-apple .
+          TAG="${{ github.ref_name }}"
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.serverVersion=${TAG}" -o farmmonitor-windows.exe .
+          GOOS=darwin  GOARCH=amd64 go build -ldflags "-X main.serverVersion=${TAG}" -o farmmonitor-macos-intel .
+          GOOS=darwin  GOARCH=arm64 go build -ldflags "-X main.serverVersion=${TAG}" -o farmmonitor-macos-apple .
 
       - name: Package mod files
         run: zip -j FS25_FarmMonitor.zip FS25_FarmMonitor/*
