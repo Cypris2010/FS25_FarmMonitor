@@ -352,7 +352,9 @@
   #output-mode-backdrop.open { display:block; }
   #output-mode-popover { display:none; position:fixed; z-index:1000; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:0; box-shadow:0 8px 32px rgba(0,0,0,.7); flex-direction:column; min-width:220px; overflow:hidden; }
   #output-mode-popover.open { display:flex; }
-  #output-mode-popover .pop-header { padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+  #output-mode-popover .pop-header { padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; }
+  #output-mode-popover .pop-header .pop-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:0; line-height:1; opacity:.7; transition:opacity .12s; }
+  #output-mode-popover .pop-header .pop-close:hover { opacity:1; }
   #output-mode-popover .pop-body { padding:8px; display:flex; flex-direction:column; gap:2px; }
   #output-mode-popover .pop-col-label { padding:4px 6px 6px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
   #output-mode-popover .pop-columns { display:flex; flex-direction:row; align-items:stretch; }
@@ -362,7 +364,7 @@
   #output-mode-popover .pop-spawn .spawn-info-sub { font-size:13px; color:var(--muted); }
   #output-mode-popover .pop-spawn .spawn-controls { display:flex; gap:8px; align-items:center; }
   #output-mode-popover .pop-spawn .spawn-controls input[type="range"] { flex:1; cursor:pointer; -webkit-appearance:none; appearance:none; background:none; height:36px; }
-  #output-mode-popover .pop-spawn .spawn-controls input[type="range"]::-webkit-slider-runnable-track { height:10px; border-radius:5px; background:#444; }
+  #output-mode-popover .pop-spawn .spawn-controls input[type="range"]::-webkit-slider-runnable-track { height:10px; border-radius:5px; background:var(--slider-fill, #444); }
   #output-mode-popover .pop-spawn .spawn-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:36px; height:36px; border-radius:50%; background:var(--green); margin-top:-13px; box-shadow:0 1px 4px rgba(0,0,0,.5); }
   #output-mode-popover .pop-spawn .spawn-controls input[type="number"] { width:52px; padding:4px 6px; background:var(--card); border:1px solid var(--border); border-radius:6px; color:var(--fg); font-size:13px; text-align:center; }
   #output-mode-popover .pop-spawn .spawn-btn { padding:8px; background:rgba(154,227,58,.08); border:1px solid rgba(154,227,58,.3); border-radius:8px; color:var(--green); font-weight:600; font-size:13px; cursor:pointer; transition:.15s ease; width:100%; }
@@ -372,6 +374,23 @@
   #output-mode-popover button span { font-size:13px; }
   #output-mode-popover button:hover { background:var(--hover); }
   #output-mode-popover button.active { background:var(--hover); font-weight:700; }
+  /* Object-Storage Eject Popover */
+  #eject-backdrop { display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,.6); }
+  #eject-backdrop.open { display:block; }
+  #eject-popover { display:none; position:fixed; z-index:1000; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:0; box-shadow:0 8px 32px rgba(0,0,0,.7); flex-direction:column; min-width:280px; overflow:hidden; }
+  #eject-popover.open { display:flex; }
+  #eject-popover .ep-header { padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; }
+  #eject-popover .ep-header .ep-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:0; line-height:1; opacity:.7; transition:opacity .12s; }
+  #eject-popover .ep-header .ep-close:hover { opacity:1; }
+  #eject-popover .ep-body { padding:12px 14px 14px; display:flex; flex-direction:column; gap:8px; }
+  #eject-popover .ep-sub { font-size:13px; color:var(--muted); }
+  #eject-popover .ep-controls { display:flex; gap:8px; align-items:center; }
+  #eject-popover .ep-controls input[type="range"] { flex:1; cursor:pointer; -webkit-appearance:none; appearance:none; background:none; height:36px; }
+  #eject-popover .ep-controls input[type="range"]::-webkit-slider-runnable-track { height:10px; border-radius:5px; background:var(--slider-fill, #444); }
+  #eject-popover .ep-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:36px; height:36px; border-radius:50%; background:var(--green); margin-top:-13px; box-shadow:0 1px 4px rgba(0,0,0,.5); }
+  #eject-popover .ep-controls input[type="number"] { width:52px; padding:4px 6px; background:var(--card); border:1px solid var(--border); border-radius:6px; color:var(--fg); font-size:13px; text-align:center; }
+  #eject-popover .ep-btn { padding:8px; background:rgba(154,227,58,.08); border:1px solid rgba(154,227,58,.3); border-radius:8px; color:var(--green); font-weight:600; font-size:13px; cursor:pointer; transition:.15s ease; }
+  #eject-popover .ep-btn:hover { background:rgba(154,227,58,.18); border-color:rgba(154,227,58,.6); }
   .metric-val { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
   .metric > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .metric-good-link {
@@ -2814,14 +2833,14 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
       <div class="spawn-info-sub">Max: ${spawnOpts.max} Stk. · ${fmt(spawnOpts.capacity)} L</div>
       <div class="spawn-controls">
         <input type="range" id="spawn-slider" min="1" max="${spawnOpts.max}" value="1"
-               oninput="document.getElementById('spawn-count').value=this.value">
+               oninput="document.getElementById('spawn-count').value=this.value;updateSliderFill(this)">
         <input type="number" id="spawn-count" min="1" max="${spawnOpts.max}" value="1"
                oninput="document.getElementById('spawn-slider').value=Math.min(Math.max(parseInt(this.value)||1,1),${spawnOpts.max})">
       </div>
       <button class="spawn-btn" onclick="spawnPallets('${ppUniqueId}','${fillType}',${spawnOpts.max})">Auslagern</button>
     </div>` : '';
   pop.innerHTML = `
-    <div class="pop-header">${ftTitle}</div>
+    <div class="pop-header">${ftTitle}<button class="pop-close" onclick="_popoverClose && _popoverClose()" title="Schließen">✕</button></div>
     <div class="pop-columns">
       <div class="pop-body">
         <div class="pop-col-label">Ausgangsmodus</div>
@@ -2852,6 +2871,8 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
     if (top < margin) top = margin;
     pop.style.top  = top + 'px';
     pop.style.left = left + 'px';
+    const spawnSlider = document.getElementById('spawn-slider');
+    if (spawnSlider) updateSliderFill(spawnSlider);
   });
 
   const backdrop = document.getElementById('output-mode-backdrop');
@@ -2879,6 +2900,86 @@ async function spawnPallets(ppUniqueId, fillType, max) {
   } catch(e) {
     console.error('[FarmMonitor] Spawn command failed:', e);
   }
+}
+
+// --- Slider fill track (left=bright, right=dark) ---
+function updateSliderFill(slider) {
+  const min = parseFloat(slider.min) || 0;
+  const max = parseFloat(slider.max) || 1;
+  const val = parseFloat(slider.value) || min;
+  const pct = Math.round(((val - min) / (max - min)) * 100);
+  slider.style.setProperty('--slider-fill',
+    `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${pct}%, #444 ${pct}%, #444 100%)`);
+}
+
+// --- Object Storage Eject ---
+let _ejectState = null;
+let _ejectClose = null;
+
+function openEjectPopover(event, uniqueId, objectInfoIndex, count, title) {
+  event.stopPropagation();
+  _ejectState = { uniqueId, objectInfoIndex, count };
+  const pop = document.getElementById('eject-popover');
+  document.getElementById('eject-popover-title').textContent = title || 'Auslagern';
+  document.getElementById('eject-popover-sub').textContent = 'Max: ' + count + ' Stk.';
+  const slider = document.getElementById('eject-slider');
+  const counter = document.getElementById('eject-count');
+  slider.max = count; slider.value = 1;
+  counter.max = count; counter.value = 1;
+  updateSliderFill(slider);
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  pop.style.top = '-9999px'; pop.style.left = '-9999px';
+  pop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  requestAnimationFrame(() => {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const pw = pop.offsetWidth,   ph = pop.offsetHeight;
+    const margin = 8;
+    let top  = rect.bottom + 6;
+    let left = rect.left - 60;
+    if (left + pw > vw - margin) left = vw - pw - margin;
+    if (left < margin) left = margin;
+    if (top + ph > vh - margin) top = rect.top - ph - 6;
+    if (top < margin) top = margin;
+    pop.style.top = top + 'px'; pop.style.left = left + 'px';
+  });
+
+  const backdrop = document.getElementById('eject-backdrop');
+  backdrop.classList.add('open');
+  if (_ejectClose) backdrop.removeEventListener('click', _ejectClose);
+  _ejectClose = () => {
+    pop.classList.remove('open');
+    backdrop.classList.remove('open');
+    document.body.style.overflow = '';
+    backdrop.removeEventListener('click', _ejectClose);
+  };
+  backdrop.addEventListener('click', _ejectClose);
+}
+
+async function _confirmEject() {
+  if (!_ejectState) return;
+  const max   = _ejectState.count;
+  const count = Math.min(Math.max(parseInt(document.getElementById('eject-count').value) || 1, 1), max);
+  document.getElementById('eject-popover').classList.remove('open');
+  document.getElementById('eject-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  try {
+    await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cmd: 'objectStorage.eject',
+        uniqueId: _ejectState.uniqueId,
+        objectInfoIndex: String(_ejectState.objectInfoIndex),
+        amount: String(count),
+      }),
+    });
+  } catch(e) {
+    console.error('[FarmMonitor] Eject command failed:', e);
+  }
+  _ejectState = null;
 }
 
 async function selectOutputMode(event, ppUniqueId, fillType, mode) {
@@ -3460,6 +3561,17 @@ function renderSilos(data) {
           <span class="metric-val">${fmt(c.level)} L <small>${c.count} Stk.</small></span>
         </div>`
       ).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
+    } else if (s.type === 'objectStorage') {
+      contents = (Array.isArray(s.contents) ? s.contents : []).map(c => {
+        const ejectBtn = (c.objectInfoIndex != null && c.count > 0)
+          ? `<button class="output-mode-badge red" title="Auslagern" onclick="openEjectPopover(event,'${s.uniqueId}',${c.objectInfoIndex},${c.count},'${(c.title || c.fillType).replace(/'/g,"\\'")}')"><i class="ti ti-arrow-bar-up"></i></button>`
+          : '';
+        return `<div class="metric" style="display:flex;align-items:center;gap:8px">
+          <span style="flex:1">${c.title || c.fillType}</span>
+          <span class="metric-val">${fmt(c.level)} L <small>${c.count} Stk.</small></span>
+          ${ejectBtn}
+        </div>`;
+      }).join('') || '<p style="font-size:12px;color:var(--muted);margin-top:8px">Leer</p>';
     } else {
       contents = (Array.isArray(s.contents) ? s.contents : []).map(c => {
         const countSuffix = c.count ? ` <small>${c.count} Stk.</small>` : '';
@@ -5849,9 +5961,16 @@ function _renderVehicleDetail(id) {
   document.getElementById('vd-actions').innerHTML = actionsHtml;
 }
 
-// Close detail panel on ESC
+// Close panels/popovers on ESC
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && _vdCurrentId != null) closeVehicleDetail();
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('eject-popover')?.classList.contains('open')) {
+    if (_ejectClose) _ejectClose();
+  } else if (document.getElementById('output-mode-popover')?.classList.contains('open')) {
+    if (_popoverClose) _popoverClose();
+  } else if (_vdCurrentId != null) {
+    closeVehicleDetail();
+  }
 });
 
 // Icons keyed on broad group — unknown categories fall back to wrench
@@ -6561,6 +6680,20 @@ connect();
 </script>
 <div id="output-mode-backdrop"></div>
 <div id="output-mode-popover"></div>
+<div id="eject-backdrop"></div>
+<div id="eject-popover">
+  <div class="ep-header"><span id="eject-popover-title">Auslagern</span><button class="ep-close" onclick="_ejectClose && _ejectClose()" title="Schließen">✕</button></div>
+  <div class="ep-body">
+    <div class="ep-sub" id="eject-popover-sub"></div>
+    <div class="ep-controls">
+      <input type="range" id="eject-slider" min="1" max="1" value="1"
+             oninput="document.getElementById('eject-count').value=this.value;updateSliderFill(this)">
+      <input type="number" id="eject-count" min="1" max="1" value="1"
+             oninput="document.getElementById('eject-slider').value=Math.min(Math.max(parseInt(this.value)||1,1),parseInt(this.getAttribute('max')))">
+    </div>
+    <button class="ep-btn" onclick="_confirmEject()">Auslagern</button>
+  </div>
+</div>
 
 <div id="omm-backdrop" onclick="closeOutputModeModal()"></div>
 <div id="omm-modal">

@@ -1397,35 +1397,36 @@ function FarmMonitor:collectSilos()
 
         -- Object Storage (vanilla pallets / bale storage)
         if placeable.spec_objectStorage ~= nil and (placeable.ownerFarmId == farmId or placeable.ownerFarmId == 0) then
-            local byFillType = {}
-            for _, objInfo in ipairs(placeable.spec_objectStorage.objectInfos or {}) do
+            local contents = FarmMonitor.arr()
+            for i, objInfo in ipairs(placeable.spec_objectStorage.objectInfos or {}) do
+                local ftIdx, totalLevel, count = nil, 0, 0
                 for _, obj in ipairs(objInfo.objects or {}) do
-                    local ftIdx, level
+                    local thisFt, thisLevel
                     if obj.baleAttributes ~= nil then
-                        ftIdx = obj.baleAttributes.fillType
-                        level = obj.baleAttributes.fillLevel
+                        thisFt    = obj.baleAttributes.fillType
+                        thisLevel = obj.baleAttributes.fillLevel
                     elseif obj.baleObject ~= nil then
-                        ftIdx = obj.baleObject.fillType
-                        level = obj.baleObject.fillLevel
+                        thisFt    = obj.baleObject.fillType
+                        thisLevel = obj.baleObject.fillLevel
                     elseif obj.palletAttributes ~= nil then
-                        ftIdx = obj.palletAttributes.fillType
-                        level = obj.palletAttributes.fillLevel
+                        thisFt    = obj.palletAttributes.fillType
+                        thisLevel = obj.palletAttributes.fillLevel
                     end
-                    if ftIdx ~= nil and level ~= nil and level > 0 then
-                        if byFillType[ftIdx] == nil then byFillType[ftIdx] = { level = 0, count = 0 } end
-                        byFillType[ftIdx].level = byFillType[ftIdx].level + level
-                        byFillType[ftIdx].count = byFillType[ftIdx].count + 1
+                    if thisFt ~= nil and thisLevel ~= nil and thisLevel > 0 then
+                        if ftIdx == nil then ftIdx = thisFt end
+                        totalLevel = totalLevel + thisLevel
+                        count      = count + 1
                     end
                 end
-            end
-            local contents = FarmMonitor.arr()
-            for ftIdx, d in pairs(byFillType) do
-                table.insert(contents, {
-                    fillType = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN",
-                    title    = FarmMonitor:fillTypeTitle(ftIdx),
-                    level    = MathUtil.round(d.level),
-                    count    = d.count,
-                })
+                if count > 0 and ftIdx ~= nil then
+                    table.insert(contents, {
+                        fillType        = g_fillTypeManager:getFillTypeNameByIndex(ftIdx) or "UNKNOWN",
+                        title           = FarmMonitor:fillTypeTitle(ftIdx),
+                        level           = MathUtil.round(totalLevel),
+                        count           = count,
+                        objectInfoIndex = i,
+                    })
+                end
             end
             if #contents > 0 then
                 table.insert(result, {
@@ -2856,8 +2857,9 @@ function FarmMonitor:processCommands()
             x        = getXMLString(xmlId, base .. "#x")        or "",
             y        = getXMLString(xmlId, base .. "#y")        or "",
             z        = getXMLString(xmlId, base .. "#z")        or "",
-            marker1  = getXMLString(xmlId, base .. "#marker1")  or "",
-            marker2  = getXMLString(xmlId, base .. "#marker2")  or "",
+            marker1         = getXMLString(xmlId, base .. "#marker1")         or "",
+            marker2         = getXMLString(xmlId, base .. "#marker2")         or "",
+            objectInfoIndex = getXMLString(xmlId, base .. "#objectInfoIndex") or "",
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -2884,6 +2886,7 @@ function FarmMonitor:dispatchCommand(cmd)
     local handlers = {
         ["production.setOutputMode"]      = FarmMonitor.cmdSetProductionOutputMode,
         ["production.spawnPallets"]       = FarmMonitor.cmdSpawnPallets,
+        ["objectStorage.eject"]           = FarmMonitor.cmdEjectObjectStorage,
         ["player.teleportToPlaceable"]    = FarmMonitor.cmdTeleportToPlaceable,
         ["vehicle.enter"]                 = FarmMonitor.cmdEnterVehicle,
         ["vehicle.teleport"]              = FarmMonitor.cmdTeleportToVehicle,
@@ -3059,6 +3062,47 @@ function FarmMonitor:cmdSpawnPallets(cmd)
     end
 end
 
+
+-- ---------------------------------------------------------------------------
+-- Object Storage commands
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:cmdEjectObjectStorage(cmd)
+    local placeable = g_currentMission.placeableSystem:getPlaceableByUniqueId(cmd.uniqueId)
+    if placeable == nil or placeable.spec_objectStorage == nil then
+        error("Object storage not found: " .. tostring(cmd.uniqueId))
+    end
+
+    local objectInfoIndex = tonumber(cmd.objectInfoIndex)
+    if objectInfoIndex == nil or objectInfoIndex < 1 then
+        error("Invalid objectInfoIndex: " .. tostring(cmd.objectInfoIndex))
+    end
+
+    local objInfos = placeable.spec_objectStorage.objectInfos
+    local objInfo  = objInfos and objInfos[objectInfoIndex]
+    if objInfo == nil then
+        error("objectInfoIndex out of range: " .. tostring(objectInfoIndex))
+    end
+
+    local available = #(objInfo.objects or {})
+    local amount    = math.min(math.max(1, math.floor(tonumber(cmd.amount) or 1)), available)
+    if amount <= 0 then
+        error("Nothing to eject at objectInfoIndex: " .. tostring(objectInfoIndex))
+    end
+
+    if g_currentMission.isServer then
+        placeable.spec_objectStorage:removeAbstractObjectsFromStorage(objectInfoIndex, amount, nil)
+    else
+        local ok, err = pcall(function()
+            g_client:getServerConnection():sendEvent(
+                PlaceableObjectStorageUnloadEvent.new(placeable, objectInfoIndex, amount)
+            )
+        end)
+        if not ok then
+            error("Failed to send PlaceableObjectStorageUnloadEvent: " .. tostring(err))
+        end
+    end
+end
 
 -- ---------------------------------------------------------------------------
 -- AutoDrive commands

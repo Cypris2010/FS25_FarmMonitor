@@ -208,31 +208,33 @@ func handleSavegame() http.HandlerFunc {
 
 func handleCommand(dataDir string) http.HandlerFunc {
 	type jsonCommand struct {
-		ID       string `json:"id"`
-		Cmd      string `json:"cmd"`
-		UniqueID string `json:"uniqueId,omitempty"`
-		FillType string `json:"fillType,omitempty"`
-		Mode     string `json:"mode,omitempty"`
-		Amount   string `json:"amount,omitempty"`
-		X        string `json:"x,omitempty"`
-		Y        string `json:"y,omitempty"`
-		Z        string `json:"z,omitempty"`
-		Marker1  string `json:"marker1,omitempty"`
-		Marker2  string `json:"marker2,omitempty"`
+		ID              string `json:"id"`
+		Cmd             string `json:"cmd"`
+		UniqueID        string `json:"uniqueId,omitempty"`
+		FillType        string `json:"fillType,omitempty"`
+		Mode            string `json:"mode,omitempty"`
+		Amount          string `json:"amount,omitempty"`
+		X               string `json:"x,omitempty"`
+		Y               string `json:"y,omitempty"`
+		Z               string `json:"z,omitempty"`
+		Marker1         string `json:"marker1,omitempty"`
+		Marker2         string `json:"marker2,omitempty"`
+		ObjectInfoIndex string `json:"objectInfoIndex,omitempty"`
 	}
 	type xmlCommand struct {
-		XMLName  xml.Name `xml:"command"`
-		ID       string   `xml:"id,attr"`
-		Cmd      string   `xml:"cmd,attr"`
-		UniqueID string   `xml:"uniqueId,attr"`
-		FillType string   `xml:"fillType,attr"`
-		Mode     string   `xml:"mode,attr"`
-		Amount   string   `xml:"amount,attr"`
-		X        string   `xml:"x,attr"`
-		Y        string   `xml:"y,attr"`
-		Z        string   `xml:"z,attr"`
-		Marker1  string   `xml:"marker1,attr"`
-		Marker2  string   `xml:"marker2,attr"`
+		XMLName         xml.Name `xml:"command"`
+		ID              string   `xml:"id,attr"`
+		Cmd             string   `xml:"cmd,attr"`
+		UniqueID        string   `xml:"uniqueId,attr"`
+		FillType        string   `xml:"fillType,attr"`
+		Mode            string   `xml:"mode,attr"`
+		Amount          string   `xml:"amount,attr"`
+		X               string   `xml:"x,attr"`
+		Y               string   `xml:"y,attr"`
+		Z               string   `xml:"z,attr"`
+		Marker1         string   `xml:"marker1,attr"`
+		Marker2         string   `xml:"marker2,attr"`
+		ObjectInfoIndex string   `xml:"objectInfoIndex,attr"`
 	}
 	type xmlCommands struct {
 		XMLName  xml.Name     `xml:"commands"`
@@ -259,17 +261,18 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		}
 
 		newCmd := xmlCommand{
-			ID:       cmd.ID,
-			Cmd:      cmd.Cmd,
-			UniqueID: cmd.UniqueID,
-			FillType: cmd.FillType,
-			Mode:     cmd.Mode,
-			Amount:   cmd.Amount,
-			X:        cmd.X,
-			Y:        cmd.Y,
-			Z:        cmd.Z,
-			Marker1:  cmd.Marker1,
-			Marker2:  cmd.Marker2,
+			ID:              cmd.ID,
+			Cmd:             cmd.Cmd,
+			UniqueID:        cmd.UniqueID,
+			FillType:        cmd.FillType,
+			Mode:             cmd.Mode,
+			Amount:           cmd.Amount,
+			X:                cmd.X,
+			Y:                cmd.Y,
+			Z:                cmd.Z,
+			Marker1:          cmd.Marker1,
+			Marker2:          cmd.Marker2,
+			ObjectInfoIndex:  cmd.ObjectInfoIndex,
 		}
 
 		mu.Lock()
