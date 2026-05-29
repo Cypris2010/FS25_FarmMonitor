@@ -21,6 +21,7 @@ FarmMonitor.fillTypesExported   = false
 FarmMonitor.animalFoodExported  = false
 FarmMonitor.fruitTypesExported  = false
 FarmMonitor.mapMetaExported     = false
+FarmMonitor.fieldMetaExported   = false
 FarmMonitor.hotspotsExported          = false
 FarmMonitor.vehicleCategoriesExported = false
 FarmMonitor.autoDriveMarkersExported  = false
@@ -29,6 +30,7 @@ FarmMonitor.savegameId          = nil
 FarmMonitor.savegameDirectory   = nil
 FarmMonitor.savegameInfoReady   = false  -- true once savegame info is known (server: after XML read; client: after event or timeout)
 FarmMonitor.savegameInfoTimeout = 10000  -- ms: give up waiting for server event after this long
+FarmMonitor.savegameRequestSent = false  -- true once client has sent FarmMonitorRequestEvent to server
 FarmMonitor.palletInfoCache     = nil  -- built once per session by buildPalletInfoCache()
 
 addModEventListener(FarmMonitor)
@@ -72,6 +74,40 @@ function FarmMonitorSavegameEvent:run(connection)
 end
 
 -- ---------------------------------------------------------------------------
+-- Network Event: Request savegame info (Client → Server)
+-- ---------------------------------------------------------------------------
+
+FarmMonitorRequestEvent = {}
+FarmMonitorRequestEvent_mt = Class(FarmMonitorRequestEvent, Event)
+InitEventClass(FarmMonitorRequestEvent, "FarmMonitorRequestEvent")
+
+function FarmMonitorRequestEvent.emptyNew()
+    return Event.new(FarmMonitorRequestEvent_mt)
+end
+
+function FarmMonitorRequestEvent.new()
+    return FarmMonitorRequestEvent.emptyNew()
+end
+
+function FarmMonitorRequestEvent:writeStream(streamId, connection)
+    -- no payload needed
+end
+
+function FarmMonitorRequestEvent:readStream(streamId, connection)
+    self:run(connection)
+end
+
+function FarmMonitorRequestEvent:run(connection)
+    -- Called on the SERVER when a client requests savegame info
+    if FarmMonitor.savegameName ~= nil and FarmMonitor.savegameId ~= nil then
+        connection:sendEvent(FarmMonitorSavegameEvent.new(FarmMonitor.savegameName, FarmMonitor.savegameId))
+        print("[FarmMonitor] Sent savegame info to requesting client: " .. FarmMonitor.savegameId)
+    else
+        print("[FarmMonitor] RequestEvent received but savegame info not yet available")
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
@@ -86,6 +122,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.animalFood   = outputDir .. "animalFood.json"
     FarmMonitor.paths.goods        = outputDir .. "goods.json"
     FarmMonitor.paths.fields       = outputDir .. "fields.json"
+    FarmMonitor.paths.fieldMeta    = outputDir .. "fieldMeta.json"
     FarmMonitor.paths.fruitTypes   = outputDir .. "fruitTypes.json"
     FarmMonitor.paths.mapMeta      = outputDir .. "mapMeta.json"
     FarmMonitor.paths.hotspots     = outputDir .. "hotspots.json"
@@ -102,18 +139,10 @@ end
 function FarmMonitor:deleteMap()
 end
 
-function FarmMonitor:onClientJoined(connection)
-    -- Server sends cached savegame info to the newly connected client
-    if FarmMonitor.savegameName ~= nil and FarmMonitor.savegameId ~= nil then
-        connection:sendEvent(FarmMonitorSavegameEvent.new(FarmMonitor.savegameName, FarmMonitor.savegameId))
-    end
-end
-
 function FarmMonitor:update(dt)
     if g_currentMission == nil or not g_currentMission.isMissionStarted then
         return
     end
-    if g_dedicatedServer ~= nil then return end
 
     -- Detect savegame change: reset state so files are re-exported for the new savegame
     local currentDir = g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory
@@ -123,10 +152,12 @@ function FarmMonitor:update(dt)
         FarmMonitor.savegameId          = nil
         FarmMonitor.savegameInfoReady   = false
         FarmMonitor.savegameInfoTimeout = 10000
+        FarmMonitor.savegameRequestSent = false
         FarmMonitor.fillTypesExported  = false
         FarmMonitor.animalFoodExported = false
         FarmMonitor.fruitTypesExported = false
         FarmMonitor.mapMetaExported    = false
+        FarmMonitor.fieldMetaExported  = false
         FarmMonitor.hotspotsExported          = false
         FarmMonitor.vehicleCategoriesExported = false
         FarmMonitor.autoDriveLastMaxId        = 0
@@ -139,11 +170,26 @@ function FarmMonitor:update(dt)
 
     if not FarmMonitor.savegameInfoReady then
         if g_server ~= nil then
-            -- Singleplayer or MP host: read directly from careerSavegame.xml
+            -- Singleplayer, MP host, or Dedicated Server: read directly from careerSavegame.xml
             FarmMonitor.savegameName, FarmMonitor.savegameId = FarmMonitor:readSavegameInfo()
+            if FarmMonitor.savegameId == nil then
+                -- savegameDirectory not yet available (new unsaved game) — use fallback and retry next tick
+                local mi = g_currentMission and g_currentMission.missionInfo
+                FarmMonitor.savegameName = FarmMonitor.savegameName or "unknown"
+                FarmMonitor.savegameId   = ((mi and mi.mapId) or "unknown") .. "_unsaved"
+                print("[FarmMonitor] savegameDirectory not yet set, using fallback id: " .. FarmMonitor.savegameId)
+            end
             FarmMonitor.savegameInfoReady = true
         else
-            -- MP client: wait for FarmMonitorSavegameEvent from server.
+            -- MP client: request savegame info from server (pull model).
+            if not FarmMonitor.savegameRequestSent and g_client ~= nil then
+                local serverConn = g_client:getServerConnection()
+                if serverConn ~= nil then
+                    serverConn:sendEvent(FarmMonitorRequestEvent.new())
+                    FarmMonitor.savegameRequestSent = true
+                    print("[FarmMonitor] Sent savegame info request to server")
+                end
+            end
             -- Count down timeout — if it expires, proceed with fallbacks so exports aren't blocked forever.
             FarmMonitor.savegameInfoTimeout = FarmMonitor.savegameInfoTimeout - dt
             if FarmMonitor.savegameInfoTimeout <= 0 then
@@ -156,6 +202,10 @@ function FarmMonitor:update(dt)
             return  -- don't export anything yet
         end
     end
+
+    -- Dedicated Server: savegame info is now set (so onClientJoined can send it),
+    -- but skip all file exports — no local player, no output directory needed.
+    if g_dedicatedServer ~= nil then return end
 
     if not FarmMonitor.modInfoExported then
         FarmMonitor:exportModInfo()
@@ -180,6 +230,11 @@ function FarmMonitor:update(dt)
     if not FarmMonitor.mapMetaExported then
         FarmMonitor:exportMapMeta()
         FarmMonitor.mapMetaExported = true
+    end
+
+    if not FarmMonitor.fieldMetaExported then
+        FarmMonitor:exportFieldMeta()
+        FarmMonitor.fieldMetaExported = true
     end
 
     if not FarmMonitor.hotspotsExported then
@@ -629,14 +684,30 @@ function FarmMonitor:exportMapMeta()
         local terrainSize = mission.terrainSize or 2048
 
         local mapName = ""
-        if g_mapManager ~= nil and missionInfo.mapId ~= nil then
-            local mapEntry = g_mapManager:getMapById(missionInfo.mapId)
-            if mapEntry ~= nil then mapName = mapEntry.title or "" end
-        end
-
         local overviewDdsPath = ""
         if missionInfo.baseDirectory ~= nil then
             overviewDdsPath = missionInfo.baseDirectory .. "overview.dds"
+        end
+        if g_mapManager ~= nil and missionInfo.mapId ~= nil then
+            local mapEntry = g_mapManager:getMapById(missionInfo.mapId)
+            if mapEntry ~= nil then
+                mapName = mapEntry.title or ""
+                local cfgFile = mapEntry.configFilename or mapEntry.xmlFilename or mapEntry.filename or mapEntry.mapXMLFilename
+                if cfgFile ~= nil and missionInfo.baseDirectory ~= nil then
+                    local mapXMLPath = missionInfo.baseDirectory .. cfgFile
+                    local xmlId = loadXMLFile("FarmMonitor_mapMeta", mapXMLPath)
+                    if xmlId ~= nil and xmlId ~= 0 then
+                        local imgFilename = getXMLString(xmlId, "map#imageFilename")
+                        if imgFilename ~= nil and imgFilename ~= "" then
+                            local resolved = Utils.getFilename(imgFilename, missionInfo.baseDirectory)
+                            if resolved ~= nil and resolved ~= "" then
+                                overviewDdsPath = resolved:gsub("%.png$", ".dds"):gsub("%.PNG$", ".dds")
+                            end
+                        end
+                        delete(xmlId)
+                    end
+                end
+            end
         end
 
         FarmMonitor:writeJSON(FarmMonitor.paths.mapMeta, FarmMonitor.obj(
@@ -2185,6 +2256,51 @@ local function computeSoilStatus(field, samplers)
     end
 
     return s
+end
+
+-- ---------------------------------------------------------------------------
+-- Field metadata  (written once per session — density-map max values)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:exportFieldMeta()
+    local ok, err = pcall(function()
+        local mission = g_currentMission
+        if mission == nil or mission.fieldGroundSystem == nil or FieldDensityMap == nil then return end
+        local fgs = mission.fieldGroundSystem
+
+        local sprayMax = 2
+        local limeMax  = 3
+        local plowMax  = 1
+        local mulchMax = 1
+        if fgs.getMaxValue ~= nil then
+            sprayMax = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL)         or sprayMax
+            limeMax  = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL)          or limeMax
+            plowMax  = fgs:getMaxValue(FieldDensityMap.PLOW_LEVEL)          or plowMax
+            mulchMax = fgs:getMaxValue(FieldDensityMap.STUBBLE_SHRED_LEVEL) or mulchMax
+        end
+
+        -- Weed: derive max value from number of density-map channels (2^numCh - 1)
+        local weedMax = 15
+        if mission.weedSystem ~= nil and mission.weedSystem.getDensityMapData ~= nil then
+            local wok, _, _, numCh = pcall(function() return mission.weedSystem:getDensityMapData() end)
+            if wok and numCh ~= nil and numCh > 0 then
+                weedMax = math.pow(2, numCh) - 1
+            end
+        end
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.fieldMeta, FarmMonitor.obj(
+            "savegameId",           FarmMonitor.savegameId,
+            "sprayLevelMax",        sprayMax,
+            "limeLevelMax",         limeMax,
+            "plowLevelMax",         plowMax,
+            "stubbleShredLevelMax", mulchMax,
+            "weedStateMax",         weedMax,
+            "stoneLevelMax",        4
+        ))
+    end)
+    if not ok then
+        print("[FarmMonitor] ERROR writing fieldMeta.json: " .. tostring(err))
+    end
 end
 
 function FarmMonitor:collectAndSaveFields()

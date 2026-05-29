@@ -462,39 +462,46 @@ func (c *mapCache) getPNG() []byte {
 	return c.overviewPNG
 }
 
-// readOverviewDDS reads overview.dds from disk.
+// readOverviewDDS reads the map overview image from disk.
 // FS25 mods are often installed as zips — the game loads them directly without
-// extracting. missionInfo.baseDirectory returns a folder path without ".zip",
-// so the file may not exist on disk. As a fallback we look for a .zip next to
-// the expected folder and read the file from inside it.
+// extracting. missionInfo.baseDirectory returns a folder path without ".zip".
+// We walk up the directory tree looking for a .zip sibling, because the image
+// may live in a subdirectory inside the zip (e.g. NFMarsch/pda_map_H.dds inside
+// FS25_NFMarsch4fach.zip).
 func readOverviewDDS(ddsPath string) ([]byte, error) {
 	// Fast path: file exists directly
 	if data, err := os.ReadFile(ddsPath); err == nil {
 		return data, nil
 	}
-	// Fallback: mod is a zip — derive zip path from the directory component
-	// e.g. /path/to/FS25_Thueringen_2_0/overview.dds
-	//   →  /path/to/FS25_Thueringen_2_0.zip  (read "overview.dds" inside)
-	dir := filepath.Dir(ddsPath)
 	base := filepath.Base(ddsPath)
-	zipPath := dir + ".zip"
-	zr, err := zip.OpenReader(zipPath)
-	if err != nil {
-		return nil, fmt.Errorf("file not found and no zip at %s: %w", zipPath, err)
-	}
-	defer zr.Close()
-	for _, f := range zr.File {
-		// Match by filename only — ignore sub-directory prefix inside zip
-		if strings.EqualFold(filepath.Base(f.Name), base) {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, fmt.Errorf("zip open %s: %w", f.Name, err)
+	// Walk up the directory tree — try dir.zip, then parent.zip, etc.
+	dir := filepath.Dir(ddsPath)
+	for {
+		zipPath := dir + ".zip"
+		if zr, err := zip.OpenReader(zipPath); err == nil {
+			for _, f := range zr.File {
+				// Match by filename only — ignore sub-directory prefix inside zip
+				if strings.EqualFold(filepath.Base(f.Name), base) {
+					rc, err := f.Open()
+					if err != nil {
+						zr.Close()
+						return nil, fmt.Errorf("zip open %s: %w", f.Name, err)
+					}
+					data, err := io.ReadAll(rc)
+					rc.Close()
+					zr.Close()
+					return data, err
+				}
 			}
-			defer rc.Close()
-			return io.ReadAll(rc)
+			zr.Close()
 		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
 	}
-	return nil, fmt.Errorf("overview.dds not found in %s", zipPath)
+	return nil, fmt.Errorf("map overview %q not found on disk or in any parent zip", base)
 }
 
 func (c *mapCache) rebuild(metaPath string) {
