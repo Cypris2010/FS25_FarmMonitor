@@ -4833,7 +4833,7 @@ function worldToMap(wx, wz, terrainSize) {
 
 function applyMapTransform() {
   document.getElementById('map-inner').style.transform =
-    `translate3d(${mapPanX}px,${mapPanY}px,0) scale(${mapZoom})`;
+    `translate(${mapPanX}px,${mapPanY}px) scale(${mapZoom})`;
   const iconS = (1 / mapZoom).toFixed(4);
   document.querySelectorAll('.vehicle-rot-scale').forEach(el => {
     el.style.transform = `rotate(${el.dataset.deg}deg) scale(${iconS})`;
