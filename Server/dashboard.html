@@ -1767,12 +1767,8 @@
 
   /* ── Vehicle detail panel (slide-in from right) ── */
   .vd-overlay {
-    position: fixed; inset: 0; z-index: 1100;
-    background: rgba(0,0,0,0); pointer-events: none;
-    transition: background .25s;
-  }
-  .vd-overlay.open {
-    background: rgba(0,0,0,0.55); pointer-events: auto;
+    position: fixed; top: 0; right: 0; bottom: 0; width: 0;
+    z-index: 1100; pointer-events: none;
   }
   .vd-panel {
     position: absolute; top: 0; right: 0; bottom: 0;
@@ -1782,10 +1778,12 @@
     display: flex; flex-direction: row;
     transform: translateX(100%);
     transition: transform .3s cubic-bezier(0.32,0,0.15,1);
+    pointer-events: none;
     /* No overflow:hidden here — it blocks the AD panel from expanding */
   }
   .vd-overlay.open .vd-panel {
     transform: translateX(0);
+    pointer-events: auto;
   }
   /* Main scrollable content column — fixed at 550px, never shrinks */
   .vd-main {
@@ -4875,7 +4873,7 @@ function initMapInteraction() {
   });
   container.addEventListener('click', e => {
     const dx = e.clientX - _clickStartX, dy = e.clientY - _clickStartY;
-    if (Math.sqrt(dx*dx + dy*dy) < 6) closeMapDetail();
+    if (Math.sqrt(dx*dx + dy*dy) < 6) { closeMapDetail(); closeVehicleDetail(); }
   });
   window.addEventListener('mousemove', e => {
     if (!dragging) return;
@@ -5424,6 +5422,8 @@ function _renderVehicleDetailThrottled() {
 }
 
 function openVehicleDetail(id) {
+  // Close map detail panel if open
+  closeMapDetail();
   _vdCurrentId = id;
   // Resolve root so AD panel and re-render always target the root vehicle
   const stateList = appData?.vehicles?.vehicles || [];
@@ -5432,9 +5432,11 @@ function openVehicleDetail(id) {
   _renderVehicleDetail(id);
   const overlay = document.getElementById('vehicle-detail-overlay');
   overlay.style.display = '';
-  // Force reflow so transition plays
-  overlay.offsetHeight; // eslint-disable-line no-unused-expressions
-  overlay.classList.add('open');
+  // Force reflow so transition plays only on first open (not on vehicle swap)
+  if (!overlay.classList.contains('open')) {
+    overlay.offsetHeight; // eslint-disable-line no-unused-expressions
+    overlay.classList.add('open');
+  }
 }
 
 function closeVehicleDetail() {
@@ -6666,6 +6668,8 @@ function openMapDetail(type, id) {
     openVehicleDetail(id);
     return;
   }
+  // Close vehicle detail if open
+  closeVehicleDetail();
   _mdpCurrent = { type, id };
   const panel = document.getElementById('map-detail-panel');
   const body  = document.getElementById('mdp-body');
@@ -6907,7 +6911,7 @@ connect();
 
 <!-- Fleet Settings Modal -->
 <!-- Vehicle detail panel -->
-<div id="vehicle-detail-overlay" class="vd-overlay" onclick="if(event.target===this)closeVehicleDetail()">
+<div id="vehicle-detail-overlay" class="vd-overlay">
   <div class="vd-panel" id="vd-panel" role="dialog" aria-modal="true">
     <!-- Main content column -->
     <div class="vd-main">
