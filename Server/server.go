@@ -645,6 +645,29 @@ func handleMapHeightmap(dataDir string) http.HandlerFunc {
 	}
 }
 
+var validLayers = map[string]bool{
+	"weed": true, "stone": true, "plow": true,
+	"spray": true, "lime": true, "mulch": true, "roller": true,
+}
+
+func handleMapLayer(dataDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		if !validLayers[name] {
+			http.Error(w, "unknown layer", http.StatusNotFound)
+			return
+		}
+		data, err := os.ReadFile(filepath.Join(dataDir, "layer_"+name+".json"))
+		if err != nil {
+			http.Error(w, "layer not available", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=55")
+		w.Write(data)
+	}
+}
+
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -838,6 +861,7 @@ func main() {
 	mc := newMapCache()
 	go watchAndRebuildMap(filepath.Join(dataDir, "mapMeta.json"), mc)
 
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleDashboard)
 	mux.HandleFunc("/api/data", handleData(dataDir))
@@ -849,6 +873,7 @@ func main() {
 	mux.HandleFunc("/api/command", handleCommand(dataDir))
 	mux.HandleFunc("/api/map/overview", handleMapOverview(mc))
 	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
+	mux.HandleFunc("/api/map/layer/{name}", handleMapLayer(dataDir))
 
 	fmt.Print(`
 ▄▖▄▖▄▖▄▖  ▄▖       ▖  ▖    ▘▗       ▄▖

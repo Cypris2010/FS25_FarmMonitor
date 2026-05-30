@@ -15,6 +15,8 @@ FarmMonitor.vehicleMetaInterval = 10000  -- milliseconds between vehicle meta ex
 FarmMonitor.vehicleMetaTimer    = 10000  -- start at max so first export fires immediately
 FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
 FarmMonitor.commandTimer      = 0
+FarmMonitor.soilMapInterval   = 60000  -- milliseconds between soil map bitmap exports
+FarmMonitor.soilMapTimer      = 60000  -- start at max so first export fires immediately
 FarmMonitor.paths             = {}
 FarmMonitor.modInfoExported       = false
 FarmMonitor.fillTypesExported   = false
@@ -133,6 +135,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.modInfo           = outputDir .. "modInfo.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
+    FarmMonitor.paths.outputDir   = outputDir
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -165,6 +168,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.autoDriveRetryTimer       = 4500  -- ersten Versuch nach 0.5s
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval      -- trigger field export on next tick
+        FarmMonitor.soilMapTimer       = FarmMonitor.soilMapInterval    -- trigger soil map export on next tick
         FarmMonitor.vehicleMetaTimer   = FarmMonitor.vehicleMetaInterval -- trigger meta export on next tick
     end
 
@@ -283,6 +287,12 @@ function FarmMonitor:update(dt)
     if FarmMonitor.commandTimer >= FarmMonitor.commandInterval then
         FarmMonitor.commandTimer = 0
         FarmMonitor:processCommands()
+    end
+
+    FarmMonitor.soilMapTimer = FarmMonitor.soilMapTimer + dt
+    if FarmMonitor.soilMapTimer >= FarmMonitor.soilMapInterval then
+        FarmMonitor.soilMapTimer = 0
+        FarmMonitor:exportSoilMaps()
     end
 end
 
@@ -2505,6 +2515,94 @@ function FarmMonitor:collectAndSaveVehicleMeta()
     if not ok then
         print("[FarmMonitor] ERROR during vehicleMeta collect: " .. tostring(err))
     end
+end
+
+function FarmMonitor:exportSoilMaps()
+    if not g_currentMission or not g_currentMission.isMissionStarted then return end
+
+    local mission = g_currentMission
+    local fgs = mission.fieldGroundSystem
+    if fgs == nil or FieldDensityMap == nil or DensityCoordType == nil then return end
+
+    local outputDir = FarmMonitor.paths.outputDir
+    if outputDir == nil then return end
+
+    local terrainSize = mission.terrainSize or 2048
+    local res = 128
+    local cellSize = terrainSize / res
+    local half = terrainSize / 2
+
+    local layerDefs = {
+        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, minVal = 1 },
+        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, minVal = 2 },
+        { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1 },
+        { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL) },
+        { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL) },
+        { name = "mulch",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL) end,  minVal = 1 },
+        { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1 },
+    }
+
+    local exported = 0
+    for _, def in ipairs(layerDefs) do
+        local ok, mapId, firstCh, numCh = pcall(def.getMap)
+        if ok and mapId ~= nil then
+            local mod = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
+            local flt = DensityMapFilter.new(mod)
+            local maxVal = def.maxVal
+            local minVal = def.minVal or 1
+
+            -- Sample entire terrain grid into a flat array
+            local values = {}
+            for zi = 0, res - 1 do
+                for xi = 0, res - 1 do
+                    local wx = -half + xi * cellSize
+                    local wz = -half + zi * cellSize
+                    mod:setParallelogramWorldCoords(
+                        wx, wz, wx + cellSize, wz, wx, wz + cellSize,
+                        DensityCoordType.POINT_POINT_POINT)
+
+                    local v = 0
+                    if maxVal then
+                        for lv = maxVal, 1, -1 do
+                            flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
+                            local _, area, _ = mod:executeGet(flt)
+                            if area > 0 then
+                                v = math.floor(lv / maxVal * 255)
+                                break
+                            end
+                        end
+                    else
+                        -- EQUAL-only scan: GREATER_OR_EQUAL not available in mod sandbox
+                        for lv = 7, minVal, -1 do
+                            flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
+                            local _, area, _ = mod:executeGet(flt)
+                            if area > 0 then
+                                v = 255
+                                break
+                            end
+                        end
+                    end
+                    values[#values + 1] = v
+                end
+            end
+
+            -- Write compact JSON directly (avoid custom encoder overhead for large arrays)
+            local writeOk, writeErr = pcall(function()
+                local f = io.open(outputDir .. "layer_" .. def.name .. ".json", "w")
+                if f == nil then error("cannot open file") end
+                f:write('{"layer":"' .. def.name .. '","res":' .. res .. ',"data":[')
+                f:write(table.concat(values, ","))
+                f:write(']}')
+                f:close()
+            end)
+            if writeOk then
+                exported = exported + 1
+            else
+                print("[FarmMonitor] ERROR writing layer_" .. def.name .. ": " .. tostring(writeErr))
+            end
+        end
+    end
+    print("[FarmMonitor] Soil layers exported (" .. exported .. "/7)")
 end
 
 function FarmMonitor:collectAndSaveVehicles()
