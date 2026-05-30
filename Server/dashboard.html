@@ -5116,7 +5116,7 @@ function renderSoilLayerData(name, data) {
     const dataUrl = canvas.toDataURL('image/png');
     _applySoilLayerImage(name, dataUrl);
   };
-  _blurWorker.postMessage({ values, res, rad: 2, r, g, b, name });
+  _blurWorker.postMessage({ values, res, rad: 0, r, g, b, name });
 }
 
 function _applySoilLayerImage(name, dataUrl) {
@@ -5130,7 +5130,7 @@ function _applySoilLayerImage(name, dataUrl) {
     img.setAttribute('width', String(MAP_PX * 0.5));
     img.setAttribute('height', String(MAP_PX * 0.5));
     img.setAttribute('preserveAspectRatio', 'none');
-    img.style.imageRendering = 'auto';
+    img.style.imageRendering = 'pixelated';
     img.style.pointerEvents = 'none';
     layer.appendChild(img);
     soilLayerElements[name] = img;

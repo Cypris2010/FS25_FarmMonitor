@@ -2527,7 +2527,7 @@ function FarmMonitor:initSoilState()
     if outputDir == nil then return nil end
 
     local terrainSize = mission.terrainSize or 2048
-    local res = 256
+    local res = 512
 
     local defs = {
         { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, minVal = 1 },
@@ -2564,7 +2564,7 @@ function FarmMonitor:initSoilState()
         res         = res,
         cellSize    = terrainSize / res,
         half        = terrainSize / 2,
-        rowsPerTick = 8,          -- A: rows sampled per update() tick
+        rowsPerTick = 4,          -- A: rows sampled per update() tick
         layerIdx    = 1,          -- C: current layer in round-robin
         currentRow  = 0,          -- A: next row to sample
         values      = {},         -- accumulator for current layer
