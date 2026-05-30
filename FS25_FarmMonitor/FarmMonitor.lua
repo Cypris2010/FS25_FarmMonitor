@@ -15,8 +15,7 @@ FarmMonitor.vehicleMetaInterval = 10000  -- milliseconds between vehicle meta ex
 FarmMonitor.vehicleMetaTimer    = 10000  -- start at max so first export fires immediately
 FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
 FarmMonitor.commandTimer      = 0
-FarmMonitor.soilMapInterval   = 60000  -- milliseconds between soil map bitmap exports
-FarmMonitor.soilMapTimer      = 60000  -- start at max so first export fires immediately
+FarmMonitor.soilState         = nil    -- incremental soil export state machine
 FarmMonitor.paths             = {}
 FarmMonitor.modInfoExported       = false
 FarmMonitor.fillTypesExported   = false
@@ -168,7 +167,7 @@ function FarmMonitor:update(dt)
         FarmMonitor.autoDriveRetryTimer       = 4500  -- ersten Versuch nach 0.5s
         FarmMonitor.timer              = 0
         FarmMonitor.fieldTimer         = FarmMonitor.fieldInterval      -- trigger field export on next tick
-        FarmMonitor.soilMapTimer       = FarmMonitor.soilMapInterval    -- trigger soil map export on next tick
+        FarmMonitor.soilState          = nil                             -- reset incremental soil export
         FarmMonitor.vehicleMetaTimer   = FarmMonitor.vehicleMetaInterval -- trigger meta export on next tick
     end
 
@@ -289,10 +288,12 @@ function FarmMonitor:update(dt)
         FarmMonitor:processCommands()
     end
 
-    FarmMonitor.soilMapTimer = FarmMonitor.soilMapTimer + dt
-    if FarmMonitor.soilMapTimer >= FarmMonitor.soilMapInterval then
-        FarmMonitor.soilMapTimer = 0
-        FarmMonitor:exportSoilMaps()
+    -- Incremental soil layer export: runs every tick, samples a few rows at a time
+    if FarmMonitor.soilState == nil then
+        FarmMonitor.soilState = FarmMonitor:initSoilState()
+    end
+    if FarmMonitor.soilState ~= nil then
+        FarmMonitor:stepSoilExport()
     end
 end
 
@@ -2517,22 +2518,18 @@ function FarmMonitor:collectAndSaveVehicleMeta()
     end
 end
 
-function FarmMonitor:exportSoilMaps()
-    if not g_currentMission or not g_currentMission.isMissionStarted then return end
-
+function FarmMonitor:initSoilState()
+    if not g_currentMission or not g_currentMission.isMissionStarted then return nil end
     local mission = g_currentMission
     local fgs = mission.fieldGroundSystem
-    if fgs == nil or FieldDensityMap == nil or DensityCoordType == nil then return end
-
+    if fgs == nil or FieldDensityMap == nil or DensityCoordType == nil then return nil end
     local outputDir = FarmMonitor.paths.outputDir
-    if outputDir == nil then return end
+    if outputDir == nil then return nil end
 
     local terrainSize = mission.terrainSize or 2048
-    local res = 128
-    local cellSize = terrainSize / res
-    local half = terrainSize / 2
+    local res = 256
 
-    local layerDefs = {
+    local defs = {
         { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, minVal = 1 },
         { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, minVal = 2 },
         { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1 },
@@ -2542,67 +2539,105 @@ function FarmMonitor:exportSoilMaps()
         { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1 },
     }
 
-    local exported = 0
-    for _, def in ipairs(layerDefs) do
+    -- Build cached modifier/filter per layer (mapId is stable across frames)
+    local layers = {}
+    for _, def in ipairs(defs) do
         local ok, mapId, firstCh, numCh = pcall(def.getMap)
         if ok and mapId ~= nil then
             local mod = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
-            local flt = DensityMapFilter.new(mod)
-            local maxVal = def.maxVal
-            local minVal = def.minVal or 1
-
-            -- Sample entire terrain grid into a flat array
-            local values = {}
-            for zi = 0, res - 1 do
-                for xi = 0, res - 1 do
-                    local wx = -half + xi * cellSize
-                    local wz = -half + zi * cellSize
-                    mod:setParallelogramWorldCoords(
-                        wx, wz, wx + cellSize, wz, wx, wz + cellSize,
-                        DensityCoordType.POINT_POINT_POINT)
-
-                    local v = 0
-                    if maxVal then
-                        for lv = maxVal, 1, -1 do
-                            flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
-                            local _, area, _ = mod:executeGet(flt)
-                            if area > 0 then
-                                v = math.floor(lv / maxVal * 255)
-                                break
-                            end
-                        end
-                    else
-                        -- EQUAL-only scan: GREATER_OR_EQUAL not available in mod sandbox
-                        for lv = 7, minVal, -1 do
-                            flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
-                            local _, area, _ = mod:executeGet(flt)
-                            if area > 0 then
-                                v = 255
-                                break
-                            end
-                        end
-                    end
-                    values[#values + 1] = v
-                end
-            end
-
-            -- Write compact JSON directly (avoid custom encoder overhead for large arrays)
-            local writeOk, writeErr = pcall(function()
-                local f = io.open(outputDir .. "layer_" .. def.name .. ".json", "w")
-                if f == nil then error("cannot open file") end
-                f:write('{"layer":"' .. def.name .. '","res":' .. res .. ',"data":[')
-                f:write(table.concat(values, ","))
-                f:write(']}')
-                f:close()
-            end)
-            if writeOk then
-                exported = exported + 1
-            else
-                print("[FarmMonitor] ERROR writing layer_" .. def.name .. ": " .. tostring(writeErr))
-            end
+            layers[#layers + 1] = {
+                name   = def.name,
+                mod    = mod,
+                flt    = DensityMapFilter.new(mod),
+                maxVal = def.maxVal,
+                minVal = def.minVal or 1,
+            }
         end
     end
-    print("[FarmMonitor] Soil layers exported (" .. exported .. "/7)")
+
+    if #layers == 0 then return nil end
+
+    return {
+        layers      = layers,
+        outputDir   = outputDir,
+        terrainSize = terrainSize,
+        res         = res,
+        cellSize    = terrainSize / res,
+        half        = terrainSize / 2,
+        rowsPerTick = 8,          -- A: rows sampled per update() tick
+        layerIdx    = 1,          -- C: current layer in round-robin
+        currentRow  = 0,          -- A: next row to sample
+        values      = {},         -- accumulator for current layer
+    }
+end
+
+function FarmMonitor:stepSoilExport()
+    local st = FarmMonitor.soilState
+    local layer = st.layers[st.layerIdx]
+    if layer == nil then return end
+
+    local mod      = layer.mod
+    local flt      = layer.flt
+    local maxVal   = layer.maxVal
+    local minVal   = layer.minVal
+    local res      = st.res
+    local cellSize = st.cellSize
+    local half     = st.half
+    local endRow   = math.min(st.currentRow + st.rowsPerTick - 1, res - 1)
+
+    for zi = st.currentRow, endRow do
+        for xi = 0, res - 1 do
+            local wx = -half + xi * cellSize
+            local wz = -half + zi * cellSize
+            mod:setParallelogramWorldCoords(
+                wx, wz, wx + cellSize, wz, wx, wz + cellSize,
+                DensityCoordType.POINT_POINT_POINT)
+
+            local v = 0
+            if maxVal then
+                for lv = maxVal, 1, -1 do
+                    flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
+                    local _, area, _ = mod:executeGet(flt)
+                    if area > 0 then
+                        v = math.floor(lv / maxVal * 255)
+                        break
+                    end
+                end
+            else
+                -- EQUAL-only scan: GREATER_OR_EQUAL not available in mod sandbox
+                for lv = 7, minVal, -1 do
+                    flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
+                    local _, area, _ = mod:executeGet(flt)
+                    if area > 0 then v = 255; break end
+                end
+            end
+            st.values[#st.values + 1] = v
+        end
+    end
+
+    st.currentRow = endRow + 1
+
+    if st.currentRow >= res then
+        -- Layer complete — write file
+        local name = layer.name
+        local vals = st.values
+        local writeOk, writeErr = pcall(function()
+            local f = io.open(st.outputDir .. "layer_" .. name .. ".json", "w")
+            if f == nil then error("cannot open file") end
+            f:write('{"layer":"' .. name .. '","res":' .. res .. ',"data":[')
+            f:write(table.concat(vals, ","))
+            f:write(']}')
+            f:close()
+        end)
+        if not writeOk then
+            print("[FarmMonitor] ERROR writing layer_" .. name .. ": " .. tostring(writeErr))
+        end
+
+        -- Advance to next layer (C: round-robin)
+        st.layerIdx   = (st.layerIdx % #st.layers) + 1
+        st.currentRow = 0
+        st.values     = {}
+    end
 end
 
 function FarmMonitor:collectAndSaveVehicles()

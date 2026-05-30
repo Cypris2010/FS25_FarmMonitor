@@ -2263,6 +2263,15 @@
     flex-direction: column;
     gap: 5px;
   }
+  .legend-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,.35);
+    margin-bottom: 1px;
+    margin-top: 2px;
+  }
+  .legend-divider { border-top: 1px solid rgba(255,255,255,.1); margin: 3px 0; }
   .legend-item { display: flex; align-items: center; gap: 7px; }
   .legend-dot {
     width: 10px; height: 10px;
@@ -2275,27 +2284,6 @@
     border-radius: 3px;
     flex-shrink: 0;
     border: 1px solid rgba(0,0,0,.4);
-  }
-  .map-layer-panel {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: rgba(20,28,20,.85);
-    border: 1px solid rgba(255,255,255,.1);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 11px;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .map-layer-title {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: rgba(255,255,255,.4);
-    margin-bottom: 2px;
   }
   .layer-toggle {
     display: flex;
@@ -2699,8 +2687,21 @@
         <button class="map-btn" id="map-zoom-out" title="Raus">−</button>
         <button class="map-btn" id="map-center"   title="Zentrieren">⌖</button>
       </div>
-      <div class="map-layer-panel">
-        <div class="map-layer-title">Bodenlayer</div>
+      <div class="map-legend">
+        <div class="legend-section-title">Felder</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Erntereif</div>
+        <div class="legend-item"><span class="legend-bar" style="background:linear-gradient(to right,hsl(110,65%,28%),hsl(52,85%,44%))"></span>Wächst</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Vorbereitung nötig</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Vertrocknet</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Leer / Abgeerntet</div>
+        <div class="legend-divider"></div>
+        <div class="legend-section-title">Fahrzeuge</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Traktor</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Mähdrescher</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Anhänger/Gerät</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
+        <div class="legend-divider"></div>
+        <div class="legend-section-title">Bodenlayer</div>
         <label class="layer-toggle"><input type="checkbox" data-layer="weed"   onchange="toggleSoilLayer(this)"> <span class="layer-dot" style="background:#ef4444"></span> Unkraut</label>
         <label class="layer-toggle"><input type="checkbox" data-layer="stone"  onchange="toggleSoilLayer(this)"> <span class="layer-dot" style="background:#9ca3af"></span> Steine</label>
         <label class="layer-toggle"><input type="checkbox" data-layer="plow"   onchange="toggleSoilLayer(this)"> <span class="layer-dot" style="background:#a78bfa"></span> Pflug nötig</label>
@@ -2708,20 +2709,6 @@
         <label class="layer-toggle"><input type="checkbox" data-layer="lime"   onchange="toggleSoilLayer(this)"> <span class="layer-dot" style="background:#fbbf24"></span> Kalk</label>
         <label class="layer-toggle"><input type="checkbox" data-layer="mulch"  onchange="toggleSoilLayer(this)"> <span class="layer-dot" style="background:#92400e"></span> Mulch</label>
         <label class="layer-toggle"><input type="checkbox" data-layer="roller" onchange="toggleSoilLayer(this)"> <span class="layer-dot" style="background:#60a5fa"></span> Walze nötig</label>
-      </div>
-      <div class="map-legend">
-        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Erntereif</div>
-        <div class="legend-item">
-          <span class="legend-bar" style="background:linear-gradient(to right,hsl(110,65%,28%),hsl(52,85%,44%))"></span>Wächst
-        </div>
-        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Vorbereitung nötig</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Vertrocknet</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Leer / Abgeerntet</div>
-        <div style="border-top:1px solid rgba(255,255,255,.1);margin:3px 0"></div>
-        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Traktor</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Mähdrescher</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Anhänger/Gerät</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
       </div>
 
       <!-- Map Detail Backdrop + Panel -->
@@ -5076,7 +5063,6 @@ async function fetchAndRenderSoilLayer(name) {
 
 function renderSoilLayerData(name, data) {
   const layer = document.getElementById('layer-soil');
-  if (soilLayerElements[name]) { soilLayerElements[name].remove(); delete soilLayerElements[name]; }
 
   const res = data.res || 128;
   const values = data.data;
@@ -5084,35 +5070,47 @@ function renderSoilLayerData(name, data) {
 
   const [r, g, b] = SOIL_LAYER_COLORS[name] || [255, 255, 255];
 
-  // Render to offscreen canvas using ImageData (GPU-composited by browser)
-  const canvas = document.createElement('canvas');
-  canvas.width = res;
-  canvas.height = res;
-  const ctx = canvas.getContext('2d');
-  const imgData = ctx.createImageData(res, res);
+  // Raw pixel data at native resolution
+  const raw = document.createElement('canvas');
+  raw.width = res; raw.height = res;
+  const rawCtx = raw.getContext('2d');
+  const imgData = rawCtx.createImageData(res, res);
   const px = imgData.data;
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
     px[i*4]   = r;
     px[i*4+1] = g;
     px[i*4+2] = b;
-    px[i*4+3] = Math.round(v * 0.65);  // alpha = value × opacity
+    px[i*4+3] = Math.round(v * 0.65);
   }
-  ctx.putImageData(imgData, 0, 0);
+  rawCtx.putImageData(imgData, 0, 0);
 
-  // Convert to data URL and embed as SVG image
+  // Upscale 2× with high-quality bilinear interpolation
+  const canvas = document.createElement('canvas');
+  canvas.width = res * 2; canvas.height = res * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(raw, 0, 0, res * 2, res * 2);
+
   const dataUrl = canvas.toDataURL('image/png');
-  const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+
+  // Reuse existing element — only swap href, no DOM structure change → no flicker
+  let img = soilLayerElements[name];
+  if (!img) {
+    img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    img.setAttribute('x', String(MAP_PX * 0.25));
+    img.setAttribute('y', String(MAP_PX * 0.25));
+    img.setAttribute('width', String(MAP_PX * 0.5));
+    img.setAttribute('height', String(MAP_PX * 0.5));
+    img.setAttribute('preserveAspectRatio', 'none');
+    img.style.imageRendering = 'auto';
+    img.style.filter = 'blur(2px)';
+    img.style.pointerEvents = 'none';
+    layer.appendChild(img);
+    soilLayerElements[name] = img;
+  }
   img.setAttribute('href', dataUrl);
-  // Terrain occupies center 50% of SVG space (25% border on each side per overview.dds convention)
-  img.setAttribute('x', String(MAP_PX * 0.25));
-  img.setAttribute('y', String(MAP_PX * 0.25));
-  img.setAttribute('width', String(MAP_PX * 0.5));
-  img.setAttribute('height', String(MAP_PX * 0.5));
-  img.setAttribute('preserveAspectRatio', 'none');
-  img.style.pointerEvents = 'none';
-  layer.appendChild(img);
-  soilLayerElements[name] = img;
 }
 
 function refreshActiveSoilLayers() {
@@ -5120,6 +5118,9 @@ function refreshActiveSoilLayers() {
     fetchAndRenderSoilLayer(name);
   }
 }
+
+// Poll soil layers independently every 30s — decoupled from SSE render cycle
+setInterval(() => { if (activeSoilLayers.size > 0) refreshActiveSoilLayers(); }, 30000);
 
 function renderHotspotPins(hotspotsData, terrainSize) {
   const layer = document.getElementById('layer-hotspots');
@@ -6598,7 +6599,6 @@ function renderMap(data) {
     centerMap();
   }
 
-  refreshActiveSoilLayers();
   updateVehicles(data.vehicles, terrainSize);
 }
 
