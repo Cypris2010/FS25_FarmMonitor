@@ -1539,9 +1539,11 @@
     pointer-events: all;
     cursor: pointer;
     transition: transform 2s linear;
+    will-change: transform;
   }
   .vehicle-rot-scale {
     pointer-events: all;
+    will-change: transform;
   }
   #layer-fields polygon { pointer-events: all; }
   #layer-hotspots .hotspot-pin { pointer-events: all; }
@@ -4831,13 +4833,13 @@ function worldToMap(wx, wz, terrainSize) {
 
 function applyMapTransform() {
   document.getElementById('map-inner').style.transform =
-    `translate(${mapPanX}px,${mapPanY}px) scale(${mapZoom})`;
+    `translate3d(${mapPanX}px,${mapPanY}px,0) scale(${mapZoom})`;
   const iconS = (1 / mapZoom).toFixed(4);
   document.querySelectorAll('.vehicle-rot-scale').forEach(el => {
     el.style.transform = `rotate(${el.dataset.deg}deg) scale(${iconS})`;
   });
   document.querySelectorAll('.hotspot-pin, .field-label').forEach(el => {
-    el.style.transform = `translate(${el.dataset.x}px,${el.dataset.y}px) scale(${iconS})`;
+    el.style.transform = `translate3d(${el.dataset.x}px,${el.dataset.y}px,0) scale(${iconS})`;
   });
 }
 
@@ -5011,7 +5013,7 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     lg.classList.add('field-label');
     lg.dataset.x = cx.toFixed(2);
     lg.dataset.y = cy.toFixed(2);
-    lg.style.transform = `translate(${cx.toFixed(2)}px,${cy.toFixed(2)}px) scale(${(1/mapZoom).toFixed(4)})`;
+    lg.style.transform = `translate3d(${cx.toFixed(2)}px,${cy.toFixed(2)}px,0) scale(${(1/mapZoom).toFixed(4)})`;
     const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
     txt.setAttribute('text-anchor', 'middle');
     txt.setAttribute('dominant-baseline', 'middle');
@@ -5070,28 +5072,37 @@ function renderSoilLayerData(name, data) {
 
   const [r, g, b] = SOIL_LAYER_COLORS[name] || [255, 255, 255];
 
-  // Raw pixel data at native resolution
-  const raw = document.createElement('canvas');
-  raw.width = res; raw.height = res;
-  const rawCtx = raw.getContext('2d');
-  const imgData = rawCtx.createImageData(res, res);
-  const px = imgData.data;
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i];
-    px[i*4]   = r;
-    px[i*4+1] = g;
-    px[i*4+2] = b;
-    px[i*4+3] = Math.round(v * 0.65);
-  }
-  rawCtx.putImageData(imgData, 0, 0);
+  // Build alpha channel with software box-blur (radius 2) — no CSS filter needed
+  const alpha = new Uint8Array(res * res);
+  for (let i = 0; i < values.length; i++) alpha[i] = Math.round(values[i] * 0.65);
 
-  // Upscale 2× with high-quality bilinear interpolation
+  const blurred = new Uint8Array(res * res);
+  const rad = 2;
+  for (let y = 0; y < res; y++) {
+    for (let x = 0; x < res; x++) {
+      let sum = 0, count = 0;
+      for (let dy = -rad; dy <= rad; dy++) {
+        for (let dx = -rad; dx <= rad; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < res && ny >= 0 && ny < res) {
+            sum += alpha[ny * res + nx]; count++;
+          }
+        }
+      }
+      blurred[y * res + x] = sum / count;
+    }
+  }
+
+  // Write to canvas — already smoothed, no runtime CSS filter needed
   const canvas = document.createElement('canvas');
-  canvas.width = res * 2; canvas.height = res * 2;
+  canvas.width = res; canvas.height = res;
   const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(raw, 0, 0, res * 2, res * 2);
+  const imgData = ctx.createImageData(res, res);
+  const px = imgData.data;
+  for (let i = 0; i < blurred.length; i++) {
+    px[i*4] = r; px[i*4+1] = g; px[i*4+2] = b; px[i*4+3] = blurred[i];
+  }
+  ctx.putImageData(imgData, 0, 0);
 
   const dataUrl = canvas.toDataURL('image/png');
 
@@ -5105,7 +5116,6 @@ function renderSoilLayerData(name, data) {
     img.setAttribute('height', String(MAP_PX * 0.5));
     img.setAttribute('preserveAspectRatio', 'none');
     img.style.imageRendering = 'auto';
-    img.style.filter = 'blur(2px)';
     img.style.pointerEvents = 'none';
     layer.appendChild(img);
     soilLayerElements[name] = img;
@@ -5141,7 +5151,7 @@ function renderHotspotPins(hotspotsData, terrainSize) {
     g.classList.add('hotspot-pin');
     g.dataset.x = p.x.toFixed(1);
     g.dataset.y = p.y.toFixed(1);
-    g.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px) scale(${(1/mapZoom).toFixed(4)})`;
+    g.style.transform = `translate3d(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px,0) scale(${(1/mapZoom).toFixed(4)})`;
     if (hsClickable.has(hs.type)) {
       g.style.cursor = 'pointer';
       addTapListener(g, () => openMapDetail('hotspot', hsIdx));
@@ -5217,11 +5227,11 @@ function updateVehicles(vehiclesData, terrainSize) {
       el.appendChild(inner);
 
       el.style.transition = 'none';
-      el.style.transform  = `translate(${tx}px,${ty}px)`;
+      el.style.transform  = `translate3d(${tx}px,${ty}px,0)`;
       layer.appendChild(el);
       requestAnimationFrame(() => { el.style.transition = 'transform 2s linear'; });
     } else {
-      el.style.transform = `translate(${tx}px,${ty}px)`;
+      el.style.transform = `translate3d(${tx}px,${ty}px,0)`;
       const inner = el.querySelector('.vehicle-rot-scale');
       if (inner) {
         inner.dataset.deg = deg;
