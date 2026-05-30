@@ -5046,7 +5046,7 @@ const soilLayerElements = {};  // name → <image> SVG element
 // Web Worker for box-blur — keeps main thread free
 const _blurWorkerSrc = `
 self.onmessage = function(e) {
-  const { values, res, rad, r, g, b } = e.data;
+  const { values, res, rad, r, g, b, name } = e.data;
   const alpha = new Uint8Array(values.length);
   for (let i = 0; i < values.length; i++) alpha[i] = Math.round(values[i] * 0.65);
   const blurred = new Uint8Array(values.length);
