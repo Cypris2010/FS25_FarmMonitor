@@ -5043,6 +5043,34 @@ const SOIL_LAYER_COLORS = {
 const activeSoilLayers = new Set();
 const soilLayerElements = {};  // name → <image> SVG element
 
+// Web Worker for box-blur — keeps main thread free
+const _blurWorkerSrc = `
+self.onmessage = function(e) {
+  const { values, res, rad, r, g, b } = e.data;
+  const alpha = new Uint8Array(values.length);
+  for (let i = 0; i < values.length; i++) alpha[i] = Math.round(values[i] * 0.65);
+  const blurred = new Uint8Array(values.length);
+  for (let y = 0; y < res; y++) {
+    for (let x = 0; x < res; x++) {
+      let sum = 0, count = 0;
+      for (let dy = -rad; dy <= rad; dy++) {
+        for (let dx = -rad; dx <= rad; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < res && ny >= 0 && ny < res) { sum += alpha[ny*res+nx]; count++; }
+        }
+      }
+      blurred[y*res+x] = sum / count;
+    }
+  }
+  const px = new Uint8ClampedArray(res * res * 4);
+  for (let i = 0; i < blurred.length; i++) {
+    px[i*4]=r; px[i*4+1]=g; px[i*4+2]=b; px[i*4+3]=blurred[i];
+  }
+  self.postMessage({ px: px.buffer, res, name }, [px.buffer]);
+};
+`;
+const _blurWorker = new Worker(URL.createObjectURL(new Blob([_blurWorkerSrc], { type: 'text/javascript' })));
+
 function toggleSoilLayer(checkbox) {
   const name = checkbox.dataset.layer;
   if (checkbox.checked) {
@@ -5063,50 +5091,37 @@ async function fetchAndRenderSoilLayer(name) {
   } catch(e) { console.warn('soil layer fetch failed:', name, e); }
 }
 
-function renderSoilLayerData(name, data) {
-  const layer = document.getElementById('layer-soil');
+// Pending blur callbacks keyed by layer name (worker may only handle one at a time)
+const _blurPending = {};
+_blurWorker.onmessage = function(e) {
+  const { px, res, name } = e.data;
+  const cb = _blurPending[name];
+  delete _blurPending[name];
+  if (cb) cb(new Uint8ClampedArray(px), res);
+};
 
+function renderSoilLayerData(name, data) {
   const res = data.res || 128;
   const values = data.data;
   if (!values || values.length !== res * res) return;
 
   const [r, g, b] = SOIL_LAYER_COLORS[name] || [255, 255, 255];
 
-  // Build alpha channel with software box-blur (radius 2) — no CSS filter needed
-  const alpha = new Uint8Array(res * res);
-  for (let i = 0; i < values.length; i++) alpha[i] = Math.round(values[i] * 0.65);
+  // Offload blur to Web Worker — callback paints to SVG when done
+  _blurPending[name] = (px, res) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = res; canvas.height = res;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(new ImageData(px, res, res), 0, 0);
+    const dataUrl = canvas.toDataURL('image/png');
+    _applySoilLayerImage(name, dataUrl);
+  };
+  _blurWorker.postMessage({ values, res, rad: 2, r, g, b, name });
+}
 
-  const blurred = new Uint8Array(res * res);
-  const rad = 2;
-  for (let y = 0; y < res; y++) {
-    for (let x = 0; x < res; x++) {
-      let sum = 0, count = 0;
-      for (let dy = -rad; dy <= rad; dy++) {
-        for (let dx = -rad; dx <= rad; dx++) {
-          const nx = x + dx, ny = y + dy;
-          if (nx >= 0 && nx < res && ny >= 0 && ny < res) {
-            sum += alpha[ny * res + nx]; count++;
-          }
-        }
-      }
-      blurred[y * res + x] = sum / count;
-    }
-  }
-
-  // Write to canvas — already smoothed, no runtime CSS filter needed
-  const canvas = document.createElement('canvas');
-  canvas.width = res; canvas.height = res;
-  const ctx = canvas.getContext('2d');
-  const imgData = ctx.createImageData(res, res);
-  const px = imgData.data;
-  for (let i = 0; i < blurred.length; i++) {
-    px[i*4] = r; px[i*4+1] = g; px[i*4+2] = b; px[i*4+3] = blurred[i];
-  }
-  ctx.putImageData(imgData, 0, 0);
-
-  const dataUrl = canvas.toDataURL('image/png');
-
-  // Reuse existing element — only swap href, no DOM structure change → no flicker
+function _applySoilLayerImage(name, dataUrl) {
+  const layer = document.getElementById('layer-soil');
+  if (!layer) return;
   let img = soilLayerElements[name];
   if (!img) {
     img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
@@ -5400,6 +5415,13 @@ function closeFleetSettings() {
 // ── Vehicle detail panel ──────────────────────────────────────────
 let _vdCurrentId = null;
 let _vdRootId    = null;
+let _vdLastRender = 0;
+function _renderVehicleDetailThrottled() {
+  const now = Date.now();
+  if (now - _vdLastRender < 5000) return;  // max once per 5s from SSE
+  _vdLastRender = now;
+  _renderVehicleDetail(_vdCurrentId);
+}
 
 function openVehicleDetail(id) {
   _vdCurrentId = id;
@@ -6626,8 +6648,7 @@ function startVehicleTracking() {
           updateVehicles(data, appData.mapMeta.terrainSize || 2048);
         if (currentView === 'vehicles')
           renderVehicleFleet(appData);
-        if (_vdCurrentId != null)
-          _renderVehicleDetail(_vdCurrentId);
+        if (_vdCurrentId != null) _renderVehicleDetailThrottled();
       }
     } catch (e) {}
   };
@@ -6768,8 +6789,15 @@ function connect() {
     dot.className = 'live-dot';
     loadData();
   };
+  let lastFullLoad = 0;
   es.onmessage = e => {
-    if (e.data === 'update') loadData();
+    if (e.data !== 'update') return;
+    const now = Date.now();
+    // On map view the vehicle SSE already handles 2s position updates.
+    // Suppress full reload here; still refresh every 30s for other data.
+    if (currentView === 'map' && now - lastFullLoad < 30000) return;
+    lastFullLoad = now;
+    loadData();
   };
   es.onerror = () => {
     dot.className = 'live-dot disconnected';
