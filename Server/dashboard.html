@@ -5713,6 +5713,13 @@ function _renderVehicleDetailThrottled() {
 function openVehicleDetail(id) {
   // Close map detail panel if open
   closeMapDetail();
+  // Cancel any pending transitionend handler from a previous closeVehicleDetail()
+  // so it doesn't fire on the open-transition and immediately hide the overlay again.
+  const overlay0 = document.getElementById('vehicle-detail-overlay');
+  if (_vdTransitionEndHandler) {
+    overlay0.removeEventListener('transitionend', _vdTransitionEndHandler);
+    _vdTransitionEndHandler = null;
+  }
   _vdCurrentId = id;
   // Resolve root so AD panel and re-render always target the root vehicle
   const stateList = appData?.vehicles?.vehicles || [];
@@ -5728,12 +5735,21 @@ function openVehicleDetail(id) {
   }
 }
 
+let _vdTransitionEndHandler = null;
 function closeVehicleDetail() {
   const overlay = document.getElementById('vehicle-detail-overlay');
   overlay.classList.remove('open');
-  overlay.addEventListener('transitionend', () => {
+  // Remove any previously registered transitionend handler before adding a new one.
+  // Without this, a pending handler from a prior close fires on the *open* transition
+  // of a subsequent openVehicleDetail() call, immediately hiding the panel again.
+  if (_vdTransitionEndHandler) {
+    overlay.removeEventListener('transitionend', _vdTransitionEndHandler);
+  }
+  _vdTransitionEndHandler = () => {
     overlay.style.display = 'none';
-  }, { once: true });
+    _vdTransitionEndHandler = null;
+  };
+  overlay.addEventListener('transitionend', _vdTransitionEndHandler, { once: true });
   _vdCurrentId = null;
   _vdRootId    = null;
   // Close AD panel too
