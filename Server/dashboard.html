@@ -2437,6 +2437,8 @@
     flex-shrink: 0;
     border: 1px solid rgba(0,0,0,.4);
   }
+  .legend-steps { display: flex; gap: 2px; flex-shrink: 0; }
+  .legend-step  { width: 10px; height: 14px; border-radius: 2px; border: 1px solid rgba(0,0,0,.3); }
   .layer-toggle {
     display: flex;
     align-items: center;
@@ -2855,13 +2857,44 @@
         <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
         <div class="legend-divider"></div>
         <div class="legend-section-title">Bodenlayer</div>
-        <label class="layer-toggle"><input type="checkbox" data-layer="weed"   onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#ef4444"></span> Unkraut</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="stone"  onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#9ca3af"></span> Steine</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="plow"   onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#a78bfa"></span> Pflug nötig</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="spray"  onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#34d399"></span> Dünger</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="lime"   onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#1d4ed8"></span> Kalk</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="mulch"  onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#92400e"></span> Mulch</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="roller" onchange="toggleSoilLayer(this)"> <span class="legend-bar" style="background:#60a5fa"></span> Walze nötig</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="weed"   onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(239,68,68,0.25)"></span>
+            <span class="legend-step" style="background:rgba(239,68,68,0.45)"></span>
+            <span class="legend-step" style="background:rgba(239,68,68,0.65)"></span>
+          </span> Unkraut</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="stone"  onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(156,163,175,0.35)"></span>
+            <span class="legend-step" style="background:rgba(156,163,175,0.65)"></span>
+          </span> Steine</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="plow"   onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(167,139,250,0.65)"></span>
+            <span class="legend-step" style="background:rgba(167,139,250,0.10)"></span>
+          </span> Pflug nötig</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="spray"  onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(52,211,153,0.65)"></span>
+            <span class="legend-step" style="background:rgba(52,211,153,0.43)"></span>
+            <span class="legend-step" style="background:rgba(52,211,153,0.22)"></span>
+          </span> Dünger fehlt</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="lime"   onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(29,78,216,0.65)"></span>
+            <span class="legend-step" style="background:rgba(29,78,216,0.49)"></span>
+            <span class="legend-step" style="background:rgba(29,78,216,0.33)"></span>
+            <span class="legend-step" style="background:rgba(29,78,216,0.16)"></span>
+          </span> Kalk fehlt</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="mulch"  onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(146,64,14,0.65)"></span>
+            <span class="legend-step" style="background:rgba(146,64,14,0.10)"></span>
+          </span> Mulch fehlt</label>
+        <label class="layer-toggle"><input type="checkbox" data-layer="roller" onchange="toggleSoilLayer(this)">
+          <span class="legend-steps">
+            <span class="legend-step" style="background:rgba(96,165,250,0.65)"></span>
+          </span> Walze nötig</label>
       </div>
 
       <!-- Map Detail Backdrop + Panel -->
@@ -5326,6 +5359,9 @@ const SOIL_LAYER_COLORS = {
   mulch:  [146,  64,  14],
   roller: [ 96, 165, 250],
 };
+// These layers have high values = "good" (lime present, fertilised, mulched, ploughed).
+// Invert alpha so dark = "needs work", transparent = "all good".
+const SOIL_LAYER_INVERTED = new Set(['lime', 'spray', 'mulch', 'plow']);
 
 const activeSoilLayers = new Set();
 const soilLayerElements = {};  // name → <image> SVG element
@@ -5333,9 +5369,12 @@ const soilLayerElements = {};  // name → <image> SVG element
 // Web Worker for box-blur — keeps main thread free
 const _blurWorkerSrc = `
 self.onmessage = function(e) {
-  const { values, res, rad, r, g, b, name } = e.data;
+  const { values, res, rad, r, g, b, name, inverted } = e.data;
   const alpha = new Uint8Array(values.length);
-  for (let i = 0; i < values.length; i++) alpha[i] = Math.round(values[i] * 0.65);
+  for (let i = 0; i < values.length; i++) {
+    const v = inverted ? (255 - values[i]) : values[i];
+    alpha[i] = Math.round(v * 0.65);
+  }
   const blurred = new Uint8Array(values.length);
   for (let y = 0; y < res; y++) {
     for (let x = 0; x < res; x++) {
@@ -5403,7 +5442,7 @@ function renderSoilLayerData(name, data) {
     const dataUrl = canvas.toDataURL('image/png');
     _applySoilLayerImage(name, dataUrl);
   };
-  _blurWorker.postMessage({ values, res, rad: 0, r, g, b, name });
+  _blurWorker.postMessage({ values, res, rad: 0, r, g, b, name, inverted: SOIL_LAYER_INVERTED.has(name) });
 }
 
 function _applySoilLayerImage(name, dataUrl) {
