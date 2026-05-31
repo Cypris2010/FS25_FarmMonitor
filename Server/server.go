@@ -694,6 +694,7 @@ func handleData(dataDir string) http.HandlerFunc {
 		VehicleCategories json.RawMessage `json:"vehicleCategories"`
 		AutoDriveMarkers  json.RawMessage `json:"autoDriveMarkers"`
 		ModInfo           json.RawMessage `json:"modInfo"`
+		Weather           json.RawMessage `json:"weather"`
 		ServerVersion     string          `json:"serverVersion"`
 	}
 
@@ -724,6 +725,7 @@ func handleData(dataDir string) http.HandlerFunc {
 			VehicleCategories: readFile("vehicleCategories.json"),
 			AutoDriveMarkers:  readFile("autoDriveMarkers.json"),
 			ModInfo:           readFile("modInfo.json"),
+			Weather:           readFile("weather.json"),
 			ServerVersion:     serverVersion,
 		})
 	}
@@ -849,6 +851,7 @@ func main() {
 		filepath.Join(dataDir, "vehicleCategories.json"),
 		filepath.Join(dataDir, "autoDriveMarkers.json"),
 		filepath.Join(dataDir, "modInfo.json"),
+		filepath.Join(dataDir, "weather.json"),
 	}
 
 	b := newBroker()

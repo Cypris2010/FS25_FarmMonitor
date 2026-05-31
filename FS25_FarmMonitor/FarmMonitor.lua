@@ -15,6 +15,8 @@ FarmMonitor.vehicleMetaInterval = 10000  -- milliseconds between vehicle meta ex
 FarmMonitor.vehicleMetaTimer    = 10000  -- start at max so first export fires immediately
 FarmMonitor.commandInterval   = 1000   -- milliseconds between command checks
 FarmMonitor.commandTimer      = 0
+FarmMonitor.weatherInterval   = 30000  -- milliseconds between weather exports
+FarmMonitor.weatherTimer      = 30000  -- start at max so first export fires immediately
 FarmMonitor.soilState         = nil    -- incremental soil export state machine
 FarmMonitor.paths             = {}
 FarmMonitor.modInfoExported       = false
@@ -132,6 +134,7 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.vehicleCategories = outputDir .. "vehicleCategories.json"
     FarmMonitor.paths.autoDriveMarkers  = outputDir .. "autoDriveMarkers.json"
     FarmMonitor.paths.modInfo           = outputDir .. "modInfo.json"
+    FarmMonitor.paths.weather           = outputDir .. "weather.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
     FarmMonitor.paths.outputDir   = outputDir
@@ -288,6 +291,12 @@ function FarmMonitor:update(dt)
         FarmMonitor:processCommands()
     end
 
+    FarmMonitor.weatherTimer = FarmMonitor.weatherTimer + dt
+    if FarmMonitor.weatherTimer >= FarmMonitor.weatherInterval then
+        FarmMonitor.weatherTimer = 0
+        FarmMonitor:collectAndSaveWeather()
+    end
+
     -- Incremental soil layer export: runs every tick, samples a few rows at a time
     if FarmMonitor.soilState == nil then
         FarmMonitor.soilState = FarmMonitor:initSoilState()
@@ -343,6 +352,109 @@ function FarmMonitor:collectAndSave()
 
     if not ok then
         print("[FarmMonitor] ERROR during collect: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Weather export (every 30 s)
+-- ---------------------------------------------------------------------------
+
+function FarmMonitor:collectAndSaveWeather()
+    local ok, err = pcall(function()
+        local env      = g_currentMission.environment
+        local weather  = env.weather
+        local forecast = weather.forecast
+        local ts       = getDate("%Y-%m-%dT%H:%M:%S")
+
+        local function weatherTypeName(idx)
+            if idx == WeatherType.SUN            then return "SUN"
+            elseif idx == WeatherType.RAIN       then return "RAIN"
+            elseif idx == WeatherType.CLOUDY     then return "CLOUDY"
+            elseif idx == WeatherType.SNOW       then return "SNOW"
+            elseif idx == WeatherType.TWISTER    then return "TWISTER"
+            elseif idx == WeatherType.THUNDER    then return "THUNDER"
+            elseif idx == WeatherType.PARTIALLY_CLOUDY then return "PARTIALLY_CLOUDY"
+            elseif idx == WeatherType.HAIL       then return "HAIL"
+            end
+            return "UNKNOWN"
+        end
+
+        local cur = forecast:getCurrentWeather()
+
+        -- stündliche Vorhersage (nächste 6 Stunden)
+        local hourly = {}
+        for i = 0, 5 do
+            local h = forecast:getHourlyForecast(i)
+            if h ~= nil then
+                local timeH = math.floor(h.time / 3600000)
+                local timeM = math.floor((h.time % 3600000) / 60000)
+                table.insert(hourly, FarmMonitor.obj(
+                    "type",        weatherTypeName(h.forecastType),
+                    "temperature", math.floor(h.temperature + 0.5),
+                    "windSpeed",   math.floor(h.windSpeed * 3.6 + 0.5),
+                    "windDir",     math.floor(h.windDirection + 0.5),
+                    "time",        string.format("%02d:%02d", timeH, timeM)
+                ))
+            end
+        end
+
+        -- tagesweise Vorhersage (nächste 7 Tage)
+        local daily = {}
+        for i = 1, 7 do
+            local d = forecast:getDailyForecast(i)
+            if d ~= nil then
+                local dayInPeriod = env.getDayInPeriodFromDay ~= nil and env:getDayInPeriodFromDay(d.day) or d.day
+                local period      = env.getPeriodFromDay ~= nil and env:getPeriodFromDay(d.day) or nil
+                local label = nil
+                if period ~= nil and dayInPeriod ~= nil and g_i18n and g_i18n.formatDayInPeriod ~= nil then
+                    local ok, result = pcall(function() return g_i18n:formatDayInPeriod(dayInPeriod, period, false) end)
+                    if ok then label = result end
+                end
+                table.insert(daily, FarmMonitor.obj(
+                    "type",     weatherTypeName(d.forecastType),
+                    "high",     math.floor(d.highTemperature + 0.5),
+                    "low",      math.floor(d.lowTemperature + 0.5),
+                    "windSpeed",math.floor(d.windSpeed * 3.6 + 0.5),
+                    "windDir",  math.floor(d.windDirection + 0.5),
+                    "day",      d.day,
+                    "dayInPeriod", dayInPeriod,
+                    "period",   period,
+                    "label",    label
+                ))
+            end
+        end
+
+        -- Windrichtung als Kompass-String
+        local windDeg = math.floor(cur.windDirection + 0.5)
+        local dirs = {"N","NO","O","SO","S","SW","W","NW"}
+        local windCardinal = dirs[math.floor((windDeg % 360) / 45 + 1.5) % 8 + 1]
+
+        FarmMonitor:writeJSON(FarmMonitor.paths.weather, FarmMonitor.obj(
+            "timestamp", ts,
+            "current", FarmMonitor.obj(
+                "type",        weatherTypeName(cur.forecastType),
+                "temperature", math.floor(cur.temperature + 0.5),
+                "windSpeed",   math.floor(cur.windSpeed * 3.6 + 0.5),
+                "windDir",     windDeg,
+                "windCardinal",windCardinal,
+                "isRaining",   weather:getIsRaining(),
+                "rainScale",   math.floor(weather:getRainFallScale() * 100 + 0.5),
+                "groundWet",   math.floor(weather:getGroundWetness() * 100 + 0.5)
+            ),
+            "hourly", hourly,
+            "daily",  daily,
+            "gameTime", FarmMonitor.obj(
+                "hour",   env.currentHour,
+                "minute", env.currentMinute,
+                "isDay",  env.isSunOn,
+                "period", env.currentPeriod,
+                "dayInPeriod", env.currentDayInPeriod
+            )
+        ))
+    end)
+
+    if not ok then
+        print("[FarmMonitor] ERROR during weather export: " .. tostring(err))
     end
 end
 

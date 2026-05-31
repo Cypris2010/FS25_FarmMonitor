@@ -703,6 +703,164 @@
   .alert-text { flex: 1; }
   .alert-badge { margin-left: auto; }
 
+  /* ── Home view: weather widget ── */
+  .weather-panel {
+    display: grid;
+    grid-template-columns: 0.7fr 2fr 1.5fr;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .weather-zone {
+    padding: 18px 20px;
+  }
+  .weather-zone + .weather-zone {
+    border-left: 1px solid var(--line-soft);
+  }
+  .weather-zone-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* current zone */
+  .weather-current-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .weather-big-icon {
+    width: 80px; height: 80px;
+    flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .weather-big-icon svg { width: 72px; height: 72px; }
+  .weather-temp-main {
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.04em;
+  }
+  .weather-type-label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .weather-meta-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .weather-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .weather-meta-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* hourly zone */
+  .weather-hourly-list {
+    display: flex;
+    gap: 6px;
+  }
+  .weather-hourly-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .weather-hourly-item svg { width: 32px; height: 32px; }
+  .weather-hourly-temp {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .weather-hourly-time {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* daily zone — carousel */
+  .weather-daily-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .weather-daily-list {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .weather-daily-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    font-size: 12px;
+    text-align: center;
+  }
+  .weather-daily-item svg { width: 32px; height: 32px; }
+  .weather-daily-label {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .weather-daily-label strong { color: var(--fg); font-size: 12px; display: block; }
+  .weather-daily-temps {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+  .weather-daily-temps .low { color: var(--muted); font-weight: 400; margin-left: 3px; }
+  .weather-nav-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    color: var(--muted);
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s, color .15s;
+  }
+  .weather-nav-btn:hover { background: rgba(255,255,255,.12); color: var(--fg); }
+  .weather-nav-btn:disabled { opacity: .25; cursor: default; }
+  .weather-nav-btn svg { width: 14px; height: 14px; }
+
+  /* weather icon color classes */
+  .wi-sun      { color: #fbbf24; }
+  .wi-pcloudy  { color: #d4b96a; }
+  .wi-cloudy   { color: #64748b; }
+  .wi-rain     { color: #60a5fa; }
+  .wi-snow     { color: #bae6fd; }
+  .wi-hail     { color: #93c5fd; }
+  .wi-thunder  { color: #facc15; }
+  .wi-twister  { color: var(--orange); }
+
+  @media (max-width: 900px) {
+    .weather-panel { grid-template-columns: 1fr; }
+    .weather-zone + .weather-zone { border-left: none; border-top: 1px solid var(--line-soft); }
+  }
+
   /* ── Generic columns for silos / productions ── */
   .content-grid {
     display: grid;
@@ -2363,6 +2521,7 @@
 
     <!-- View: Home -->
     <div id="view-home" class="view" style="display:none; flex-direction:column; gap:18px;">
+      <section class="panel weather-panel" id="home-weather" aria-label="Wetter" style="display:none"></section>
       <section class="kpi-row" id="home-kpis" aria-label="Übersicht"></section>
       <section class="panel alerts-panel" id="home-alerts" aria-label="Warnungen"></section>
     </div>
@@ -4049,9 +4208,139 @@ function renderAlerts(data) {
   el.innerHTML = `<div class="alert-list" role="list">${rows}</div>`;
 }
 
+// ═══════════════════════════════════════════════════════════
+// Weather widget
+// ═══════════════════════════════════════════════════════════
+
+let weatherDailyOffset = 0;
+function weatherDailyNav(dir) {
+  weatherDailyOffset = Math.max(0, Math.min(3, weatherDailyOffset + dir));
+  renderWeather(appData?.weather);
+}
+
+const WEATHER_LABELS = {
+  SUN: 'Sonnig', PARTIALLY_CLOUDY: 'Leicht bewölkt', CLOUDY: 'Bedeckt',
+  RAIN: 'Regen', SNOW: 'Schnee', HAIL: 'Hagel', THUNDER: 'Gewitter', TWISTER: 'Tornado',
+};
+
+const PERIOD_LABELS = ['Frühling', 'Frühling', 'Sommer', 'Sommer', 'Herbst', 'Herbst', 'Winter', 'Winter'];
+const PERIOD_MONTHS = ['März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember','Januar','Februar'];
+
+function weatherIcon(type, extraClass = '') {
+  const cls = {
+    SUN: 'wi-sun', PARTIALLY_CLOUDY: 'wi-pcloudy', CLOUDY: 'wi-cloudy',
+    RAIN: 'wi-rain', SNOW: 'wi-snow', HAIL: 'wi-hail', THUNDER: 'wi-thunder', TWISTER: 'wi-twister',
+  }[type] || 'wi-cloudy';
+  const paths = {
+    // Tabler: sun
+    SUN: `<path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/>`,
+    // Custom composite: small sun (top-right) + cloud (foreground)
+    PARTIALLY_CLOUDY: `<path d="M15 7.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 0 0 -5 0"/><path d="M17.5 3.5v1m3 1.2l-.7 .7m1.2 3h-1"/><path d="M7 18a4 4 0 0 1 0 -8a4.5 4.5 0 0 1 8.5 2h.5a3 3 0 0 1 0 6h-9"/>`,
+    // Tabler: cloud
+    CLOUDY: `<path d="M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878"/>`,
+    // Tabler: cloud-rain
+    RAIN: `<path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7"/><path d="M11 13v2m0 3v2m4 -5v2m0 3v2"/>`,
+    // Tabler: cloud-snow
+    SNOW: `<path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7"/><path d="M11 15v.5m0 2.5v.5m0 2.5v.5m4 -5.5v.5m0 2.5v.5"/>`,
+    // Tabler: cloud-exclamation
+    HAIL: `<path d="M15 18.004h-8.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.374 0 2.562 .805 3.121 1.972"/><path d="M19 16v3"/><path d="M19 22v.01"/>`,
+    // Tabler: cloud-storm
+    THUNDER: `<path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1"/><path d="M13 14l-2 4h3l-2 4"/>`,
+    // Tabler: tornado
+    TWISTER: `<path d="M21 4l-18 0"/><path d="M13 16l-6 0"/><path d="M11 20l4 0"/><path d="M6 8l14 0"/><path d="M4 12l12 0"/>`,
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="${cls} ${extraClass}">${paths[type] || paths.CLOUDY}</svg>`;
+}
+
+function renderWeather(weather) {
+  const el = document.getElementById('home-weather');
+  if (!el) return;
+  if (!weather?.current) { el.style.display = 'none'; return; }
+
+  const cur  = weather.current;
+  const gt   = weather.gameTime || {};
+  const hourly = Array.isArray(weather.hourly) ? weather.hourly : [];
+  const daily  = Array.isArray(weather.daily)  ? weather.daily  : [];
+
+  const periodLabel = gt.period != null ? (PERIOD_MONTHS[gt.period - 1] ?? '') : '';
+  const dayLabel    = gt.dayInPeriod != null ? `Tag ${gt.dayInPeriod}` : '';
+  const timeLabel   = gt.hour != null ? `${String(gt.hour).padStart(2,'0')}:${String(gt.minute ?? 0).padStart(2,'0')} Uhr` : '';
+
+  const windArrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${cur.windDir ?? 0}deg)"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+  const rainIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="12" y1="21" x2="12" y2="23"/></svg>`;
+  const dropIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
+
+  // current zone
+  const currentHtml = `
+    <div class="weather-zone">
+      <div class="weather-zone-label">${periodLabel}${dayLabel ? ' · ' + dayLabel : ''}${timeLabel ? ' · ' + timeLabel : ''}</div>
+      <div class="weather-current-row">
+        <div class="weather-big-icon">${weatherIcon(cur.type)}</div>
+        <div class="weather-temp-main">${cur.temperature ?? '–'}°</div>
+      </div>
+      <div class="weather-type-label">${WEATHER_LABELS[cur.type] ?? cur.type}</div>
+      <div class="weather-meta-row">
+        <span class="weather-meta-item">${windArrow} ${cur.windSpeed ?? '–'} km/h ${cur.windCardinal ?? ''}</span>
+        ${cur.isRaining ? `<span class="weather-meta-item">${rainIcon} ${cur.rainScale ?? 0}%</span>` : ''}
+        ${(cur.groundWet ?? 0) > 10 ? `<span class="weather-meta-item">${dropIcon} Boden ${cur.groundWet}%</span>` : ''}
+      </div>
+    </div>`;
+
+  // hourly zone
+  const hourlyItems = hourly.slice(0, 6).map(h => `
+    <div class="weather-hourly-item">
+      <div class="weather-hourly-time">${h.time ?? ''}</div>
+      ${weatherIcon(h.type)}
+      <div class="weather-hourly-temp">${h.temperature ?? '–'}°</div>
+      <div style="font-size:11px;color:var(--muted)">${h.windSpeed ?? '–'} km/h</div>
+    </div>`).join('');
+  const hourlyHtml = `
+    <div class="weather-zone">
+      <div class="weather-zone-label">Nächste 6 Stunden</div>
+      <div class="weather-hourly-list">${hourlyItems || '<span style="color:var(--muted);font-size:13px">Keine Daten</span>'}</div>
+    </div>`;
+
+  // daily zone — carousel (3 sichtbar, 7 gesamt)
+  const DAILY_VISIBLE = 3;
+  const dailyOffset = weatherDailyOffset;
+  const REL_LABELS = ['Morgen', 'Übermorgen'];
+  const dailyItems = daily.slice(1 + dailyOffset, 1 + dailyOffset + DAILY_VISIBLE).map((d, i) => {
+    const absIdx = dailyOffset + i;
+    const relLabel = absIdx < REL_LABELS.length ? REL_LABELS[absIdx] : `+${absIdx + 2} Tage`;
+    const month = d.period != null ? (PERIOD_MONTHS[d.period - 1] ?? '') : '';
+    return `
+    <div class="weather-daily-item">
+      ${weatherIcon(d.type)}
+      <div class="weather-daily-label"><strong>${relLabel}</strong>${month}</div>
+      <div class="weather-daily-temps">${d.high ?? '–'}°<span class="low">${d.low ?? '–'}°</span></div>
+      <div style="font-size:11px;color:var(--muted)">${d.windSpeed ?? '–'} km/h</div>
+    </div>`;
+  }).join('');
+
+  const canPrev = dailyOffset > 0;
+  const canNext = 1 + dailyOffset + DAILY_VISIBLE < daily.length;
+  const chevL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
+  const chevR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+  const dailyHtml = `
+    <div class="weather-zone">
+      <div class="weather-zone-label">7-Tage-Vorhersage</div>
+      <div class="weather-daily-nav">
+        <button class="weather-nav-btn" onclick="weatherDailyNav(-1)" ${canPrev ? '' : 'disabled'}>${chevL}</button>
+        <div class="weather-daily-list">${dailyItems || '<span style="color:var(--muted);font-size:13px">Keine Daten</span>'}</div>
+        <button class="weather-nav-btn" onclick="weatherDailyNav(1)" ${canNext ? '' : 'disabled'}>${chevR}</button>
+      </div>
+    </div>`;
+
+  el.innerHTML = currentHtml + hourlyHtml + dailyHtml;
+  el.style.display = '';
+}
+
 function renderHome(data) {
   const kpiEl = document.getElementById('home-kpis');
   const alertEl = document.getElementById('home-alerts');
+
+  renderWeather(data?.weather);
 
   const siloCount      = data?.silos?.silos?.length ?? 0;
   const prodCount      = data?.productions?.productions?.length ?? 0;
