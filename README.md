@@ -1,6 +1,6 @@
 ![FS25 FarmMonitor](assets/git-social-banner.png)
 
-![Downloads](https://img.shields.io/github/downloads/OWNER/REPO/total)
+![Downloads](https://img.shields.io/github/downloads/Cypris2010/FS25_FarmMonitor/total)
 
 # FS25 FarmMonitor
 
