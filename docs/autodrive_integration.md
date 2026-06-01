@@ -223,7 +223,7 @@ Client:  FarmMonitorADCommandEvent.sendToServer({
 | `pipeOffset` | Pipe Offset | Zahl | −5.0 bis +5.0 m (Schritt 0.25) |
 | `followDistance` | Distance combine | Zahl | 0 bis 8.0 m (Schritt 0.25) |
 | `unloadFillLevel` | Unload fill level | Zahl | 0%, 10%, …, 85%, 90%, 95%, 99%, 100% |
-| `exitField` | Field exit | Enum | 0=DEFAULT, 1=After Start, 2=Closest |
+| `exitField` | Field exit | Enum | 0=Standard (zurück zum Zielpunkt), 1=Hinterm Start-/Zielpunkt, 2=Nächstgelegener Wegpunkt |
 | `restrictToField` | Restrict pathfinder to field | bool | false/true |
 | `followOnlyOnField` | Restrict unloader to field | bool | false/true |
 | `avoidFruit` | Avoid fruit | bool | false/true |
