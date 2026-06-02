@@ -807,7 +807,7 @@ function FarmMonitor:exportAutoDriveMarkers()
             end
         end
 
-        for id = startId, 2000 do
+        for id = startId, 5000 do
             sm:setFirstMarker(id)
             local m = sm.firstMarker
             if m ~= nil and m.isADDebug ~= true then
@@ -818,7 +818,7 @@ function FarmMonitor:exportAutoDriveMarkers()
                 emptyStreak = 0
             else
                 emptyStreak = emptyStreak + 1
-                if emptyStreak >= 100 then break end
+                if emptyStreak >= 200 then break end
             end
         end
 

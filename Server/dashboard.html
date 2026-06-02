@@ -2027,7 +2027,7 @@
   .vd-ad-status-val.active { color: rgba(0,210,240,1); font-weight: 700; }
   .vd-ad-no-ad { font-size: 11px; color: var(--fg-muted); opacity: .6; text-align: center; padding: 20px 0; }
   /* ── AutoDrive Marker Search ────────────────────────────────────────── */
-  .ad-ms { display: flex; flex-direction: column; }
+  .ad-ms { display: flex; flex-direction: column; position: relative; }
   .ad-ms-input-row {
     display: flex; align-items: center;
     background: rgba(255,255,255,.06); border: 1px solid var(--line);
@@ -2049,6 +2049,7 @@
   }
   .ad-ms-clear:hover { opacity: .9; }
   .ad-ms-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
     max-height: 180px; overflow-y: auto;
     background: #0e1a0e; border: 1px solid rgba(0,180,220,.2);
     border-radius: 0 0 6px 6px;
@@ -5715,7 +5716,7 @@ const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas
 const FLEET_SETTINGS_DEFAULTS = {
   showColor: true, showPower: true, showPs: false, showDamage: false, showHours: false, showAge: false,
   showFuel: true, showDef: false, showAir: false, showCargo: true,
-  sortMode: 'default', donePulseDuration: 120
+  sortMode: 'default', donePulseDuration: 120, autoOpenAD: false
 };
 
 // Tracks last timestamp (ms) when each vehicle had speed > 0
@@ -5762,6 +5763,7 @@ function saveFleetSettings() {
     showCargo:  document.getElementById('fss-cargo').checked,
     sortMode:          document.getElementById('fss-sort').value,
     donePulseDuration: parseInt(document.getElementById('fss-pulse-dur').value) || 0,
+    autoOpenAD:        document.getElementById('fss-auto-ad').checked,
   };
   localStorage.setItem(fleetSettingsKey(), JSON.stringify(s));
   if (currentView === 'vehicles') renderVehicleFleet(appData);
@@ -5780,6 +5782,7 @@ function openFleetSettings() {
   document.getElementById('fss-cargo').checked  = s.showCargo;
   document.getElementById('fss-sort').value      = s.sortMode || 'default';
   document.getElementById('fss-pulse-dur').value = s.donePulseDuration ?? 120;
+  document.getElementById('fss-auto-ad').checked = !!s.autoOpenAD;
   document.getElementById('fleet-settings-modal').style.display = 'flex';
 }
 function closeFleetSettings() {
@@ -5820,6 +5823,10 @@ function openVehicleDetail(id) {
     overlay.offsetHeight; // eslint-disable-line no-unused-expressions
     overlay.classList.add('open');
   }
+  // Auto-open AD panel if setting is enabled and vehicle has AD
+  if (loadFleetSettings().autoOpenAD && st?.adActive != null && !_adPanelOpen) {
+    toggleAdPanel();
+  }
 }
 
 let _vdTransitionEndHandler = null;
@@ -5842,6 +5849,7 @@ function closeVehicleDetail() {
   // Close AD panel too
   document.getElementById('vd-ad-panel')?.classList.remove('open');
   document.getElementById('vd-ad-tab')?.classList.remove('active');
+  _adPanelOpen = false;
 }
 
 // ── AutoDrive badge helper ─────────────────────────────────────────
@@ -5917,6 +5925,7 @@ function toggleAdPanel() {
 // ---------------------------------------------------------------------------
 
 const _adMs = {};  // slot → { markers, selectedId, selectedName, results, focusIndex, open }
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function _adMsFilter(query, markers) {
   query = (query || '').trim().toLowerCase();
@@ -6113,20 +6122,30 @@ function _adMsInit(slot, markers, selectedId) {
 }
 
 // Erzeugt das HTML der Such-Komponente (wird in innerHTML eingefügt)
-function _adMsHTML(slot, markers, selectedId) {
-  const selName = selectedId != null ? (markers.find(m => m.id == selectedId)?.name || '') : '';
+function _adMsHTML(slot, markers, selectedId, placeholder = 'Ziel suchen…') {
+  const selName = selectedId != null && selectedId !== '' ? (markers.find(m => m.id == selectedId)?.name || '') : '';
   const val = selName.replace(/"/g, '&quot;');
+  const s = typeof slot === 'string' ? `'${slot}'` : slot; // String-Slots in '', Zahl-Slots ohne Quotes
   return `<div class="ad-ms" id="ad-ms-${slot}">
     <div class="ad-ms-input-row" id="ad-ms-row-${slot}">
       <input class="ad-ms-input" id="ad-ms-input-${slot}" type="text"
-             value="${val}" placeholder="Ziel suchen…" autocomplete="off" spellcheck="false"
-             oninput="_adMsInput(${slot})" onfocus="_adMsOpen(${slot})" onblur="_adMsBlur(${slot})"
-             onkeydown="_adMsKey(event,${slot})">
+             value="${val}" placeholder="${placeholder}" autocomplete="off" spellcheck="false"
+             oninput="_adMsInput(${s})" onfocus="_adMsOpen(${s})" onblur="_adMsBlur(${s})"
+             onkeydown="_adMsKey(event,${s})">
       <button class="ad-ms-clear" id="ad-ms-clear-${slot}" tabindex="-1"
-              onmousedown="event.preventDefault();_adMsClear(${slot})" ${selName ? '' : 'hidden'}>✕</button>
+              onmousedown="event.preventDefault();_adMsClear(${s})" ${selName ? '' : 'hidden'}>✕</button>
     </div>
     <div class="ad-ms-dropdown" id="ad-ms-dd-${slot}" hidden></div>
   </div>`;
+}
+
+// Filltype-Items für _adMs (flache Liste, kein Gruppen-Filter)
+function _adFtItems() {
+  const fts = appData?.fillTypes?.fillTypes || [];
+  return fts
+    .filter(f => f.name && f.title && f.name !== 'UNKNOWN')
+    .sort((a, b) => a.title.localeCompare(b.title, 'de'))
+    .map(f => ({ id: f.name, name: f.title, group: null }));
 }
 
 // ---------------------------------------------------------------------------
@@ -6210,9 +6229,7 @@ function _renderAdPanel(id) {
   const ftBlock = modeInfo.ft ? `
     <div class="vd-ad-field">
       <div class="vd-ad-label">Fülltyp</div>
-      <select class="vd-ad-select" id="ad-filltype">
-        ${_buildFillTypeOptions(curFT)}
-      </select>
+      ${_adMsHTML('ft', _adFtItems(), curFT, 'Fülltyp suchen…')}
     </div>` : '';
 
   // Current status box
@@ -6253,9 +6270,10 @@ function _renderAdPanel(id) {
       }
     </div>
   `;
-  // Marker-Search State nach innerHTML-Injection initialisieren
+  // Marker- und Filltype-Search State nach innerHTML-Injection initialisieren
   _adMsInit(1, markers, curM1);
   if (modeInfo.m2) _adMsInit(2, markers, curM2);
+  if (modeInfo.ft) _adMsInit('ft', _adFtItems(), curFT);
 }
 
 function _onAdModeChange() {
@@ -6281,11 +6299,19 @@ function _onAdModeChange() {
   }
 
   const ftwrap = document.getElementById('ad-ft-wrap');
-  if (ftwrap) ftwrap.innerHTML = modeInfo.ft ? `
-    <div class="vd-ad-field">
-      <div class="vd-ad-label">Fülltyp</div>
-      <select class="vd-ad-select" id="ad-filltype">${_buildFillTypeOptions('')}</select>
-    </div>` : '';
+  if (ftwrap) {
+    if (modeInfo.ft) {
+      ftwrap.innerHTML = `
+        <div class="vd-ad-field">
+          <div class="vd-ad-label">Fülltyp</div>
+          ${_adMsHTML('ft', _adFtItems(), null, 'Fülltyp suchen…')}
+        </div>`;
+      _adMsInit('ft', _adFtItems(), null);
+    } else {
+      ftwrap.innerHTML = '';
+      delete _adMs['ft'];
+    }
+  }
 }
 
 // vehicleId = state.id (rootNode string, process-local — SP fallback)
@@ -6307,7 +6333,7 @@ async function _adConfigure(vehicleId, netId) {
   const mode     = document.getElementById('ad-mode')?.value    || '';
   const marker1  = String(_adMsValue(1) ?? '');
   const marker2  = String(_adMsValue(2) ?? '');
-  const fillType = document.getElementById('ad-filltype')?.value || '';
+  const fillType = String(_adMsValue('ft') ?? '');
   console.log('[AD] _adConfigure', vehicleId, 'netId='+netId, 'mode='+mode, 'marker1='+marker1, 'marker2='+marker2);
   const res = await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -7582,6 +7608,7 @@ connect();
           <option value="600">10 Minuten</option>
         </select>
       </div>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-auto-ad" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>AutoDrive-Panel beim Öffnen mitöffnen</span></label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-top:4px">
         <div>
           <div class="fsm-group-label">Allgemein</div>
