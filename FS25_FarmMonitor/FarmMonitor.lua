@@ -1321,6 +1321,9 @@ function FarmMonitor:collectVehicles()
             local adFieldSpeed      = nil
             local adRoadSpeed       = nil
             local adCurveSpeed      = nil
+            local adPipeDistance    = nil
+            local adChopperDistance = nil
+            local adUnloadLevel     = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -1405,6 +1408,12 @@ function FarmMonitor:collectVehicles()
                     if rs and rs > 0 then adRoadSpeed = MathUtil.round(rs) end
                     local cs = sm:getCurveSpeed and sm:getCurveSpeed()
                     if cs and cs > 0 then adCurveSpeed = MathUtil.round(cs) end
+                    local pd = sm:getPipeDistance and sm:getPipeDistance()
+                    if pd and pd > 0 then adPipeDistance = MathUtil.round(pd) end
+                    local cd = sm:getChopperDistance and sm:getChopperDistance()
+                    if cd and cd > 0 then adChopperDistance = MathUtil.round(cd) end
+                    local ul = sm:getUnloadLevel and sm:getUnloadLevel()
+                    if ul and ul > 0 then adUnloadLevel = MathUtil.round(ul) end
                 end)
             end
 
@@ -1456,6 +1465,9 @@ function FarmMonitor:collectVehicles()
                 "adFieldSpeed",          adFieldSpeed,
                 "adRoadSpeed",           adRoadSpeed,
                 "adCurveSpeed",          adCurveSpeed,
+                "adPipeDistance",        adPipeDistance,
+                "adChopperDistance",     adChopperDistance,
+                "adUnloadLevel",         adUnloadLevel,
                 "cpActive",              cpActive,
                 "cpJobType",             cpJobType,
                 "cpInfoText",            cpInfoText,
@@ -3227,6 +3239,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.nextTarget"]          = FarmMonitor.cmdAutoDriveNextTarget,
         ["autodrive.setSpeed"]            = FarmMonitor.cmdAutoDriveSetSpeed,
         ["autodrive.setCurveSpeed"]       = FarmMonitor.cmdAutoDriveSetCurveSpeed,
+        ["autodrive.setSetting"]          = FarmMonitor.cmdAutoDriveSetSetting,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3679,6 +3692,43 @@ function FarmMonitor:cmdAutoDriveSetCurveSpeed(cmd)
     print("[FarmMonitor] AD setCurveSpeed value=" .. tostring(value))
     local ok, err = pcall(function() sm:setCurveSpeed(value) end)
     if not ok then error("setCurveSpeed failed: " .. tostring(err)) end
+end
+
+function FarmMonitor:cmdAutoDriveSetSetting(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+        else
+            error("No server connection available")
+        end
+        return
+    end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive")
+    end
+    local sm = vehicle.ad.stateModule
+    local value = tonumber(cmd.value) or 0
+    local setting = cmd.setting
+    print("[FarmMonitor] AD setSetting setting=" .. tostring(setting) .. " value=" .. tostring(value))
+    local ok, err
+    if setting == "pipeDistance" then
+        value = math.max(1, math.min(15, value))
+        ok, err = pcall(function() sm:setPipeDistance(value) end)
+    elseif setting == "chopperDistance" then
+        value = math.max(1, math.min(20, value))
+        ok, err = pcall(function() sm:setChopperDistance(value) end)
+    elseif setting == "unloadLevel" then
+        value = math.max(50, math.min(100, value))
+        ok, err = pcall(function() sm:setUnloadLevel(value) end)
+    else
+        error("Unknown setting: " .. tostring(setting))
+    end
+    if not ok then error("setSetting failed: " .. tostring(err)) end
 end
 
 -- ---------------------------------------------------------------------------
