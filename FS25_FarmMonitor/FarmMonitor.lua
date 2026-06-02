@@ -145,24 +145,30 @@ function FarmMonitorADCommandEvent.new(cmd)
 end
 
 function FarmMonitorADCommandEvent:writeStream(streamId, connection)
-    streamWriteString(streamId, self.cmd.cmd      or "")
-    streamWriteString(streamId, self.cmd.uniqueId or "")
-    streamWriteString(streamId, self.cmd.netId    or "")  -- NetworkUtil object ID (MP-safe, same on all processes)
-    streamWriteString(streamId, self.cmd.mode     or "")
-    streamWriteString(streamId, self.cmd.marker1  or "")
-    streamWriteString(streamId, self.cmd.marker2  or "")
-    streamWriteString(streamId, self.cmd.fillType or "")
+    streamWriteString(streamId, self.cmd.cmd       or "")
+    streamWriteString(streamId, self.cmd.uniqueId  or "")
+    streamWriteString(streamId, self.cmd.netId     or "")
+    streamWriteString(streamId, self.cmd.mode      or "")
+    streamWriteString(streamId, self.cmd.marker1   or "")
+    streamWriteString(streamId, self.cmd.marker2   or "")
+    streamWriteString(streamId, self.cmd.fillType  or "")
+    streamWriteString(streamId, self.cmd.speedType or "")
+    streamWriteString(streamId, tostring(self.cmd.value   or ""))
+    streamWriteString(streamId, self.cmd.setting   or "")
 end
 
 function FarmMonitorADCommandEvent:readStream(streamId, connection)
     self.cmd = {
-        cmd      = streamReadString(streamId),
-        uniqueId = streamReadString(streamId),
-        netId    = streamReadString(streamId),
-        mode     = streamReadString(streamId),
-        marker1  = streamReadString(streamId),
-        marker2  = streamReadString(streamId),
-        fillType = streamReadString(streamId),
+        cmd       = streamReadString(streamId),
+        uniqueId  = streamReadString(streamId),
+        netId     = streamReadString(streamId),
+        mode      = streamReadString(streamId),
+        marker1   = streamReadString(streamId),
+        marker2   = streamReadString(streamId),
+        fillType  = streamReadString(streamId),
+        speedType = streamReadString(streamId),
+        value     = streamReadString(streamId),
+        setting   = streamReadString(streamId),
     }
     self:run(connection)
 end
@@ -1404,19 +1410,20 @@ function FarmMonitor:collectVehicles()
                             end
                         end
                     end
-                    -- Field / Road speed
-                    local fs = sm.getFieldSpeed and sm:getFieldSpeed()
+                    -- Field / Road speed (via StateModule getters)
+                    local fs = sm.getFieldSpeedLimit and sm:getFieldSpeedLimit()
                     if fs and fs > 0 then adFieldSpeed = MathUtil.round(fs) end
-                    local rs = sm.getRoadSpeed and sm:getRoadSpeed()
+                    local rs = sm.getSpeedLimit and sm:getSpeedLimit()
                     if rs and rs > 0 then adRoadSpeed = MathUtil.round(rs) end
-                    local cs = sm.getCurveSpeed and sm:getCurveSpeed()
-                    if cs and cs > 0 then adCurveSpeed = MathUtil.round(cs) end
-                    local pd = sm.getPipeDistance and sm:getPipeDistance()
-                    if pd and pd > 0 then adPipeDistance = MathUtil.round(pd * 10) / 10 end
-                    local cd = sm.getChopperDistance and sm:getChopperDistance()
-                    if cd and cd > 0 then adChopperDistance = MathUtil.round(cd * 4) / 4 end
-                    local ul = sm.getUnloadLevel and sm:getUnloadLevel()
-                    if ul and ul > 0 then adUnloadLevel = MathUtil.round(ul) end
+                    -- Curve speed: AutoDrive stores as multiplier 0.5–2.0 → display as 50–200%
+                    if AutoDrive and AutoDrive.getSetting then
+                        local cs = AutoDrive.getSetting("cornerSpeed", vehicle)
+                        if cs and cs > 0 then adCurveSpeed = MathUtil.round(cs * 100) end
+                        local pd = AutoDrive.getSetting("pipeOffset", vehicle)
+                        if pd ~= nil then adPipeDistance = MathUtil.round(pd * 10) / 10 end
+                        local ul = AutoDrive.getSetting("unloadFillLevel", vehicle)
+                        if ul ~= nil then adUnloadLevel = MathUtil.round(ul * 100) end
+                    end
                     -- Exit field strategy (0=Standard, 1=hinter Start, 2=nächste)
                     if AutoDrive and AutoDrive.getSetting then
                         local ef = AutoDrive.getSetting("exitField", vehicle)
@@ -3677,11 +3684,28 @@ function FarmMonitor:cmdAutoDriveSetSpeed(cmd)
     value = math.max(1, math.min(50, value))
     print("[FarmMonitor] AD setSpeed type=" .. tostring(speedType) .. " value=" .. tostring(value))
 
+    local ok, err
     if speedType == "field" then
-        local ok, err = pcall(function() sm:setFieldSpeed(value) end)
+        ok, err = pcall(function()
+            local cur = MathUtil.round(sm:getFieldSpeedLimit() or 10)
+            local delta = value - cur
+            if delta > 0 then
+                for _ = 1, math.min(delta, 60) do sm:increaseFieldSpeedLimit() end
+            elseif delta < 0 then
+                for _ = 1, math.min(-delta, 60) do sm:decreaseFieldSpeedLimit() end
+            end
+        end)
         if not ok then error("setFieldSpeed failed: " .. tostring(err)) end
     elseif speedType == "road" then
-        local ok, err = pcall(function() sm:setRoadSpeed(value) end)
+        ok, err = pcall(function()
+            local cur = MathUtil.round(sm:getSpeedLimit() or 10)
+            local delta = value - cur
+            if delta > 0 then
+                for _ = 1, math.min(delta, 60) do sm:increaseSpeedLimit() end
+            elseif delta < 0 then
+                for _ = 1, math.min(-delta, 60) do sm:decreaseSpeedLimit() end
+            end
+        end)
         if not ok then error("setRoadSpeed failed: " .. tostring(err)) end
     else
         error("Unknown speedType: " .. tostring(speedType))
@@ -3706,9 +3730,12 @@ function FarmMonitor:cmdAutoDriveSetCurveSpeed(cmd)
         error("Vehicle not found or has no AutoDrive")
     end
     local sm = vehicle.ad.stateModule
-    local value = math.max(10, math.min(100, tonumber(cmd.value) or 50))
-    print("[FarmMonitor] AD setCurveSpeed value=" .. tostring(value))
-    local ok, err = pcall(function() sm:setCurveSpeed(value) end)
+    -- Dashboard sends 50–200 (%), AutoDrive stores as multiplier 0.5–2.0
+    local value = math.max(50, math.min(200, tonumber(cmd.value) or 100))
+    print("[FarmMonitor] AD setCurveSpeed value=" .. tostring(value) .. "%")
+    local ok, err = pcall(function()
+        AutoDrive.setSetting("cornerSpeed", vehicle, value / 100)
+    end)
     if not ok then error("setCurveSpeed failed: " .. tostring(err)) end
 end
 
@@ -3735,14 +3762,13 @@ function FarmMonitor:cmdAutoDriveSetSetting(cmd)
     print("[FarmMonitor] AD setSetting setting=" .. tostring(setting) .. " value=" .. tostring(value))
     local ok, err
     if setting == "pipeDistance" then
+        -- pipeOffset in AutoDrive (meters)
         value = math.max(0.1, math.min(5, MathUtil.round(value * 10) / 10))
-        ok, err = pcall(function() sm:setPipeDistance(value) end)
-    elseif setting == "chopperDistance" then
-        value = math.max(0.25, math.min(8, MathUtil.round(value * 4) / 4))
-        ok, err = pcall(function() sm:setChopperDistance(value) end)
+        ok, err = pcall(function() AutoDrive.setSetting("pipeOffset", vehicle, value) end)
     elseif setting == "unloadLevel" then
-        value = math.max(50, math.min(100, value))
-        ok, err = pcall(function() sm:setUnloadLevel(value) end)
+        -- unloadFillLevel in AutoDrive (0.0–1.0 fraction)
+        value = math.max(0, math.min(100, value))
+        ok, err = pcall(function() AutoDrive.setSetting("unloadFillLevel", vehicle, value / 100) end)
     else
         error("Unknown setting: " .. tostring(setting))
     end

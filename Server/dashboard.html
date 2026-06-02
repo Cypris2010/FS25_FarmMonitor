@@ -6330,11 +6330,11 @@ function _renderAdPanel(id) {
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Kurvengeschw.</div>
-      <input type="range" min="10" max="100" step="5"
-        value="${state.adCurveSpeed ?? 75}"
+      <input type="range" min="50" max="200" step="5"
+        value="${state.adCurveSpeed ?? 100}"
         oninput="this.nextElementSibling.textContent=this.value+'%'"
         onchange="_adSetCurveSpeed('${id}','${state.netId||''}',this.value)">
-      <span class="ad-curve-val">${state.adCurveSpeed ?? 75}%</span>
+      <span class="ad-curve-val">${state.adCurveSpeed != null ? state.adCurveSpeed+'%' : '100%'}</span>
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Abstand Rohr</div>
@@ -6345,16 +6345,8 @@ function _renderAdPanel(id) {
       <span class="ad-curve-val">${state.adPipeDistance != null ? parseFloat(state.adPipeDistance).toFixed(1)+'m' : '3.0m'}</span>
     </div>
     <div class="ad-curve-row">
-      <div class="ad-curve-label">Abstand Häcksler</div>
-      <input type="range" min="0.25" max="8" step="0.25"
-        value="${state.adChopperDistance ?? 2}"
-        oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'m'"
-        onchange="_adSetSetting('${id}','${state.netId||''}','chopperDistance',this.value)">
-      <span class="ad-curve-val">${state.adChopperDistance != null ? parseFloat(state.adChopperDistance).toFixed(2)+'m' : '2.00m'}</span>
-    </div>
-    <div class="ad-curve-row">
       <div class="ad-curve-label">Abladen ab Level</div>
-      <input type="range" min="50" max="100" step="5"
+      <input type="range" min="0" max="100" step="5"
         value="${state.adUnloadLevel ?? 80}"
         oninput="this.nextElementSibling.textContent=this.value+'%'"
         onchange="_adSetSetting('${id}','${state.netId||''}','unloadLevel',this.value)">
