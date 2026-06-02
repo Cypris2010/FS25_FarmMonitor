@@ -12,7 +12,9 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
+	"strconv"
 	"io"
 	"log"
 	"net"
@@ -567,6 +569,146 @@ func watchAndRebuildMap(metaPath string, cache *mapCache) {
 	}
 }
 
+// ── AutoDrive icon cache ──────────────────────────────────────────────────────
+
+type adIconCache struct {
+	mu     sync.Mutex
+	icons  map[string][]byte
+	loaded bool
+}
+
+func newADIconCache() *adIconCache { return &adIconCache{icons: map[string][]byte{}} }
+
+// defaultModsDir derives the FS25 mods directory from the data directory.
+// dataDir is .../modSettings/FS25_FarmMonitor → parent is FarmingSimulator2025 → mods sibling.
+func defaultModsDir(dataDir string) string {
+	return filepath.Join(filepath.Dir(filepath.Dir(dataDir)), "mods")
+}
+
+// readZipEntry reads a file from an open zip.ReadCloser by lowercase name match.
+func readZipEntry(zr *zip.ReadCloser, name string) ([]byte, error) {
+	lower := strings.ToLower(name)
+	for _, f := range zr.File {
+		if strings.ToLower(f.Name) == lower {
+			rc, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+	}
+	return nil, fmt.Errorf("%q not found in zip", name)
+}
+
+// parseADGuiXML parses ad_gui.xml and returns a map of slice name → image.Rectangle.
+// UV format in the XML: "Xpx Ypx Wpx Hpx"
+func parseADGuiXML(data []byte) (map[string]image.Rectangle, error) {
+	type Slice struct {
+		ID  string `xml:"id,attr"`
+		UVs string `xml:"uvs,attr"`
+	}
+	type Root struct {
+		Slices []Slice `xml:"slices>slice"`
+	}
+	var root Root
+	if err := xml.Unmarshal(data, &root); err != nil {
+		return nil, err
+	}
+	result := make(map[string]image.Rectangle, len(root.Slices))
+	for _, s := range root.Slices {
+		clean := strings.ReplaceAll(s.UVs, "px", "")
+		parts := strings.Fields(clean)
+		if len(parts) != 4 {
+			continue
+		}
+		vals := [4]int{}
+		ok := true
+		for i, p := range parts {
+			n, err := strconv.Atoi(strings.TrimSpace(p))
+			if err != nil {
+				ok = false
+				break
+			}
+			vals[i] = n
+		}
+		if ok {
+			result[s.ID] = image.Rect(vals[0], vals[1], vals[0]+vals[2], vals[1]+vals[3])
+		}
+	}
+	return result, nil
+}
+
+func (c *adIconCache) load(modsDir string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.loaded {
+		return
+	}
+	c.loaded = true
+
+	zipPath := filepath.Join(modsDir, "FS25_AutoDrive.zip")
+	zr, err := zip.OpenReader(zipPath)
+	if err != nil {
+		log.Printf("[ad-icons] FS25_AutoDrive.zip not found (%v)", err)
+		return
+	}
+	defer zr.Close()
+
+	xmlData, err := readZipEntry(zr, "textures/ad_gui.xml")
+	if err != nil {
+		log.Printf("[ad-icons] textures/ad_gui.xml: %v", err)
+		return
+	}
+	ddsData, err := readZipEntry(zr, "textures/ad_gui.dds")
+	if err != nil {
+		log.Printf("[ad-icons] textures/ad_gui.dds: %v", err)
+		return
+	}
+
+	sheet, err := decodeDDS(ddsData)
+	if err != nil {
+		log.Printf("[ad-icons] decode ad_gui.dds: %v", err)
+		return
+	}
+
+	slices, err := parseADGuiXML(xmlData)
+	if err != nil {
+		log.Printf("[ad-icons] parse ad_gui.xml: %v", err)
+		return
+	}
+
+	for name, rect := range slices {
+		cropped := image.NewRGBA(image.Rect(0, 0, rect.Dx(), rect.Dy()))
+		draw.Draw(cropped, cropped.Bounds(), sheet, rect.Min, draw.Src)
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, cropped); err == nil {
+			c.icons[name] = buf.Bytes()
+		}
+	}
+	log.Printf("[ad-icons] %d icons cached from FS25_AutoDrive.zip", len(c.icons))
+}
+
+func (c *adIconCache) get(name string) []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.icons[name]
+}
+
+func handleADIcons(cache *adIconCache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		data := cache.get(name)
+		if data == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Write(data)
+	}
+}
+
 func handleVehicles(dataDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -867,6 +1009,9 @@ func main() {
 	mc := newMapCache()
 	go watchAndRebuildMap(filepath.Join(dataDir, "mapMeta.json"), mc)
 
+	adIcons := newADIconCache()
+	go adIcons.load(defaultModsDir(dataDir))
+
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleDashboard)
@@ -880,6 +1025,7 @@ func main() {
 	mux.HandleFunc("/api/map/overview", handleMapOverview(mc))
 	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
 	mux.HandleFunc("/api/map/layer/{name}", handleMapLayer(dataDir))
+	mux.HandleFunc("/api/ad-icons/{name}", handleADIcons(adIcons))
 
 	fmt.Print(`
 ▄▖▄▖▄▖▄▖  ▄▖       ▖  ▖    ▘▗       ▄▖

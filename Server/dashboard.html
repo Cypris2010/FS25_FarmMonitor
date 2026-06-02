@@ -2007,6 +2007,19 @@
   .vd-ad-select option { background: #1a221a; }
   .vd-ad-select optgroup { background: #111a11; color: rgba(0,180,220,.7); font-style: normal; }
   .vd-ad-divider { height: 1px; background: var(--line); margin: 2px 0; }
+  .vd-ad-mode-btns { display: flex; gap: 4px; }
+  .vd-ad-mode-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 5px 2px; border-radius: 6px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.04); cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .vd-ad-mode-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+  .vd-ad-mode-btn.active { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.5); }
+  .vd-ad-mode-btn img { width: 28px; height: 28px; image-rendering: pixelated; opacity: .75; }
+  .vd-ad-mode-btn.active img { opacity: 1; filter: drop-shadow(0 0 3px rgba(0,180,220,.6)); }
+  .vd-ad-mode-btn span { font-size: 8.5px; color: var(--fg-muted); text-align: center; line-height: 1.2; }
+  .vd-ad-mode-btn.active span { color: rgba(0,180,220,.9); }
   .vd-ad-btn-row { display: flex; gap: 8px; margin-top: 4px; }
   .vd-ad-btn {
     flex: 1; padding: 8px 10px; border-radius: 7px; border: 1px solid;
@@ -6185,12 +6198,13 @@ function _buildFillTypeOptions(selectedName) {
 }
 
 const AD_MODES = [
-  { id: 1, label: 'Fahren zu',            m1: 'Ziel',              m2: null,          ft: false },
-  { id: 2, label: 'Abholen & Liefern',    m1: 'Ladeort',           m2: 'Entladeort',  ft: true  },
-  { id: 3, label: 'Liefern zu',           m1: 'Entladeort',        m2: null,          ft: false },
-  { id: 4, label: 'Laden',                m1: 'Ladeort',           m2: 'Entladeort',  ft: true  },
-  { id: 5, label: 'Ernter-Begleiter',     m1: 'Entladeort',        m2: 'Wartepunkt',  ft: false },
+  { id: 1, label: 'Fahren zu',         icon: 'destination',    m1: 'Ziel',        m2: null,         ft: false },
+  { id: 2, label: 'Abh. & Lief.',      icon: 'tipper_overlay', m1: 'Ladeort',     m2: 'Entladeort', ft: true  },
+  { id: 3, label: 'Liefern zu',        icon: 'tipper_overlay', m1: 'Entladeort',  m2: null,         ft: false },
+  { id: 4, label: 'Laden',             icon: 'tipper_load',    m1: 'Ladeort',     m2: 'Entladeort', ft: true  },
+  { id: 5, label: 'Ernter-Bgl.',       icon: 'combine',        m1: 'Entladeort',  m2: 'Wartepunkt', ft: false },
 ];
+let _adSelectedMode = 1; // currently selected mode in the AD panel
 
 function _renderAdPanel(id) {
   const inner = document.getElementById('vd-ad-inner');
@@ -6208,17 +6222,22 @@ function _renderAdPanel(id) {
     return;
   }
 
-  const curMode   = state.adMode    || 1;
+  const curMode   = state.adMode || 1;
+  _adSelectedMode = curMode;
   const curM1     = state.adDestination  ? (markers.find(m => m.name === state.adDestination)?.id  ?? '') : '';
   const curM2     = state.adDestination2 ? (markers.find(m => m.name === state.adDestination2)?.id ?? '') : '';
-  const curFT     = ''; // filltype not currently exported, will be '' initially
+  const curFT     = '';
   const isActive  = state.adActive === true;
 
-  const modeSel = AD_MODES.map(m =>
-    `<option value="${m.id}" ${m.id === curMode ? 'selected' : ''}>${m.label}</option>`
-  ).join('');
-
   const modeInfo = AD_MODES.find(m => m.id === curMode) || AD_MODES[0];
+
+  const modeBtns = AD_MODES.map(m => {
+    const active = m.id === curMode ? ' active' : '';
+    return `<button class="vd-ad-mode-btn${active}" onclick="_selectAdMode(${m.id})" title="${m.label}">
+      <img src="/api/ad-icons/${m.icon}" onerror="this.style.display='none'">
+      <span>${m.label}</span>
+    </button>`;
+  }).join('');
 
   const m2Block = modeInfo.m2 ? `
     <div class="vd-ad-field">
@@ -6250,9 +6269,7 @@ function _renderAdPanel(id) {
     <div class="vd-ad-divider"></div>
     <div class="vd-ad-field">
       <div class="vd-ad-label">Modus</div>
-      <select class="vd-ad-select" id="ad-mode" onchange="_onAdModeChange()">
-        ${modeSel}
-      </select>
+      <div class="vd-ad-mode-btns" id="ad-mode-btns">${modeBtns}</div>
     </div>
     <div class="vd-ad-field">
       <div class="vd-ad-label" id="ad-m1-label">${modeInfo.m1}</div>
@@ -6276,8 +6293,18 @@ function _renderAdPanel(id) {
   if (modeInfo.ft) _adMsInit('ft', _adFtItems(), curFT);
 }
 
+function _selectAdMode(modeId) {
+  _adSelectedMode = modeId;
+  // Update active button styling
+  document.querySelectorAll('.vd-ad-mode-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.vd-ad-mode-btn').forEach((btn, i) => {
+    if (AD_MODES[i]?.id === modeId) btn.classList.add('active');
+  });
+  _onAdModeChange();
+}
+
 function _onAdModeChange() {
-  const modeId = parseInt(document.getElementById('ad-mode')?.value || '1');
+  const modeId = _adSelectedMode;
   const modeInfo = AD_MODES.find(m => m.id === modeId) || AD_MODES[0];
   const markers = appData?.autoDriveMarkers?.markers || [];
 
@@ -6330,7 +6357,7 @@ async function _adStartStop(vehicleId, netId, action) {
 }
 
 async function _adConfigure(vehicleId, netId) {
-  const mode     = document.getElementById('ad-mode')?.value    || '';
+  const mode     = String(_adSelectedMode || 1);
   const marker1  = String(_adMsValue(1) ?? '');
   const marker2  = String(_adMsValue(2) ?? '');
   const fillType = String(_adMsValue('ft') ?? '');
