@@ -2026,6 +2026,54 @@
   .vd-ad-status-val { color: var(--fg); font-weight: 600; }
   .vd-ad-status-val.active { color: rgba(0,210,240,1); font-weight: 700; }
   .vd-ad-no-ad { font-size: 11px; color: var(--fg-muted); opacity: .6; text-align: center; padding: 20px 0; }
+  /* ── AutoDrive Marker Search ────────────────────────────────────────── */
+  .ad-ms { display: flex; flex-direction: column; }
+  .ad-ms-input-row {
+    display: flex; align-items: center;
+    background: rgba(255,255,255,.06); border: 1px solid var(--line);
+    border-radius: 6px; padding: 1px 4px 1px 8px;
+    transition: border-color .15s, background .15s;
+  }
+  .ad-ms-input-row:focus-within {
+    border-color: rgba(0,180,220,.5); background: rgba(0,180,220,.06);
+  }
+  .ad-ms-input-row.open { border-radius: 6px 6px 0 0; border-bottom-color: transparent; }
+  .ad-ms-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--fg); font-size: 12px; padding: 5px 0; min-width: 0;
+  }
+  .ad-ms-input::placeholder { color: var(--fg-muted); opacity: .5; }
+  .ad-ms-clear {
+    background: none; border: none; color: var(--fg-muted); opacity: .4;
+    cursor: pointer; padding: 2px 5px; font-size: 12px; flex-shrink: 0; line-height: 1;
+  }
+  .ad-ms-clear:hover { opacity: .9; }
+  .ad-ms-dropdown {
+    max-height: 180px; overflow-y: auto;
+    background: #0e1a0e; border: 1px solid rgba(0,180,220,.2);
+    border-radius: 0 0 6px 6px;
+  }
+  .ad-ms-item {
+    padding: 6px 10px; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    transition: background .1s; user-select: none;
+  }
+  .ad-ms-item:last-child { border-bottom: none; }
+  .ad-ms-item:hover, .ad-ms-item.focused { background: rgba(255,255,255,.09); }
+  .ad-ms-group {
+    color: rgba(0,180,220,.75); font-weight: 700; font-size: 10px;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    background: rgba(0,180,220,.07); padding: 5px 10px;
+  }
+  .ad-ms-group:hover, .ad-ms-group.focused { background: rgba(0,180,220,.14); }
+  .ad-ms-gi { font-size: 9px; opacity: .6; flex-shrink: 0; }
+  .ad-ms-count { margin-left: auto; font-size: 10px; opacity: .4; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .ad-ms-marker { color: var(--fg); }
+  .ad-ms-indented { padding-left: 20px; color: var(--fg-muted); font-size: 11.5px; }
+  .ad-ms-item.selected { color: rgba(0,210,240,1); }
+  .ad-ms-check { margin-left: auto; color: rgba(0,180,220,1); font-size: 11px; flex-shrink: 0; }
+  .ad-ms-empty { padding: 12px; font-size: 11px; color: var(--fg-muted); opacity: .5; text-align: center; }
   .vd-header {
     display: flex; align-items: flex-start; gap: 12px;
     padding: 18px 18px 14px; border-bottom: 1px solid var(--line);
@@ -5863,6 +5911,225 @@ function toggleAdPanel() {
   if (_adPanelOpen && _vdRootId) _renderAdPanel(_vdRootId);
 }
 
+// ---------------------------------------------------------------------------
+// AutoDrive Marker Search — durchsuchbares Kombifeld für Marker 1 / Marker 2
+// Ersetzt die <select>-Elemente im AD-Panel. State pro Slot (1 oder 2).
+// ---------------------------------------------------------------------------
+
+const _adMs = {};  // slot → { markers, selectedId, selectedName, results, focusIndex, open }
+
+function _adMsFilter(query, markers) {
+  query = (query || '').trim().toLowerCase();
+  const results = [];
+  // Gruppen aufbauen
+  const groups = {};
+  for (const m of markers) {
+    if (m.group) {
+      if (!groups[m.group]) groups[m.group] = [];
+      groups[m.group].push(m);
+    }
+  }
+  const ungrouped = markers.filter(m => !m.group);
+
+  if (!query) {
+    // Leer: alles anzeigen — Gruppen mit Einträgen, danach ungrouped
+    for (const g of Object.keys(groups).sort()) {
+      results.push({ type: 'group', name: g, markers: groups[g] });
+      for (const m of groups[g])
+        results.push({ type: 'marker', name: m.name, id: m.id, group: g, indented: true });
+    }
+    for (const m of ungrouped)
+      results.push({ type: 'marker', name: m.name, id: m.id, group: null, indented: false });
+    return results;
+  }
+
+  // Mit Suchtext: Gruppen-Treffer zuerst, dann direkte Marker-Treffer
+  const matchedGroups = new Set();
+  for (const g of Object.keys(groups).sort()) {
+    if (g.toLowerCase().includes(query)) {
+      matchedGroups.add(g);
+      results.push({ type: 'group', name: g, markers: groups[g] });
+      for (const m of groups[g])
+        results.push({ type: 'marker', name: m.name, id: m.id, group: g, indented: true });
+    }
+  }
+  for (const m of markers) {
+    if (m.name.toLowerCase().includes(query) && (!m.group || !matchedGroups.has(m.group)))
+      results.push({ type: 'marker', name: m.name, id: m.id, group: m.group, indented: false });
+  }
+  return results;
+}
+
+function _adMsRender(slot) {
+  const s = _adMs[slot];
+  if (!s) return;
+  const dd   = document.getElementById('ad-ms-dd-'    + slot);
+  const row  = document.getElementById('ad-ms-row-'   + slot);
+  const clr  = document.getElementById('ad-ms-clear-' + slot);
+  const inp  = document.getElementById('ad-ms-input-' + slot);
+  if (!dd) return;
+
+  if (clr) clr.hidden = !(inp?.value);
+  if (row) row.classList.toggle('open', s.open);
+
+  if (!s.open || s.results.length === 0) {
+    dd.hidden = true;
+    if (s.open) {
+      dd.innerHTML = '<div class="ad-ms-empty">Keine Ergebnisse</div>';
+      dd.hidden = false;
+    }
+    return;
+  }
+
+  dd.innerHTML = s.results.map((item, idx) => {
+    const focused  = idx === s.focusIndex ? ' focused' : '';
+    const selected = item.type === 'marker' && item.id === s.selectedId ? ' selected' : '';
+    if (item.type === 'group') {
+      return `<div class="ad-ms-item ad-ms-group${focused}" data-idx="${idx}"
+                   onmousedown="event.preventDefault();_adMsSelectIdx(${slot},${idx})">
+                <span class="ad-ms-gi">▸</span>${_esc(item.name)}
+                <span class="ad-ms-count">${item.markers.length}</span>
+              </div>`;
+    }
+    const indent = item.indented ? ' ad-ms-indented' : '';
+    const check  = selected ? '<span class="ad-ms-check">✓</span>' : '';
+    return `<div class="ad-ms-item ad-ms-marker${indent}${focused}${selected}" data-idx="${idx}"
+                 onmousedown="event.preventDefault();_adMsSelectIdx(${slot},${idx})">
+              ${_esc(item.name)}${check}
+            </div>`;
+  }).join('');
+  dd.hidden = false;
+
+  if (s.focusIndex >= 0) {
+    dd.querySelector(`[data-idx="${s.focusIndex}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function _adMsOpen(slot) {
+  const s = _adMs[slot];
+  if (!s) return;
+  s.open = true;
+  const inp = document.getElementById('ad-ms-input-' + slot);
+  s.results = _adMsFilter(inp?.value || '', s.markers);
+  s.focusIndex = -1;
+  _adMsRender(slot);
+}
+
+function _adMsClose(slot) {
+  const s = _adMs[slot];
+  if (!s) return;
+  s.open = false;
+  s.focusIndex = -1;
+  const inp = document.getElementById('ad-ms-input-' + slot);
+  if (inp) inp.value = s.selectedName || '';
+  _adMsRender(slot);
+}
+
+function _adMsBlur(slot) {
+  // Kurze Verzögerung damit mousedown auf Dropdown-Items zuerst feuern kann
+  setTimeout(() => _adMsClose(slot), 160);
+}
+
+function _adMsInput(slot) {
+  const s = _adMs[slot];
+  if (!s) return;
+  s.open = true;
+  const inp = document.getElementById('ad-ms-input-' + slot);
+  s.results = _adMsFilter(inp?.value || '', s.markers);
+  s.focusIndex = -1;
+  _adMsRender(slot);
+}
+
+function _adMsClear(slot) {
+  const s = _adMs[slot];
+  if (!s) return;
+  s.selectedId = null;
+  s.selectedName = '';
+  const inp = document.getElementById('ad-ms-input-' + slot);
+  if (inp) { inp.value = ''; inp.focus(); }
+  s.open = true;
+  s.results = _adMsFilter('', s.markers);
+  s.focusIndex = -1;
+  _adMsRender(slot);
+}
+
+function _adMsSelectIdx(slot, idx) {
+  const s = _adMs[slot];
+  if (!s) return;
+  const item = s.results[idx];
+  if (!item) return;
+  if (item.type === 'group') {
+    // Ersten Marker der Gruppe auswählen
+    const first = item.markers?.[0];
+    if (!first) return;
+    s.selectedId   = first.id;
+    s.selectedName = first.name;
+  } else {
+    s.selectedId   = item.id;
+    s.selectedName = item.name;
+  }
+  const inp = document.getElementById('ad-ms-input-' + slot);
+  if (inp) inp.value = s.selectedName;
+  _adMsClose(slot);
+}
+
+function _adMsKey(e, slot) {
+  const s = _adMs[slot];
+  if (!s) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (!s.open) { _adMsOpen(slot); return; }
+    s.focusIndex = Math.min(s.focusIndex + 1, s.results.length - 1);
+    _adMsRender(slot);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    s.focusIndex = Math.max(s.focusIndex - 1, 0);
+    _adMsRender(slot);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (s.open && s.focusIndex >= 0) _adMsSelectIdx(slot, s.focusIndex);
+    else _adMsClose(slot);
+  } else if (e.key === 'Escape') {
+    _adMsClose(slot);
+    document.getElementById('ad-ms-input-' + slot)?.blur();
+  } else if (e.key === 'Tab') {
+    if (s.open && s.focusIndex >= 0) { e.preventDefault(); _adMsSelectIdx(slot, s.focusIndex); }
+    else _adMsClose(slot);
+  }
+}
+
+// Gibt die aktuell gewählte Marker-ID zurück (für _adConfigure)
+function _adMsValue(slot) {
+  return _adMs[slot]?.selectedId ?? '';
+}
+
+// Initialisiert den State für einen Slot nach dem Rendern des Panels
+function _adMsInit(slot, markers, selectedId) {
+  const selName = selectedId != null ? (markers.find(m => m.id == selectedId)?.name || '') : '';
+  _adMs[slot] = {
+    markers, selectedId: selectedId ?? null, selectedName: selName,
+    results: [], focusIndex: -1, open: false,
+  };
+}
+
+// Erzeugt das HTML der Such-Komponente (wird in innerHTML eingefügt)
+function _adMsHTML(slot, markers, selectedId) {
+  const selName = selectedId != null ? (markers.find(m => m.id == selectedId)?.name || '') : '';
+  const val = selName.replace(/"/g, '&quot;');
+  return `<div class="ad-ms" id="ad-ms-${slot}">
+    <div class="ad-ms-input-row" id="ad-ms-row-${slot}">
+      <input class="ad-ms-input" id="ad-ms-input-${slot}" type="text"
+             value="${val}" placeholder="Ziel suchen…" autocomplete="off" spellcheck="false"
+             oninput="_adMsInput(${slot})" onfocus="_adMsOpen(${slot})" onblur="_adMsBlur(${slot})"
+             onkeydown="_adMsKey(event,${slot})">
+      <button class="ad-ms-clear" id="ad-ms-clear-${slot}" tabindex="-1"
+              onmousedown="event.preventDefault();_adMsClear(${slot})" ${selName ? '' : 'hidden'}>✕</button>
+    </div>
+    <div class="ad-ms-dropdown" id="ad-ms-dd-${slot}" hidden></div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
 function _buildMarkerOptions(markers, selectedId) {
   if (!markers || markers.length === 0) return '<option value="">– keine Marker –</option>';
   // Group markers by group name
@@ -5937,9 +6204,7 @@ function _renderAdPanel(id) {
   const m2Block = modeInfo.m2 ? `
     <div class="vd-ad-field">
       <div class="vd-ad-label">${modeInfo.m2}</div>
-      <select class="vd-ad-select" id="ad-marker2" onchange="_onAdModeChange()">
-        ${_buildMarkerOptions(markers, curM2)}
-      </select>
+      ${_adMsHTML(2, markers, curM2)}
     </div>` : '';
 
   const ftBlock = modeInfo.ft ? `
@@ -5974,9 +6239,7 @@ function _renderAdPanel(id) {
     </div>
     <div class="vd-ad-field">
       <div class="vd-ad-label" id="ad-m1-label">${modeInfo.m1}</div>
-      <select class="vd-ad-select" id="ad-marker1">
-        ${_buildMarkerOptions(markers, curM1)}
-      </select>
+      ${_adMsHTML(1, markers, curM1)}
     </div>
     <div id="ad-m2-wrap">${m2Block}</div>
     <div id="ad-ft-wrap">${ftBlock}</div>
@@ -5990,6 +6253,9 @@ function _renderAdPanel(id) {
       }
     </div>
   `;
+  // Marker-Search State nach innerHTML-Injection initialisieren
+  _adMsInit(1, markers, curM1);
+  if (modeInfo.m2) _adMsInit(2, markers, curM2);
 }
 
 function _onAdModeChange() {
@@ -6000,11 +6266,19 @@ function _onAdModeChange() {
   document.getElementById('ad-m1-label').textContent = modeInfo.m1;
 
   const m2wrap = document.getElementById('ad-m2-wrap');
-  if (m2wrap) m2wrap.innerHTML = modeInfo.m2 ? `
-    <div class="vd-ad-field">
-      <div class="vd-ad-label">${modeInfo.m2}</div>
-      <select class="vd-ad-select" id="ad-marker2">${_buildMarkerOptions(markers, '')}</select>
-    </div>` : '';
+  if (m2wrap) {
+    if (modeInfo.m2) {
+      m2wrap.innerHTML = `
+        <div class="vd-ad-field">
+          <div class="vd-ad-label">${modeInfo.m2}</div>
+          ${_adMsHTML(2, markers, null)}
+        </div>`;
+      _adMsInit(2, markers, null);
+    } else {
+      m2wrap.innerHTML = '';
+      delete _adMs[2];
+    }
+  }
 
   const ftwrap = document.getElementById('ad-ft-wrap');
   if (ftwrap) ftwrap.innerHTML = modeInfo.ft ? `
@@ -6030,11 +6304,11 @@ async function _adStartStop(vehicleId, netId, action) {
 }
 
 async function _adConfigure(vehicleId, netId) {
-  const mode    = document.getElementById('ad-mode')?.value    || '';
-  const marker1 = document.getElementById('ad-marker1')?.value || '';
-  const marker2 = document.getElementById('ad-marker2')?.value || '';
-  const fillType= document.getElementById('ad-filltype')?.value|| '';
-  console.log('[AD] _adConfigure', vehicleId, 'netId='+netId, 'mode='+mode, 'marker1='+marker1);
+  const mode     = document.getElementById('ad-mode')?.value    || '';
+  const marker1  = String(_adMsValue(1) ?? '');
+  const marker2  = String(_adMsValue(2) ?? '');
+  const fillType = document.getElementById('ad-filltype')?.value || '';
+  console.log('[AD] _adConfigure', vehicleId, 'netId='+netId, 'mode='+mode, 'marker1='+marker1, 'marker2='+marker2);
   const res = await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cmd: 'autodrive.configure', uniqueId: vehicleId, netId: netId || '', mode, marker1, marker2, fillType })
