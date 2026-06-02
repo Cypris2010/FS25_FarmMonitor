@@ -6306,7 +6306,7 @@ function _renderAdPanel(id) {
     <div id="ad-m2-wrap">${m2Block}</div>
     <div id="ad-ft-wrap">${ftBlock}</div>
     <div class="ad-speed-row">
-      <div class="ad-speed-ctrl">
+      <div class="ad-speed-ctrl" onwheel="event.preventDefault();_adSetSpeed('${id}','${state.netId||''}','field',event.deltaY<0?1:-1)">
         <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','field',-1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/></svg></div>
         <div class="ad-speed-center">
           <img src="/api/ad-icons/speedmeter_field" width="36" height="36" onerror="this.style.display='none'">
@@ -6314,7 +6314,7 @@ function _renderAdPanel(id) {
         </div>
         <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','field',+1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/><path d="M12 5l0 14"/></svg></div>
       </div>
-      <div class="ad-speed-ctrl">
+      <div class="ad-speed-ctrl" onwheel="event.preventDefault();_adSetSpeed('${id}','${state.netId||''}','road',event.deltaY<0?1:-1)">
         <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','road',-1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/></svg></div>
         <div class="ad-speed-center">
           <img src="/api/ad-icons/speedmeter" width="36" height="36" onerror="this.style.display='none'">
