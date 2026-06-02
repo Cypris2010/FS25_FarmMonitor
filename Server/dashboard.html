@@ -6289,19 +6289,7 @@ function _renderAdPanel(id) {
     </div>` : '';
 
   // Current status box
-  const singleDestModes = [1, 3, 4];
-  const activeLeg = state.adCurrentTarget ?? (singleDestModes.includes(curMode) ? 1 : null);
-  const statusBox = isActive ? `
-    <div class="vd-ad-status">
-      <div class="vd-ad-status-row">
-        <span>Modus</span><span class="vd-ad-status-val">${AD_MODES.find(m=>m.id===curMode)?.label||'–'}</span>
-      </div>
-      ${state.adDestination ? `<div class="vd-ad-status-row"><span>Ziel</span><span class="vd-ad-status-val${activeLeg===1?' active':''}">${state.adDestination}</span></div>` : ''}
-      ${state.adDestination2 ? `<div class="vd-ad-status-row"><span>${modeInfo.m2||'Ziel 2'}</span><span class="vd-ad-status-val${activeLeg===2?' active':''}">${state.adDestination2}</span></div>` : ''}
-    </div>` : '';
-
   inner.innerHTML = `
-    ${statusBox}
     <div class="vd-ad-field">
       <div class="vd-ad-label">Modus</div>
       <div class="vd-ad-mode-btns" id="ad-mode-btns">${modeBtns}</div>
