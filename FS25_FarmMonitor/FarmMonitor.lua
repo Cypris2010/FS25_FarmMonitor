@@ -1405,17 +1405,17 @@ function FarmMonitor:collectVehicles()
                         end
                     end
                     -- Field / Road speed
-                    local fs = sm:getFieldSpeed and sm:getFieldSpeed()
+                    local fs = sm.getFieldSpeed and sm:getFieldSpeed()
                     if fs and fs > 0 then adFieldSpeed = MathUtil.round(fs) end
-                    local rs = sm:getRoadSpeed and sm:getRoadSpeed()
+                    local rs = sm.getRoadSpeed and sm:getRoadSpeed()
                     if rs and rs > 0 then adRoadSpeed = MathUtil.round(rs) end
-                    local cs = sm:getCurveSpeed and sm:getCurveSpeed()
+                    local cs = sm.getCurveSpeed and sm:getCurveSpeed()
                     if cs and cs > 0 then adCurveSpeed = MathUtil.round(cs) end
-                    local pd = sm:getPipeDistance and sm:getPipeDistance()
+                    local pd = sm.getPipeDistance and sm:getPipeDistance()
                     if pd and pd > 0 then adPipeDistance = MathUtil.round(pd * 10) / 10 end
-                    local cd = sm:getChopperDistance and sm:getChopperDistance()
+                    local cd = sm.getChopperDistance and sm:getChopperDistance()
                     if cd and cd > 0 then adChopperDistance = MathUtil.round(cd * 4) / 4 end
-                    local ul = sm:getUnloadLevel and sm:getUnloadLevel()
+                    local ul = sm.getUnloadLevel and sm:getUnloadLevel()
                     if ul and ul > 0 then adUnloadLevel = MathUtil.round(ul) end
                     -- Exit field strategy (0=Standard, 1=hinter Start, 2=nächste)
                     if AutoDrive and AutoDrive.getSetting then
