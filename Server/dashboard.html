@@ -6348,11 +6348,11 @@ function _renderAdPanel(id) {
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Abstand Rohr</div>
-      <input type="range" min="1" max="15" step="1"
+      <input type="range" min="0.1" max="15" step="0.1"
         value="${state.adPipeDistance ?? 3}"
-        oninput="this.nextElementSibling.textContent=this.value+'m'"
+        oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)+'m'"
         onchange="_adSetSetting('${id}','${state.netId||''}','pipeDistance',this.value)">
-      <span class="ad-curve-val">${state.adPipeDistance != null ? state.adPipeDistance+'m' : '3m'}</span>
+      <span class="ad-curve-val">${state.adPipeDistance != null ? parseFloat(state.adPipeDistance).toFixed(1)+'m' : '3.0m'}</span>
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Abstand Häcksler</div>

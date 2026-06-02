@@ -1409,7 +1409,7 @@ function FarmMonitor:collectVehicles()
                     local cs = sm:getCurveSpeed and sm:getCurveSpeed()
                     if cs and cs > 0 then adCurveSpeed = MathUtil.round(cs) end
                     local pd = sm:getPipeDistance and sm:getPipeDistance()
-                    if pd and pd > 0 then adPipeDistance = MathUtil.round(pd) end
+                    if pd and pd > 0 then adPipeDistance = MathUtil.round(pd * 10) / 10 end
                     local cd = sm:getChopperDistance and sm:getChopperDistance()
                     if cd and cd > 0 then adChopperDistance = MathUtil.round(cd) end
                     local ul = sm:getUnloadLevel and sm:getUnloadLevel()
@@ -3717,7 +3717,7 @@ function FarmMonitor:cmdAutoDriveSetSetting(cmd)
     print("[FarmMonitor] AD setSetting setting=" .. tostring(setting) .. " value=" .. tostring(value))
     local ok, err
     if setting == "pipeDistance" then
-        value = math.max(1, math.min(15, value))
+        value = math.max(0.1, math.min(15, MathUtil.round(value * 10) / 10))
         ok, err = pcall(function() sm:setPipeDistance(value) end)
     elseif setting == "chopperDistance" then
         value = math.max(1, math.min(20, value))
