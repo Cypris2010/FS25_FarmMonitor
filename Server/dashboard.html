@@ -6367,6 +6367,9 @@ function _renderAdPanel(id) {
       <div class="ad-exitfield-cycle-btn" data-mode="${state.adRestrictToField??0}" data-steps="2" data-cmd="autodrive.setRestrictToField" data-icon="restrictToField" onclick="_adCycleBtn('${id}','${state.netId||''}',this)">
         <img src="/api/ad-icons/restrictToField_${(state.adRestrictToField??0)+1}" width="32" height="32" onerror="this.style.display='none'">
       </div>
+      <div class="ad-exitfield-cycle-btn" data-mode="${state.adAvoidFruit??0}" data-steps="2" data-cmd="autodrive.setAvoidFruit" data-icon="avoidFruit" onclick="_adCycleBtn('${id}','${state.netId||''}',this)">
+        <img src="/api/ad-icons/avoidFruit_${(state.adAvoidFruit??0)+1}" width="32" height="32" onerror="this.style.display='none'">
+      </div>
     </div>
   `;
   // Marker- und Filltype-Search State nach innerHTML-Injection initialisieren
