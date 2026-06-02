@@ -2060,6 +2060,13 @@
     text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.8);
     line-height: 1;
   }
+  /* Curve speed slider */
+  .ad-curve-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 6px 8px; background: rgba(255,255,255,.04); border-radius: 7px; border: 1px solid rgba(255,255,255,.1); }
+  .ad-curve-label { font-size: 10px; color: var(--fg-muted); white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+  .ad-curve-row input[type="range"] { flex: 1; cursor: pointer; -webkit-appearance: none; appearance: none; background: none; height: 28px; }
+  .ad-curve-row input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.15); }
+  .ad-curve-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #4dd0e1; margin-top: -8px; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  .ad-curve-val { font-size: 12px; font-weight: 700; color: #4dd0e1; min-width: 34px; text-align: right; }
   .vd-ad-status {
     font-size: 11px; color: var(--fg-muted); padding: 8px 10px;
     background: rgba(255,255,255,.04); border-radius: 7px; border: 1px solid var(--line);
@@ -6331,6 +6338,17 @@ function _renderAdPanel(id) {
         <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','road',+1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/><path d="M12 5l0 14"/></svg></div>
       </div>
     </div>
+    <div class="ad-curve-row">
+      <div class="ad-curve-label">
+        <img src="/api/ad-icons/turn_speed" width="18" height="18" onerror="this.style.display='none'">
+        Kurvengeschw.
+      </div>
+      <input type="range" min="10" max="100" step="5"
+        value="${state.adCurveSpeed ?? 75}"
+        oninput="this.nextElementSibling.textContent=this.value+'%'"
+        onchange="_adSetCurveSpeed('${id}','${state.netId||''}',this.value)">
+      <span class="ad-curve-val">${state.adCurveSpeed ?? 75}%</span>
+    </div>
   `;
   // Marker- und Filltype-Search State nach innerHTML-Injection initialisieren
   _adMsInit(1, markers, curM1);
@@ -6399,6 +6417,13 @@ async function _adStartStop(vehicleId, netId, action) {
     body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, netId: netId || '', mode: action })
   });
   console.log('[AD] startStop response', res.status);
+}
+
+async function _adSetCurveSpeed(vehicleId, netId, value) {
+  await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'autodrive.setCurveSpeed', uniqueId: vehicleId, netId: netId || '', value: parseInt(value) })
+  });
 }
 
 async function _adSetSpeed(vehicleId, netId, speedType, delta) {

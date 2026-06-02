@@ -1320,6 +1320,7 @@ function FarmMonitor:collectVehicles()
             local adModeState       = nil
             local adFieldSpeed      = nil
             local adRoadSpeed       = nil
+            local adCurveSpeed      = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -1402,6 +1403,8 @@ function FarmMonitor:collectVehicles()
                     if fs and fs > 0 then adFieldSpeed = MathUtil.round(fs) end
                     local rs = sm:getRoadSpeed and sm:getRoadSpeed()
                     if rs and rs > 0 then adRoadSpeed = MathUtil.round(rs) end
+                    local cs = sm:getCurveSpeed and sm:getCurveSpeed()
+                    if cs and cs > 0 then adCurveSpeed = MathUtil.round(cs) end
                 end)
             end
 
@@ -1452,6 +1455,7 @@ function FarmMonitor:collectVehicles()
                 "adModeState",           adModeState,
                 "adFieldSpeed",          adFieldSpeed,
                 "adRoadSpeed",           adRoadSpeed,
+                "adCurveSpeed",          adCurveSpeed,
                 "cpActive",              cpActive,
                 "cpJobType",             cpJobType,
                 "cpInfoText",            cpInfoText,
@@ -3222,6 +3226,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.startStop"]           = FarmMonitor.cmdAutoDriveStartStop,
         ["autodrive.nextTarget"]          = FarmMonitor.cmdAutoDriveNextTarget,
         ["autodrive.setSpeed"]            = FarmMonitor.cmdAutoDriveSetSpeed,
+        ["autodrive.setCurveSpeed"]       = FarmMonitor.cmdAutoDriveSetCurveSpeed,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3650,6 +3655,30 @@ function FarmMonitor:cmdAutoDriveSetSpeed(cmd)
     else
         error("Unknown speedType: " .. tostring(speedType))
     end
+end
+
+function FarmMonitor:cmdAutoDriveSetCurveSpeed(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+        else
+            error("No server connection available")
+        end
+        return
+    end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive")
+    end
+    local sm = vehicle.ad.stateModule
+    local value = math.max(10, math.min(100, tonumber(cmd.value) or 50))
+    print("[FarmMonitor] AD setCurveSpeed value=" .. tostring(value))
+    local ok, err = pcall(function() sm:setCurveSpeed(value) end)
+    if not ok then error("setCurveSpeed failed: " .. tostring(err)) end
 end
 
 -- ---------------------------------------------------------------------------
