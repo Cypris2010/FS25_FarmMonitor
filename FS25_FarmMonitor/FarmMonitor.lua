@@ -3211,6 +3211,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["vehicle.teleport"]              = FarmMonitor.cmdTeleportToVehicle,
         ["autodrive.configure"]           = FarmMonitor.cmdAutoDriveConfigure,
         ["autodrive.startStop"]           = FarmMonitor.cmdAutoDriveStartStop,
+        ["autodrive.nextTarget"]          = FarmMonitor.cmdAutoDriveNextTarget,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3565,6 +3566,41 @@ function FarmMonitor:cmdAutoDriveStartStop(cmd)
         if sm:isActive() then
             vehicle:stopAutoDrive()
             print("[FarmMonitor] AD stopAutoDrive() called")
+        end
+    end
+end
+
+function FarmMonitor:cmdAutoDriveNextTarget(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+            print("[FarmMonitor] AD nextTarget forwarded to server")
+        else
+            error("No server connection available")
+        end
+        return
+    end
+
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: uniqueId=" .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    print("[FarmMonitor] AD nextTarget: isActive=" .. tostring(sm:isActive()) .. " mode=" .. tostring(sm:getMode()))
+
+    local ok, err = pcall(function()
+        sm:getCurrentMode():nextTarget()
+    end)
+    if not ok then
+        print("[FarmMonitor] AD nextTarget mode:nextTarget() failed: " .. tostring(err))
+        local ok2, err2 = pcall(function() vehicle:adNextTarget() end)
+        if not ok2 then
+            error("autodrive.nextTarget not supported: " .. tostring(err2))
         end
     end
 end

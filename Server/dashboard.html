@@ -2020,16 +2020,22 @@
   .vd-ad-mode-btn.active img { opacity: 1; filter: drop-shadow(0 0 3px rgba(0,180,220,.6)); }
   .vd-ad-mode-btn span { font-size: 8.5px; color: rgba(255,255,255,.65); text-align: center; line-height: 1.2; }
   .vd-ad-mode-btn.active span { color: rgba(0,180,220,.95); }
-  .vd-ad-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+  .vd-ad-btn-row { display: flex; gap: 6px; margin-top: 4px; }
   .vd-ad-btn {
-    flex: 1; padding: 8px 10px; border-radius: 7px; border: 1px solid;
-    font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s;
+    flex: 1; padding: 7px 6px; border-radius: 7px; border: 1px solid;
+    font-size: 11px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
   }
+  .vd-ad-btn svg { flex-shrink: 0; }
   .vd-ad-btn:active { transform: scale(.97); }
   .vd-ad-btn-start { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.4); color: rgba(0,180,220,1); }
   .vd-ad-btn-start:hover { background: rgba(0,180,220,.28); }
   .vd-ad-btn-stop  { background: rgba(220,60,60,.15); border-color: rgba(220,60,60,.4); color: rgba(220,100,100,1); }
   .vd-ad-btn-stop:hover  { background: rgba(220,60,60,.28); }
+  .vd-ad-btn-apply { background: rgba(0,200,120,.15); border-color: rgba(0,200,120,.4); color: rgba(0,210,130,1); }
+  .vd-ad-btn-apply:hover { background: rgba(0,200,120,.28); }
+  .vd-ad-btn-next  { background: rgba(220,160,0,.15); border-color: rgba(220,160,0,.4); color: rgba(230,170,0,1); }
+  .vd-ad-btn-next:hover  { background: rgba(220,160,0,.28); }
   .vd-ad-status {
     font-size: 11px; color: var(--fg-muted); padding: 8px 10px;
     background: rgba(255,255,255,.04); border-radius: 7px; border: 1px solid var(--line);
@@ -6201,7 +6207,7 @@ const AD_MODES = [
   { id: 1, label: 'Fahren zu',         icon: 'input_silomode_1', m1: 'Ziel',      m2: null,         ft: false },
   { id: 2, label: 'Abh. & Lief.',      icon: 'input_silomode_3', m1: 'Ladeort',   m2: 'Entladeort', ft: true  },
   { id: 3, label: 'Liefern zu',        icon: 'input_silomode_2', m1: 'Entladeort', m2: null,        ft: false },
-  { id: 4, label: 'Laden',             icon: 'input_silomode_4', m1: 'Ladeort',   m2: 'Entladeort', ft: true  },
+  { id: 4, label: 'Laden',             icon: 'input_silomode_4', m1: 'Fahrziel',  m2: 'Ladeort',    ft: true  },
   { id: 5, label: 'Ernter-Bgl.',       icon: 'input_silomode_5', m1: 'Entladeort', m2: 'Wartepunkt', ft: false },
 ];
 let _adSelectedMode = 1; // currently selected mode in the AD panel
@@ -6278,13 +6284,12 @@ function _renderAdPanel(id) {
     <div id="ad-m2-wrap">${m2Block}</div>
     <div id="ad-ft-wrap">${ftBlock}</div>
     <div class="vd-ad-btn-row">
-      <button class="vd-ad-btn vd-ad-btn-start" onclick="_adConfigure('${id}', '${state.netId||''}')">Übernehmen</button>
-    </div>
-    <div class="vd-ad-btn-row">
       ${isActive
-        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')">⏹ Stopp</button>`
-        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop('${id}', '${state.netId||''}', 'start')">▶ Start</button>`
+        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="5" y="5" width="14" height="14" rx="1"/></svg>Stopp</button>`
+        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop('${id}', '${state.netId||''}', 'start')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z"/></svg>Start</button>`
       }
+      <button class="vd-ad-btn vd-ad-btn-apply" onclick="_adConfigure('${id}', '${state.netId||''}')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10"/></svg>Übernehmen</button>
+      <button class="vd-ad-btn vd-ad-btn-next" onclick="_adNextTarget('${id}', '${state.netId||''}')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5v14l8 -7z"/><path d="M12 5v14l8 -7z"/><path d="M20 5v14"/></svg>Weiter</button>
     </div>
   `;
   // Marker- und Filltype-Search State nach innerHTML-Injection initialisieren
@@ -6354,6 +6359,15 @@ async function _adStartStop(vehicleId, netId, action) {
     body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, netId: netId || '', mode: action })
   });
   console.log('[AD] startStop response', res.status);
+}
+
+async function _adNextTarget(vehicleId, netId) {
+  console.log('[AD] _adNextTarget called', vehicleId, 'netId='+netId);
+  const res = await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'autodrive.nextTarget', uniqueId: vehicleId, netId: netId || '' })
+  });
+  console.log('[AD] nextTarget response', res.status);
 }
 
 async function _adConfigure(vehicleId, netId) {
