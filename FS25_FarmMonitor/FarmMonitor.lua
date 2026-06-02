@@ -1324,7 +1324,8 @@ function FarmMonitor:collectVehicles()
             local adPipeDistance    = nil
             local adChopperDistance = nil
             local adUnloadLevel     = nil
-            local adExitFieldMode   = nil
+            local adExitFieldMode      = nil
+            local adRestrictToField    = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -1419,6 +1420,8 @@ function FarmMonitor:collectVehicles()
                     if AutoDrive and AutoDrive.getSetting then
                         local ef = AutoDrive.getSetting("exitField", vehicle)
                         if ef ~= nil then adExitFieldMode = ef end
+                        local rf = AutoDrive.getSetting("restrictToField", vehicle)
+                        if rf ~= nil then adRestrictToField = rf and 1 or 0 end
                     end
                 end)
             end
@@ -1475,6 +1478,7 @@ function FarmMonitor:collectVehicles()
                 "adChopperDistance",     adChopperDistance,
                 "adUnloadLevel",         adUnloadLevel,
                 "adExitFieldMode",       adExitFieldMode,
+                "adRestrictToField",     adRestrictToField,
                 "cpActive",              cpActive,
                 "cpJobType",             cpJobType,
                 "cpInfoText",            cpInfoText,
@@ -3248,6 +3252,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.setCurveSpeed"]       = FarmMonitor.cmdAutoDriveSetCurveSpeed,
         ["autodrive.setSetting"]          = FarmMonitor.cmdAutoDriveSetSetting,
         ["autodrive.setExitField"]        = FarmMonitor.cmdAutoDriveSetExitField,
+        ["autodrive.setRestrictToField"]  = FarmMonitor.cmdAutoDriveSetRestrictToField,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3762,6 +3767,31 @@ function FarmMonitor:cmdAutoDriveSetExitField(cmd)
         AutoDrive.setSetting("exitField", vehicle, mode)
     end)
     if not ok then error("setExitField failed: " .. tostring(err)) end
+end
+
+function FarmMonitor:cmdAutoDriveSetRestrictToField(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+        else
+            error("No server connection available")
+        end
+        return
+    end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil then
+        error("Vehicle not found or has no AutoDrive")
+    end
+    local value = (tonumber(cmd.mode) or 0) == 1
+    print("[FarmMonitor] AD setRestrictToField value=" .. tostring(value))
+    local ok, err = pcall(function()
+        AutoDrive.setSetting("restrictToField", vehicle, value)
+    end)
+    if not ok then error("setRestrictToField failed: " .. tostring(err)) end
 end
 
 -- ---------------------------------------------------------------------------

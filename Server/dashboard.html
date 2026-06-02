@@ -6361,8 +6361,11 @@ function _renderAdPanel(id) {
       <span class="ad-curve-val">${state.adUnloadLevel != null ? state.adUnloadLevel+'%' : '80%'}</span>
     </div>
     <div class="vd-ad-btn-row" style="margin-top:5px">
-      <div class="ad-exitfield-cycle-btn" data-mode="${state.adExitFieldMode??0}" onclick="_adCycleExitField('${id}','${state.netId||''}',this)">
+      <div class="ad-exitfield-cycle-btn" data-mode="${state.adExitFieldMode??0}" data-steps="3" data-cmd="autodrive.setExitField" data-icon="exitField" onclick="_adCycleBtn('${id}','${state.netId||''}',this)">
         <img src="/api/ad-icons/exitField_${(state.adExitFieldMode??0)+1}" width="32" height="32" onerror="this.style.display='none'">
+      </div>
+      <div class="ad-exitfield-cycle-btn" data-mode="${state.adRestrictToField??0}" data-steps="2" data-cmd="autodrive.setRestrictToField" data-icon="restrictToField" onclick="_adCycleBtn('${id}','${state.netId||''}',this)">
+        <img src="/api/ad-icons/restrictToField_${(state.adRestrictToField??0)+1}" width="32" height="32" onerror="this.style.display='none'">
       </div>
     </div>
   `;
@@ -6470,15 +6473,15 @@ async function _adNextTarget(vehicleId, netId) {
   console.log('[AD] nextTarget response', res.status);
 }
 
-async function _adCycleExitField(vehicleId, netId, btn) {
-  const cur = parseInt(btn.dataset.mode) || 0;
-  const next = (cur + 1) % 3;
+async function _adCycleBtn(vehicleId, netId, btn) {
+  const steps = parseInt(btn.dataset.steps) || 2;
+  const next = ((parseInt(btn.dataset.mode) || 0) + 1) % steps;
   btn.dataset.mode = next;
   const img = btn.querySelector('img');
-  if (img) { img.style.display = ''; img.src = `/api/ad-icons/exitField_${next + 1}`; }
+  if (img) { img.style.display = ''; img.src = `/api/ad-icons/${btn.dataset.icon}_${next + 1}`; }
   await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cmd: 'autodrive.setExitField', uniqueId: vehicleId, netId: netId || '', mode: next })
+    body: JSON.stringify({ cmd: btn.dataset.cmd, uniqueId: vehicleId, netId: netId || '', mode: next })
   });
 }
 
