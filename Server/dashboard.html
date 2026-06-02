@@ -6348,7 +6348,7 @@ function _renderAdPanel(id) {
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Abstand Rohr</div>
-      <input type="range" min="0.1" max="15" step="0.1"
+      <input type="range" min="0.1" max="5" step="0.1"
         value="${state.adPipeDistance ?? 3}"
         oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)+'m'"
         onchange="_adSetSetting('${id}','${state.netId||''}','pipeDistance',this.value)">
