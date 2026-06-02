@@ -1324,6 +1324,7 @@ function FarmMonitor:collectVehicles()
             local adPipeDistance    = nil
             local adChopperDistance = nil
             local adUnloadLevel     = nil
+            local adExitFieldMode   = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -1414,6 +1415,11 @@ function FarmMonitor:collectVehicles()
                     if cd and cd > 0 then adChopperDistance = MathUtil.round(cd * 4) / 4 end
                     local ul = sm:getUnloadLevel and sm:getUnloadLevel()
                     if ul and ul > 0 then adUnloadLevel = MathUtil.round(ul) end
+                    -- Exit field strategy (0=Standard, 1=hinter Start, 2=nächste)
+                    if AutoDrive and AutoDrive.getSetting then
+                        local ef = AutoDrive.getSetting("exitField", vehicle)
+                        if ef ~= nil then adExitFieldMode = ef end
+                    end
                 end)
             end
 
@@ -1468,6 +1474,7 @@ function FarmMonitor:collectVehicles()
                 "adPipeDistance",        adPipeDistance,
                 "adChopperDistance",     adChopperDistance,
                 "adUnloadLevel",         adUnloadLevel,
+                "adExitFieldMode",       adExitFieldMode,
                 "cpActive",              cpActive,
                 "cpJobType",             cpJobType,
                 "cpInfoText",            cpInfoText,
@@ -3240,6 +3247,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.setSpeed"]            = FarmMonitor.cmdAutoDriveSetSpeed,
         ["autodrive.setCurveSpeed"]       = FarmMonitor.cmdAutoDriveSetCurveSpeed,
         ["autodrive.setSetting"]          = FarmMonitor.cmdAutoDriveSetSetting,
+        ["autodrive.setExitField"]        = FarmMonitor.cmdAutoDriveSetExitField,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3729,6 +3737,31 @@ function FarmMonitor:cmdAutoDriveSetSetting(cmd)
         error("Unknown setting: " .. tostring(setting))
     end
     if not ok then error("setSetting failed: " .. tostring(err)) end
+end
+
+function FarmMonitor:cmdAutoDriveSetExitField(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+        else
+            error("No server connection available")
+        end
+        return
+    end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil then
+        error("Vehicle not found or has no AutoDrive")
+    end
+    local mode = math.max(0, math.min(2, tonumber(cmd.mode) or 0))
+    print("[FarmMonitor] AD setExitField mode=" .. tostring(mode))
+    local ok, err = pcall(function()
+        AutoDrive.setSetting("exitField", vehicle, mode)
+    end)
+    if not ok then error("setExitField failed: " .. tostring(err)) end
 end
 
 -- ---------------------------------------------------------------------------
