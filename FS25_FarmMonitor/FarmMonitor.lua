@@ -111,6 +111,73 @@ function FarmMonitorRequestEvent:run(connection)
 end
 
 -- ---------------------------------------------------------------------------
+-- Network Event: Forward AD command (Client → Server)
+-- ---------------------------------------------------------------------------
+-- Problem: rootNode handles are process-local — the same vehicle has a
+-- different rootNode on the client (e.g. 471894) and on the server (e.g. 338812).
+-- Therefore findVehicleByNodeId() always fails when run on the server with a
+-- client-side rootNode ID.
+--
+-- Solution: FarmMonitorADCommandEvent forwards the full IPC cmd table from the
+-- client to the server via FS25's built-in network stream. On the server the
+-- command is executed with authority using resolveVehicle(), which uses
+-- NetworkUtil.getObject(netId) — a network-synchronised ID that is identical
+-- on client and server in all scenarios:
+--   • Singleplayer:          client = server → both paths work
+--   • Non-dedicated MP:      host runs server + client in same process → works
+--   • Dedicated server:      separate processes → netId is the only correct path
+--
+-- In SP the if-guard (g_server == nil and g_client ~= nil) is false, so the
+-- event is never sent and the command runs locally without any overhead.
+
+FarmMonitorADCommandEvent = {}
+FarmMonitorADCommandEvent_mt = Class(FarmMonitorADCommandEvent, Event)
+InitEventClass(FarmMonitorADCommandEvent, "FarmMonitorADCommandEvent")
+
+function FarmMonitorADCommandEvent.emptyNew()
+    return Event.new(FarmMonitorADCommandEvent_mt)
+end
+
+function FarmMonitorADCommandEvent.new(cmd)
+    local self = FarmMonitorADCommandEvent.emptyNew()
+    self.cmd = cmd
+    return self
+end
+
+function FarmMonitorADCommandEvent:writeStream(streamId, connection)
+    streamWriteString(streamId, self.cmd.cmd      or "")
+    streamWriteString(streamId, self.cmd.uniqueId or "")
+    streamWriteString(streamId, self.cmd.netId    or "")  -- NetworkUtil object ID (MP-safe, same on all processes)
+    streamWriteString(streamId, self.cmd.mode     or "")
+    streamWriteString(streamId, self.cmd.marker1  or "")
+    streamWriteString(streamId, self.cmd.marker2  or "")
+    streamWriteString(streamId, self.cmd.fillType or "")
+end
+
+function FarmMonitorADCommandEvent:readStream(streamId, connection)
+    self.cmd = {
+        cmd      = streamReadString(streamId),
+        uniqueId = streamReadString(streamId),
+        netId    = streamReadString(streamId),
+        mode     = streamReadString(streamId),
+        marker1  = streamReadString(streamId),
+        marker2  = streamReadString(streamId),
+        fillType = streamReadString(streamId),
+    }
+    self:run(connection)
+end
+
+function FarmMonitorADCommandEvent:run(connection)
+    -- Called on the server: execute the AD command with server authority.
+    -- resolveVehicle() uses netId (NetworkUtil) as primary lookup, rootNode as fallback.
+    print("[FarmMonitor] FarmMonitorADCommandEvent received on server, dispatching: " .. tostring(self.cmd.cmd))
+    local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, self.cmd)
+    if not ok then
+        print("[FarmMonitor] FarmMonitorADCommandEvent dispatch error: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
@@ -1131,6 +1198,11 @@ function FarmMonitor:collectVehicles()
                 rootId = tostring(vehicle.rootVehicle.rootNode)
             end
 
+            -- netId: network-synchronised object ID via NetworkUtil — identical on client
+            -- and server in all MP scenarios (SP, player-hosted, dedicated server).
+            -- Used by the dashboard to identify vehicles in IPC commands cross-process.
+            local netId = FarmMonitor:getNetworkId(vehicle)
+
             local name = ""
             if vehicle.getName ~= nil then name = vehicle:getName() or "" end
 
@@ -1328,6 +1400,7 @@ function FarmMonitor:collectVehicles()
 
             table.insert(result, FarmMonitor.obj(
                 "id",          tostring(vehicle.rootNode),
+                "netId",       netId,
                 "name",        name,
                 "type",        vehicleTypeName(vehicle),
                 "x",           MathUtil.round(x * 10) / 10,
@@ -3096,6 +3169,7 @@ function FarmMonitor:processCommands()
             id       = getXMLString(xmlId, base .. "#id")       or "",
             cmd      = getXMLString(xmlId, base .. "#cmd")      or "",
             uniqueId = getXMLString(xmlId, base .. "#uniqueId") or "",
+            netId    = getXMLString(xmlId, base .. "#netId")    or "",  -- NetworkUtil object ID (MP-safe vehicle lookup)
             fillType = getXMLString(xmlId, base .. "#fillType") or "",
             mode     = getXMLString(xmlId, base .. "#mode")     or "",
             amount   = getXMLString(xmlId, base .. "#amount")   or "",
@@ -3353,6 +3427,20 @@ end
 -- AutoDrive commands
 -- ---------------------------------------------------------------------------
 
+-- Returns the FS25 network-synchronised object ID for a vehicle as a string,
+-- or nil if unavailable (NetworkUtil not present or vehicle not registered).
+-- This ID is identical on all processes (client, server, dedicated server).
+function FarmMonitor:getNetworkId(vehicle)
+    if NetworkUtil == nil or vehicle == nil then return nil end
+    local ok, nid = pcall(NetworkUtil.getObjectId, vehicle)
+    if ok and nid ~= nil and nid ~= 0 then
+        return tostring(nid)
+    end
+    return nil
+end
+
+-- Fallback lookup by rootNode handle (string). Only reliable in SP where
+-- client and server are the same process. Kept for backward compatibility.
 function FarmMonitor:findVehicleByNodeId(nodeId)
     for _, v in pairs(g_currentMission.vehicleSystem.vehicles) do
         if v ~= nil and v.rootNode ~= nil and tostring(v.rootNode) == nodeId then
@@ -3362,13 +3450,44 @@ function FarmMonitor:findVehicleByNodeId(nodeId)
     return nil
 end
 
+-- Resolves a vehicle from an IPC command using a two-stage strategy:
+--   1. NetworkUtil.getObject(cmd.netId)  — MP-safe: works in SP + all MP scenarios
+--   2. rootNode iteration (cmd.uniqueId) — SP-only fallback if netId unavailable
+-- Always use this instead of findVehicleByNodeId for commands that may be
+-- forwarded to the server via FarmMonitorADCommandEvent.
+function FarmMonitor:resolveVehicle(cmd)
+    if cmd.netId ~= nil and cmd.netId ~= "" and NetworkUtil ~= nil then
+        local ok, obj = pcall(NetworkUtil.getObject, tonumber(cmd.netId))
+        if ok and obj ~= nil then return obj end
+    end
+    return FarmMonitor:findVehicleByNodeId(cmd.uniqueId)
+end
+
 function FarmMonitor:cmdAutoDriveConfigure(cmd)
     if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
         error("AutoDrive not loaded")
     end
-    local vehicle = FarmMonitor:findVehicleByNodeId(cmd.uniqueId)
+
+    -- MP-Client: forward to server via network event.
+    -- On the client, direct AutoDrive API calls (sm:setMode, sm:setFirstMarker, …)
+    -- are overwritten by the next server→client sync. The server must execute them.
+    -- Guard: g_server == nil means we are a pure client (not SP, not listen-server host).
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+            print("[FarmMonitor] AD configure forwarded to server via FarmMonitorADCommandEvent")
+        else
+            error("No server connection available to forward AD configure command")
+        end
+        return
+    end
+
+    -- SP / listen-server host / dedicated-server-side execution:
+    -- resolveVehicle() uses netId (NetworkUtil) first, rootNode as fallback.
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
     if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
-        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+        error("Vehicle not found or has no AutoDrive: uniqueId=" .. tostring(cmd.uniqueId) .. " netId=" .. tostring(cmd.netId))
     end
     local sm = vehicle.ad.stateModule
 
@@ -3410,9 +3529,22 @@ function FarmMonitor:cmdAutoDriveStartStop(cmd)
     if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
         error("AutoDrive not loaded")
     end
-    local vehicle = FarmMonitor:findVehicleByNodeId(cmd.uniqueId)
+
+    -- MP-Client: forward to server (same reason as cmdAutoDriveConfigure above)
+    if g_server == nil and g_client ~= nil then
+        local serverConn = g_client:getServerConnection()
+        if serverConn ~= nil then
+            serverConn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+            print("[FarmMonitor] AD startStop forwarded to server via FarmMonitorADCommandEvent")
+        else
+            error("No server connection available to forward AD startStop command")
+        end
+        return
+    end
+
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
     if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
-        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+        error("Vehicle not found or has no AutoDrive: uniqueId=" .. tostring(cmd.uniqueId) .. " netId=" .. tostring(cmd.netId))
     end
     local sm = vehicle.ad.stateModule
     print("[FarmMonitor] AD startStop: action=" .. tostring(cmd.mode) .. " isActive=" .. tostring(sm:isActive()) .. " isServer=" .. tostring(vehicle.isServer))

@@ -211,6 +211,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		ID              string `json:"id"`
 		Cmd             string `json:"cmd"`
 		UniqueID        string `json:"uniqueId,omitempty"`
+		NetID           string `json:"netId,omitempty"`     // NetworkUtil object ID — MP-safe vehicle lookup
 		FillType        string `json:"fillType,omitempty"`
 		Mode            string `json:"mode,omitempty"`
 		Amount          string `json:"amount,omitempty"`
@@ -226,6 +227,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		ID              string   `xml:"id,attr"`
 		Cmd             string   `xml:"cmd,attr"`
 		UniqueID        string   `xml:"uniqueId,attr"`
+		NetID           string   `xml:"netId,attr"`     // NetworkUtil object ID — MP-safe vehicle lookup
 		FillType        string   `xml:"fillType,attr"`
 		Mode            string   `xml:"mode,attr"`
 		Amount          string   `xml:"amount,attr"`
@@ -255,7 +257,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			http.Error(w, "invalid JSON", http.StatusBadRequest)
 			return
 		}
-		log.Printf("[command] received: cmd=%s uniqueId=%s mode=%s marker1=%s marker2=%s", cmd.Cmd, cmd.UniqueID, cmd.Mode, cmd.Marker1, cmd.Marker2)
+		log.Printf("[command] received: cmd=%s uniqueId=%s netId=%s mode=%s marker1=%s marker2=%s", cmd.Cmd, cmd.UniqueID, cmd.NetID, cmd.Mode, cmd.Marker1, cmd.Marker2)
 		if cmd.ID == "" {
 			cmd.ID = fmt.Sprintf("%d", time.Now().UnixNano())
 		}
@@ -264,6 +266,7 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			ID:              cmd.ID,
 			Cmd:             cmd.Cmd,
 			UniqueID:        cmd.UniqueID,
+			NetID:           cmd.NetID,
 			FillType:        cmd.FillType,
 			Mode:             cmd.Mode,
 			Amount:           cmd.Amount,

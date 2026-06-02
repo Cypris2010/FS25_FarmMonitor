@@ -7,6 +7,57 @@ Relevante Dateien: `scripts/Specialization.lua`, `scripts/ExternalInterface.lua`
 
 FS25 führt jeden Mod in einem eigenen Lua-Sandbox aus. `ADGraphManager` und `AutoDrive` sind aus FarmMonitor heraus **nicht zugänglich** (immer `nil`). Nur Methoden, die auf dem `vehicle.ad`-Objekt direkt aufrufbar sind, können genutzt werden.
 
+## Fahrzeug-Identifikation im Multiplayer
+
+### Das Problem: rootNode ist prozess-lokal
+
+`vehicle.rootNode` ist ein Szenenknoten-Handle (integer) — er ist **nur innerhalb eines Prozesses** konsistent. Derselbe Traktor hat auf dem Client z.B. `rootNode = 471894` und auf dem Server `rootNode = 338812`. Ein Lookup per rootNode auf dem Server mit einer Client-ID schlägt daher immer fehl.
+
+### Die Lösung: NetworkUtil Object ID (`netId`)
+
+FS25 bietet `NetworkUtil.getObjectId(vehicle)` — eine **netzwerksynchronisierte ID**, die auf Client und Server für dasselbe Fahrzeug identisch ist. AutoDrive selbst verwendet diesen Mechanismus für alle seine Netzwerk-Events (`writeStream`/`readStream`).
+
+```lua
+-- Export in vehicles.json (client-side):
+local function getNetworkId(vehicle)
+    if NetworkUtil == nil or vehicle == nil then return nil end
+    local ok, nid = pcall(NetworkUtil.getObjectId, vehicle)
+    if ok and nid ~= nil and nid ~= 0 then return tostring(nid) end
+    return nil
+end
+-- → vehicles.json enthält "netId": "12345" neben "id": "471894"
+
+-- Lookup auf dem Server (via FarmMonitorADCommandEvent):
+local function resolveVehicle(cmd)
+    -- Stufe 1: NetworkUtil — funktioniert in SP + allen MP-Szenarien
+    if cmd.netId ~= nil and cmd.netId ~= "" and NetworkUtil ~= nil then
+        local ok, obj = pcall(NetworkUtil.getObject, tonumber(cmd.netId))
+        if ok and obj ~= nil then return obj end
+    end
+    -- Stufe 2: rootNode-Iteration — nur in SP zuverlässig
+    return findVehicleByNodeId(cmd.uniqueId)
+end
+```
+
+### Szenarien-Abdeckung
+
+| Szenario | `id` (rootNode) | `netId` (NetworkUtil) |
+|---|---|---|
+| Singleplayer | ✅ funktioniert (Client = Server) | ✅ funktioniert |
+| Player-hosted MP (Host) | ✅ funktioniert (Host = Server) | ✅ funktioniert |
+| Player-hosted MP (Joining Client) | ❌ schlägt fehl auf Server | ✅ funktioniert |
+| Dedicated Server | ❌ schlägt fehl auf Server | ✅ funktioniert |
+
+### FarmMonitorADCommandEvent
+
+Da commands.xml nur auf dem Client gelesen wird, sendet der Client AD-Commands via `FarmMonitorADCommandEvent` zum Server (analog zu AutoDrives eigenen Events). Der Client erkennt ob er pure Client ist: `g_server == nil and g_client ~= nil`.
+
+```lua
+-- Im Stream werden beide IDs übertragen:
+streamWriteString(streamId, cmd.uniqueId or "")  -- rootNode (SP-Fallback)
+streamWriteString(streamId, cmd.netId    or "")  -- NetworkUtil ID (MP-safe)
+```
+
 ## Fahrzeug-Zugriff
 
 ```lua
@@ -15,9 +66,9 @@ if vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
     local sm = vehicle.ad.stateModule
 end
 
--- WICHTIG: Fahrzeug per rootNode suchen, NICHT getVehicleByUniqueId()
--- vehicles.json exportiert vehicle.rootNode als "id" (tostring)
--- getVehicleByUniqueId() erwartet eine andere interne ID
+-- Fahrzeug auflösen (MP-sicher): immer resolveVehicle(cmd) verwenden
+-- findVehicleByNodeId() nur noch als interner Fallback in resolveVehicle()
+-- getVehicleByUniqueId() erwartet eine andere interne ID → nicht verwenden
 local function findVehicleByNodeId(nodeId)
     for _, v in pairs(g_currentMission.vehicleSystem.vehicles) do
         if v ~= nil and v.rootNode ~= nil and tostring(v.rootNode) == nodeId then
@@ -182,26 +233,32 @@ m.isADDebug     -- bool: Debug-Marker → überspringen
 Commands werden per `commands.xml` übertragen (File-IPC-Pattern, siehe `ai/file_ipc_commands.md`).
 
 ```xml
-<command cmd="autodrive.configure" uniqueId="888436" mode="1" marker1="22" marker2="" fillType=""/>
-<command cmd="autodrive.startStop"  uniqueId="888436" mode="start"/>
-<command cmd="autodrive.startStop"  uniqueId="888436" mode="stop"/>
+<command cmd="autodrive.configure" uniqueId="471894" netId="12345" mode="1" marker1="22" marker2="" fillType=""/>
+<command cmd="autodrive.startStop"  uniqueId="471894" netId="12345" mode="start"/>
+<command cmd="autodrive.startStop"  uniqueId="471894" netId="12345" mode="stop"/>
 ```
 
-- `uniqueId` = `tostring(vehicle.rootNode)` (aus `vehicles.json` → `id`-Feld)
+- `uniqueId` = `tostring(vehicle.rootNode)` aus `vehicles.json` → `id`-Feld (SP-Fallback, prozess-lokal)
+- `netId` = `tostring(NetworkUtil.getObjectId(vehicle))` aus `vehicles.json` → `netId`-Feld (**MP-safe**, auf allen Prozessen gleich)
 - `marker1`/`marker2` = `m.markerIndex` aus `autoDriveMarkers.json`
 - `fillType` = Fülltyp-Name (String, z.B. `"WHEAT"`)
 
+**Wichtig:** Immer beide IDs senden. `resolveVehicle(cmd)` verwendet `netId` zuerst und fällt auf `uniqueId` zurück.
+
 ## Dashboard-Besonderheiten
 
-### onclick-Attribut: Kein JSON.stringify für IDs
+### onclick-Attribut: beide IDs übergeben
+
+`_adStartStop` und `_adConfigure` nehmen jetzt `(vehicleId, netId, action)` statt `(vehicleId, action)`:
 
 ```js
-// FALSCH — JSON.stringify("888436") erzeugt "888436" mit Anführungszeichen
-//          → bricht HTML-Attribut: onclick="_adStartStop("888436", 'start')"
-onclick="_adStartStop(${JSON.stringify(id)}, 'start')"
+// RICHTIG — beide IDs im onclick, state.netId aus Vehicle-State
+onclick="_adConfigure('${id}', '${state.netId||''}')"
+onclick="_adStartStop('${id}', '${state.netId||''}', 'start')"
+onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')"
 
-// RICHTIG — einfache Anführungszeichen
-onclick="_adStartStop('${id}', 'start')"
+// FALSCH — JSON.stringify erzeugt Anführungszeichen → bricht HTML-Attribut
+onclick="_adStartStop(${JSON.stringify(id)}, 'start')"
 ```
 
 ### ID-Vergleich: String vs Number

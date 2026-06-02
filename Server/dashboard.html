@@ -5981,12 +5981,12 @@ function _renderAdPanel(id) {
     <div id="ad-m2-wrap">${m2Block}</div>
     <div id="ad-ft-wrap">${ftBlock}</div>
     <div class="vd-ad-btn-row">
-      <button class="vd-ad-btn vd-ad-btn-start" onclick="_adConfigure('${id}')">Übernehmen</button>
+      <button class="vd-ad-btn vd-ad-btn-start" onclick="_adConfigure('${id}', '${state.netId||''}')">Übernehmen</button>
     </div>
     <div class="vd-ad-btn-row">
       ${isActive
-        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop('${id}', 'stop')">⏹ Stopp</button>`
-        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop('${id}', 'start')">▶ Start</button>`
+        ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')">⏹ Stopp</button>`
+        : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop('${id}', '${state.netId||''}', 'start')">▶ Start</button>`
       }
     </div>
   `;
@@ -6014,27 +6014,30 @@ function _onAdModeChange() {
     </div>` : '';
 }
 
-async function _adStartStop(vehicleId, action) {
-  console.log('[AD] _adStartStop called', vehicleId, action);
+// vehicleId = state.id (rootNode string, process-local — SP fallback)
+// netId     = state.netId (NetworkUtil object ID — same on all processes, MP-safe)
+// The server uses netId first via resolveVehicle(); rootNode as fallback for SP.
+async function _adStartStop(vehicleId, netId, action) {
+  console.log('[AD] _adStartStop called', vehicleId, 'netId='+netId, action);
   if (action === 'start') {
-    await _adConfigure(vehicleId);
+    await _adConfigure(vehicleId, netId);
   }
   const res = await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, mode: action })
+    body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, netId: netId || '', mode: action })
   });
   console.log('[AD] startStop response', res.status);
 }
 
-async function _adConfigure(vehicleId) {
+async function _adConfigure(vehicleId, netId) {
   const mode    = document.getElementById('ad-mode')?.value    || '';
   const marker1 = document.getElementById('ad-marker1')?.value || '';
   const marker2 = document.getElementById('ad-marker2')?.value || '';
   const fillType= document.getElementById('ad-filltype')?.value|| '';
-  console.log('[AD] _adConfigure', vehicleId, 'mode='+mode, 'marker1='+marker1);
+  console.log('[AD] _adConfigure', vehicleId, 'netId='+netId, 'mode='+mode, 'marker1='+marker1);
   const res = await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cmd: 'autodrive.configure', uniqueId: vehicleId, mode, marker1, marker2, fillType })
+    body: JSON.stringify({ cmd: 'autodrive.configure', uniqueId: vehicleId, netId: netId || '', mode, marker1, marker2, fillType })
   });
   console.log('[AD] configure response', res.status);
 }
