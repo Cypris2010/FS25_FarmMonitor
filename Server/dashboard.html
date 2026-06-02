@@ -2036,6 +2036,26 @@
   .vd-ad-btn-apply:hover { background: rgba(0,200,120,.28); }
   .vd-ad-btn-next  { background: rgba(220,160,0,.15); border-color: rgba(220,160,0,.4); color: rgba(230,170,0,1); }
   .vd-ad-btn-next:hover  { background: rgba(220,160,0,.28); }
+  /* Speed rocker */
+  .ad-speed-row { display: flex; gap: 6px; margin-top: 4px; }
+  .ad-speed-ctrl {
+    flex: 1; display: flex; align-items: stretch; border-radius: 7px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04);
+  }
+  .ad-speed-side {
+    width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; font-weight: 700; color: rgba(255,255,255,.5);
+    transition: background .15s, color .15s; user-select: none;
+  }
+  .ad-speed-side:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
+  .ad-speed-side:active { background: rgba(255,255,255,.18); }
+  .ad-speed-center {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 6px 4px; gap: 2px; pointer-events: none;
+  }
+  .ad-speed-center svg { color: rgba(255,255,255,.55); }
+  .ad-speed-val { font-size: 13px; font-weight: 700; color: var(--fg); line-height: 1; }
+  .ad-speed-unit { font-size: 9px; color: var(--fg-muted); }
   .vd-ad-status {
     font-size: 11px; color: var(--fg-muted); padding: 8px 10px;
     background: rgba(255,255,255,.04); border-radius: 7px; border: 1px solid var(--line);
@@ -6281,6 +6301,26 @@ function _renderAdPanel(id) {
     </div>
     <div id="ad-m2-wrap">${m2Block}</div>
     <div id="ad-ft-wrap">${ftBlock}</div>
+    <div class="ad-speed-row">
+      <div class="ad-speed-ctrl">
+        <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','field',-1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/></svg></div>
+        <div class="ad-speed-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M8 12h4"/><path d="M12 16v-4"/><path d="M16 12h-4"/></svg>
+          <span class="ad-speed-val" id="ad-fspeed-val">${state.adFieldSpeed ?? '–'}</span>
+          <span class="ad-speed-unit">km/h Feld</span>
+        </div>
+        <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','field',+1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/><path d="M12 5l0 14"/></svg></div>
+      </div>
+      <div class="ad-speed-ctrl">
+        <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','road',-1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/></svg></div>
+        <div class="ad-speed-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 17h-2v-11h2"/><path d="M19 17h2v-11h-2"/><path d="M7 8h10"/><path d="M7 16h10"/></svg>
+          <span class="ad-speed-val" id="ad-rspeed-val">${state.adRoadSpeed ?? '–'}</span>
+          <span class="ad-speed-unit">km/h Straße</span>
+        </div>
+        <div class="ad-speed-side" onclick="_adSetSpeed('${id}','${state.netId||''}','road',+1)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/><path d="M12 5l0 14"/></svg></div>
+      </div>
+    </div>
     <div class="vd-ad-btn-row">
       ${isActive
         ? `<button class="vd-ad-btn vd-ad-btn-stop" onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="5" y="5" width="14" height="14" rx="1"/></svg>Stopp</button>`
@@ -6357,6 +6397,18 @@ async function _adStartStop(vehicleId, netId, action) {
     body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, netId: netId || '', mode: action })
   });
   console.log('[AD] startStop response', res.status);
+}
+
+async function _adSetSpeed(vehicleId, netId, speedType, delta) {
+  const valId = speedType === 'field' ? 'ad-fspeed-val' : 'ad-rspeed-val';
+  const el = document.getElementById(valId);
+  const cur = el ? (parseInt(el.textContent) || 10) : 10;
+  const next = Math.max(1, Math.min(50, cur + delta));
+  if (el) el.textContent = next;
+  await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'autodrive.setSpeed', uniqueId: vehicleId, netId: netId || '', speedType, value: next })
+  });
 }
 
 async function _adNextTarget(vehicleId, netId) {
