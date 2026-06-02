@@ -2018,8 +2018,8 @@
   .vd-ad-mode-btn.active { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.5); }
   .vd-ad-mode-btn img { width: 28px; height: 28px; image-rendering: pixelated; opacity: .75; }
   .vd-ad-mode-btn.active img { opacity: 1; filter: drop-shadow(0 0 3px rgba(0,180,220,.6)); }
-  .vd-ad-mode-btn span { font-size: 8.5px; color: var(--fg-muted); text-align: center; line-height: 1.2; }
-  .vd-ad-mode-btn.active span { color: rgba(0,180,220,.9); }
+  .vd-ad-mode-btn span { font-size: 8.5px; color: rgba(255,255,255,.65); text-align: center; line-height: 1.2; }
+  .vd-ad-mode-btn.active span { color: rgba(0,180,220,.95); }
   .vd-ad-btn-row { display: flex; gap: 8px; margin-top: 4px; }
   .vd-ad-btn {
     flex: 1; padding: 8px 10px; border-radius: 7px; border: 1px solid;
@@ -6199,7 +6199,7 @@ function _buildFillTypeOptions(selectedName) {
 
 const AD_MODES = [
   { id: 1, label: 'Fahren zu',         icon: 'destination',    m1: 'Ziel',        m2: null,         ft: false },
-  { id: 2, label: 'Abh. & Lief.',      icon: 'tipper_load',    m1: 'Ladeort',     m2: 'Entladeort', ft: true  },
+  { id: 2, label: 'Abh. & Lief.',      icon: 'input_silomode_3', m1: 'Ladeort',   m2: 'Entladeort', ft: true  },
   { id: 3, label: 'Liefern zu',        icon: 'tipper_overlay', m1: 'Entladeort',  m2: null,         ft: false },
   { id: 4, label: 'Laden',             icon: 'tipper_load',    m1: 'Ladeort',     m2: 'Entladeort', ft: true  },
   { id: 5, label: 'Ernter-Bgl.',       icon: 'combine',        m1: 'Entladeort',  m2: 'Wartepunkt', ft: false },
