@@ -1411,7 +1411,7 @@ function FarmMonitor:collectVehicles()
                     local pd = sm:getPipeDistance and sm:getPipeDistance()
                     if pd and pd > 0 then adPipeDistance = MathUtil.round(pd * 10) / 10 end
                     local cd = sm:getChopperDistance and sm:getChopperDistance()
-                    if cd and cd > 0 then adChopperDistance = MathUtil.round(cd) end
+                    if cd and cd > 0 then adChopperDistance = MathUtil.round(cd * 4) / 4 end
                     local ul = sm:getUnloadLevel and sm:getUnloadLevel()
                     if ul and ul > 0 then adUnloadLevel = MathUtil.round(ul) end
                 end)
@@ -3720,7 +3720,7 @@ function FarmMonitor:cmdAutoDriveSetSetting(cmd)
         value = math.max(0.1, math.min(5, MathUtil.round(value * 10) / 10))
         ok, err = pcall(function() sm:setPipeDistance(value) end)
     elseif setting == "chopperDistance" then
-        value = math.max(1, math.min(20, value))
+        value = math.max(0.25, math.min(8, MathUtil.round(value * 4) / 4))
         ok, err = pcall(function() sm:setChopperDistance(value) end)
     elseif setting == "unloadLevel" then
         value = math.max(50, math.min(100, value))

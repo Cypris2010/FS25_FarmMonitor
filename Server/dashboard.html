@@ -6356,11 +6356,11 @@ function _renderAdPanel(id) {
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Abstand Häcksler</div>
-      <input type="range" min="1" max="20" step="1"
-        value="${state.adChopperDistance ?? 5}"
-        oninput="this.nextElementSibling.textContent=this.value+'m'"
+      <input type="range" min="0.25" max="8" step="0.25"
+        value="${state.adChopperDistance ?? 2}"
+        oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)+'m'"
         onchange="_adSetSetting('${id}','${state.netId||''}','chopperDistance',this.value)">
-      <span class="ad-curve-val">${state.adChopperDistance != null ? state.adChopperDistance+'m' : '5m'}</span>
+      <span class="ad-curve-val">${state.adChopperDistance != null ? parseFloat(state.adChopperDistance).toFixed(2)+'m' : '2.00m'}</span>
     </div>
     <div class="ad-curve-row">
       <div class="ad-curve-label">Abladen ab Level</div>
