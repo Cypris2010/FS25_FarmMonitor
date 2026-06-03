@@ -279,10 +279,14 @@ function FarmMonitor:loadConfig()
     FarmMonitor.soilResolution      = cfg.soilResolution
     FarmMonitor.soilRowsPerTick     = cfg.soilRowsPerTick
 
-    print(string.format("[FarmMonitor] Config loaded — main:%ds vehicles:%ds fields:%ds weather:%ds commands:%ds soil:%dpx rows:%d",
-        cfg.mainInterval, cfg.vehicleInterval, cfg.fieldInterval,
-        cfg.weatherInterval, cfg.commandInterval,
-        cfg.soilResolution, cfg.soilRowsPerTick))
+    print("[FarmMonitor] Config loaded:")
+    print(string.format("[FarmMonitor]   Haupt-Export    : %d s", cfg.mainInterval))
+    print(string.format("[FarmMonitor]   Fahrzeuge       : %d s", cfg.vehicleInterval))
+    print(string.format("[FarmMonitor]   Felder          : %d s", cfg.fieldInterval))
+    print(string.format("[FarmMonitor]   Wetter          : %d s", cfg.weatherInterval))
+    print(string.format("[FarmMonitor]   IPC-Commands    : %d s", cfg.commandInterval))
+    print(string.format("[FarmMonitor]   Soil-Aufloesung : %d px", cfg.soilResolution))
+    print(string.format("[FarmMonitor]   Soil-RowsPerTick: %d", cfg.soilRowsPerTick))
 end
 
 function FarmMonitor:deleteMap()
