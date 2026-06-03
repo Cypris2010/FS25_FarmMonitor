@@ -208,18 +208,42 @@ func handleSavegame() http.HandlerFunc {
 // Handlers
 // ---------------------------------------------------------------------------
 
+// xmlSeconds is a helper to parse <element seconds="N"/> attributes.
+type xmlSeconds struct {
+	Seconds int `xml:"seconds,attr"`
+}
+type xmlValue struct {
+	Value int `xml:"value,attr"`
+}
+
+// modConfigXML is used only for XML parsing (nested attribute structs).
+type modConfigXML struct {
+	ExportIntervals struct {
+		Main     xmlSeconds `xml:"main"`
+		Vehicles xmlSeconds `xml:"vehicles"`
+		Fields   xmlSeconds `xml:"fields"`
+		Weather  xmlSeconds `xml:"weather"`
+		Commands xmlSeconds `xml:"commands"`
+	} `xml:"exportIntervals"`
+	SoilMap struct {
+		Resolution  xmlValue `xml:"resolution"`
+		RowsPerTick xmlValue `xml:"rowsPerTick"`
+	} `xml:"soilMap"`
+}
+
+// modConfig is the flat struct used for JSON and runtime logic.
 type modConfig struct {
 	ExportIntervals struct {
-		Main     int `xml:"main>seconds,attr"     json:"mainSeconds"`
-		Vehicles int `xml:"vehicles>seconds,attr" json:"vehicleSeconds"`
-		Fields   int `xml:"fields>seconds,attr"   json:"fieldSeconds"`
-		Weather  int `xml:"weather>seconds,attr"  json:"weatherSeconds"`
-		Commands int `xml:"commands>seconds,attr" json:"commandSeconds"`
-	} `xml:"exportIntervals" json:"exportIntervals"`
+		Main     int `json:"mainSeconds"`
+		Vehicles int `json:"vehicleSeconds"`
+		Fields   int `json:"fieldSeconds"`
+		Weather  int `json:"weatherSeconds"`
+		Commands int `json:"commandSeconds"`
+	} `json:"exportIntervals"`
 	SoilMap struct {
-		Resolution  int `xml:"resolution>value,attr"  json:"resolution"`
-		RowsPerTick int `xml:"rowsPerTick>value,attr" json:"rowsPerTick"`
-	} `xml:"soilMap" json:"soilMap"`
+		Resolution  int `json:"resolution"`
+		RowsPerTick int `json:"rowsPerTick"`
+	} `json:"soilMap"`
 }
 
 var modConfigDefaults = modConfig{}
@@ -240,17 +264,17 @@ func readModConfig(dataDir string) modConfig {
 	if err != nil {
 		return cfg
 	}
-	var parsed modConfig
+	var parsed modConfigXML
 	if err := xml.Unmarshal(data, &parsed); err != nil {
 		return cfg
 	}
-	if parsed.ExportIntervals.Main > 0     { cfg.ExportIntervals.Main = parsed.ExportIntervals.Main }
-	if parsed.ExportIntervals.Vehicles > 0 { cfg.ExportIntervals.Vehicles = parsed.ExportIntervals.Vehicles }
-	if parsed.ExportIntervals.Fields > 0   { cfg.ExportIntervals.Fields = parsed.ExportIntervals.Fields }
-	if parsed.ExportIntervals.Weather > 0  { cfg.ExportIntervals.Weather = parsed.ExportIntervals.Weather }
-	if parsed.ExportIntervals.Commands > 0 { cfg.ExportIntervals.Commands = parsed.ExportIntervals.Commands }
-	if parsed.SoilMap.Resolution > 0       { cfg.SoilMap.Resolution = parsed.SoilMap.Resolution }
-	if parsed.SoilMap.RowsPerTick > 0      { cfg.SoilMap.RowsPerTick = parsed.SoilMap.RowsPerTick }
+	if parsed.ExportIntervals.Main.Seconds > 0     { cfg.ExportIntervals.Main = parsed.ExportIntervals.Main.Seconds }
+	if parsed.ExportIntervals.Vehicles.Seconds > 0 { cfg.ExportIntervals.Vehicles = parsed.ExportIntervals.Vehicles.Seconds }
+	if parsed.ExportIntervals.Fields.Seconds > 0   { cfg.ExportIntervals.Fields = parsed.ExportIntervals.Fields.Seconds }
+	if parsed.ExportIntervals.Weather.Seconds > 0  { cfg.ExportIntervals.Weather = parsed.ExportIntervals.Weather.Seconds }
+	if parsed.ExportIntervals.Commands.Seconds > 0 { cfg.ExportIntervals.Commands = parsed.ExportIntervals.Commands.Seconds }
+	if parsed.SoilMap.Resolution.Value > 0         { cfg.SoilMap.Resolution = parsed.SoilMap.Resolution.Value }
+	if parsed.SoilMap.RowsPerTick.Value > 0        { cfg.SoilMap.RowsPerTick = parsed.SoilMap.RowsPerTick.Value }
 	return cfg
 }
 
