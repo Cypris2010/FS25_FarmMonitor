@@ -208,6 +208,110 @@ func handleSavegame() http.HandlerFunc {
 // Handlers
 // ---------------------------------------------------------------------------
 
+type modConfig struct {
+	ExportIntervals struct {
+		Main     int `xml:"main>seconds,attr"     json:"mainSeconds"`
+		Vehicles int `xml:"vehicles>seconds,attr" json:"vehicleSeconds"`
+		Fields   int `xml:"fields>seconds,attr"   json:"fieldSeconds"`
+		Weather  int `xml:"weather>seconds,attr"  json:"weatherSeconds"`
+		Commands int `xml:"commands>seconds,attr" json:"commandSeconds"`
+	} `xml:"exportIntervals" json:"exportIntervals"`
+	SoilMap struct {
+		Resolution  int `xml:"resolution>value,attr"  json:"resolution"`
+		RowsPerTick int `xml:"rowsPerTick>value,attr" json:"rowsPerTick"`
+	} `xml:"soilMap" json:"soilMap"`
+}
+
+var modConfigDefaults = modConfig{}
+
+func init() {
+	modConfigDefaults.ExportIntervals.Main = 10
+	modConfigDefaults.ExportIntervals.Vehicles = 2
+	modConfigDefaults.ExportIntervals.Fields = 60
+	modConfigDefaults.ExportIntervals.Weather = 30
+	modConfigDefaults.ExportIntervals.Commands = 1
+	modConfigDefaults.SoilMap.Resolution = 128
+	modConfigDefaults.SoilMap.RowsPerTick = 2
+}
+
+func readModConfig(dataDir string) modConfig {
+	cfg := modConfigDefaults
+	data, err := os.ReadFile(filepath.Join(dataDir, "config.xml"))
+	if err != nil {
+		return cfg
+	}
+	var parsed modConfig
+	if err := xml.Unmarshal(data, &parsed); err != nil {
+		return cfg
+	}
+	if parsed.ExportIntervals.Main > 0     { cfg.ExportIntervals.Main = parsed.ExportIntervals.Main }
+	if parsed.ExportIntervals.Vehicles > 0 { cfg.ExportIntervals.Vehicles = parsed.ExportIntervals.Vehicles }
+	if parsed.ExportIntervals.Fields > 0   { cfg.ExportIntervals.Fields = parsed.ExportIntervals.Fields }
+	if parsed.ExportIntervals.Weather > 0  { cfg.ExportIntervals.Weather = parsed.ExportIntervals.Weather }
+	if parsed.ExportIntervals.Commands > 0 { cfg.ExportIntervals.Commands = parsed.ExportIntervals.Commands }
+	if parsed.SoilMap.Resolution > 0       { cfg.SoilMap.Resolution = parsed.SoilMap.Resolution }
+	if parsed.SoilMap.RowsPerTick > 0      { cfg.SoilMap.RowsPerTick = parsed.SoilMap.RowsPerTick }
+	return cfg
+}
+
+func writeModConfig(dataDir string, cfg modConfig) error {
+	lines := []string{
+		`<?xml version="1.0" encoding="utf-8"?>`,
+		`<farmMonitor>`,
+		`    <!-- Export intervals in seconds -->`,
+		`    <exportIntervals>`,
+		fmt.Sprintf(`        <main seconds="%d"/>`, cfg.ExportIntervals.Main),
+		fmt.Sprintf(`        <vehicles seconds="%d"/>`, cfg.ExportIntervals.Vehicles),
+		fmt.Sprintf(`        <fields seconds="%d"/>`, cfg.ExportIntervals.Fields),
+		fmt.Sprintf(`        <weather seconds="%d"/>`, cfg.ExportIntervals.Weather),
+		fmt.Sprintf(`        <commands seconds="%d"/>`, cfg.ExportIntervals.Commands),
+		`    </exportIntervals>`,
+		`    <!-- Soil map quality: resolution 64/128/256, rowsPerTick 1-8 -->`,
+		`    <soilMap>`,
+		fmt.Sprintf(`        <resolution value="%d"/>`, cfg.SoilMap.Resolution),
+		fmt.Sprintf(`        <rowsPerTick value="%d"/>`, cfg.SoilMap.RowsPerTick),
+		`    </soilMap>`,
+		`</farmMonitor>`,
+	}
+	content := strings.Join(lines, "\n") + "\n"
+	return os.WriteFile(filepath.Join(dataDir, "config.xml"), []byte(content), 0644)
+}
+
+func handleModConfig(dataDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			cfg := readModConfig(dataDir)
+			json.NewEncoder(w).Encode(cfg)
+
+		case http.MethodPut:
+			var cfg modConfig
+			if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+			if err := writeModConfig(dataDir, cfg); err != nil {
+				http.Error(w, "cannot write config.xml", http.StatusInternalServerError)
+				return
+			}
+			json.NewEncoder(w).Encode(cfg)
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
+
 func handleCommand(dataDir string) http.HandlerFunc {
 	type jsonCommand struct {
 		ID              string `json:"id"`
@@ -1026,6 +1130,7 @@ func main() {
 	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
 	mux.HandleFunc("/api/map/layer/{name}", handleMapLayer(dataDir))
 	mux.HandleFunc("/api/ad-icons/{name}", handleADIcons(adIcons))
+	mux.HandleFunc("/api/mod-config", handleModConfig(dataDir))
 
 	fmt.Print(`
 ▄▖▄▖▄▖▄▖  ▄▖       ▖  ▖    ▘▗       ▄▖

@@ -204,8 +204,85 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.weather           = outputDir .. "weather.json"
     FarmMonitor.paths.commandsXml = outputDir .. "commands.xml"
     FarmMonitor.paths.commandsAck = outputDir .. "commands.ack"
+    FarmMonitor.paths.config      = outputDir .. "config.xml"
     FarmMonitor.paths.outputDir   = outputDir
+    FarmMonitor:loadConfig()
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
+end
+
+function FarmMonitor:loadConfig()
+    local path = FarmMonitor.paths.config
+    local defaults = {
+        mainInterval     = 10,
+        vehicleInterval  = 2,
+        fieldInterval    = 60,
+        weatherInterval  = 30,
+        commandInterval  = 1,
+        soilResolution   = 128,
+        soilRowsPerTick  = 2,
+    }
+
+    local cfg = {}
+    if fileExists(path) then
+        local ok, err = pcall(function()
+            local xmlId = loadXMLFile("FMConfig", path)
+            if xmlId == nil or xmlId == 0 then error("loadXMLFile failed") end
+            local function getInt(key, default)
+                local v = getXMLInt(xmlId, "farmMonitor." .. key)
+                return (v ~= nil and v > 0) and v or default
+            end
+            cfg.mainInterval    = getInt("exportIntervals.main#seconds",    defaults.mainInterval)
+            cfg.vehicleInterval = getInt("exportIntervals.vehicles#seconds", defaults.vehicleInterval)
+            cfg.fieldInterval   = getInt("exportIntervals.fields#seconds",   defaults.fieldInterval)
+            cfg.weatherInterval = getInt("exportIntervals.weather#seconds",  defaults.weatherInterval)
+            cfg.commandInterval = getInt("exportIntervals.commands#seconds", defaults.commandInterval)
+            cfg.soilResolution  = getInt("soilMap.resolution#value",         defaults.soilResolution)
+            cfg.soilRowsPerTick = getInt("soilMap.rowsPerTick#value",        defaults.soilRowsPerTick)
+            delete(xmlId)
+        end)
+        if not ok then
+            print("[FarmMonitor] WARNING: Could not read config.xml, using defaults. Error: " .. tostring(err))
+            cfg = defaults
+        end
+    else
+        cfg = defaults
+        -- Write default config so user can discover and edit it
+        local f = io.open(path, "w")
+        if f then
+            f:write('<?xml version="1.0" encoding="utf-8"?>\n')
+            f:write('<farmMonitor>\n')
+            f:write('    <!-- Export intervals in seconds -->\n')
+            f:write('    <exportIntervals>\n')
+            f:write('        <main seconds="'     .. defaults.mainInterval     .. '"/>\n')
+            f:write('        <vehicles seconds="' .. defaults.vehicleInterval  .. '"/>\n')
+            f:write('        <fields seconds="'   .. defaults.fieldInterval    .. '"/>\n')
+            f:write('        <weather seconds="'  .. defaults.weatherInterval  .. '"/>\n')
+            f:write('        <commands seconds="' .. defaults.commandInterval  .. '"/>\n')
+            f:write('    </exportIntervals>\n')
+            f:write('    <!-- Soil map quality: resolution 64/128/256, rowsPerTick 1-8 -->\n')
+            f:write('    <soilMap>\n')
+            f:write('        <resolution value="'   .. defaults.soilResolution  .. '"/>\n')
+            f:write('        <rowsPerTick value="'  .. defaults.soilRowsPerTick .. '"/>\n')
+            f:write('    </soilMap>\n')
+            f:write('</farmMonitor>\n')
+            f:close()
+            print("[FarmMonitor] Created default config.xml at: " .. path)
+        end
+    end
+
+    -- Apply to runtime variables (convert seconds → milliseconds)
+    FarmMonitor.updateInterval      = cfg.mainInterval    * 1000
+    FarmMonitor.vehicleInterval     = cfg.vehicleInterval * 1000
+    FarmMonitor.fieldInterval       = cfg.fieldInterval   * 1000
+    FarmMonitor.weatherInterval     = cfg.weatherInterval * 1000
+    FarmMonitor.commandInterval     = cfg.commandInterval * 1000
+    FarmMonitor.soilResolution      = cfg.soilResolution
+    FarmMonitor.soilRowsPerTick     = cfg.soilRowsPerTick
+
+    print(string.format("[FarmMonitor] Config loaded — main:%ds vehicles:%ds fields:%ds weather:%ds commands:%ds soil:%dpx rows:%d",
+        cfg.mainInterval, cfg.vehicleInterval, cfg.fieldInterval,
+        cfg.weatherInterval, cfg.commandInterval,
+        cfg.soilResolution, cfg.soilRowsPerTick))
 end
 
 function FarmMonitor:deleteMap()
@@ -2712,7 +2789,7 @@ function FarmMonitor:initSoilState()
     if outputDir == nil then return nil end
 
     local terrainSize = mission.terrainSize or 2048
-    local res = 512
+    local res = FarmMonitor.soilResolution or 128
 
     local defs = {
         { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, minVal = 1 },
@@ -2749,7 +2826,7 @@ function FarmMonitor:initSoilState()
         res         = res,
         cellSize    = terrainSize / res,
         half        = terrainSize / 2,
-        rowsPerTick = 4,          -- A: rows sampled per update() tick
+        rowsPerTick = FarmMonitor.soilRowsPerTick or 2,
         layerIdx    = 1,          -- C: current layer in round-robin
         currentRow  = 0,          -- A: next row to sample
         values      = {},         -- accumulator for current layer

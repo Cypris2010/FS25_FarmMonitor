@@ -5116,7 +5116,51 @@ function renderSettings() {
     return `<div class="settings-section-title" style="margin-top:24px">Felder</div><div class="placeable-list">${rows}</div>`;
   })();
 
-  el.innerHTML = serverBlock + alertBlock
+  const mc = modConfigCache || {};
+  const mci = mc.exportIntervals || {};
+  const mcs = mc.soilMap || {};
+  function cfgRow(label, desc, id, val, min, max, unit) {
+    const u = unit || 'Sek.';
+    return `<div style="display:flex;flex-direction:column;gap:5px">
+      <span style="font-size:13px;font-weight:600;color:var(--text)">${label}</span>
+      <span style="font-size:11px;color:var(--muted);opacity:.7;line-height:1.4">${desc}</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+        <input id="${id}" type="number" min="${min}" max="${max}" value="${val}"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:14px;width:90px">
+        <span style="font-size:12px;color:var(--muted);opacity:.6;white-space:nowrap">${u}</span>
+      </div>
+    </div>`;
+  }
+  const modCfgBlock = `
+    <div class="settings-section-title" style="margin-top:24px">Mod-Konfiguration</div>
+    <div class="placeable-list" style="gap:20px;padding:16px">
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">
+        Änderungen werden in <code>config.xml</code> im modSettings-Ordner gespeichert und beim nächsten Laden eines Spielstands übernommen.
+        Niedrigere Werte = häufigere Aktualisierung = höhere CPU-Last.
+      </div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Export-Intervalle</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        ${cfgRow('Haupt-Export', 'Silos, Produktionen, Tierställe und Warenübersicht. Kernexport des Mods.', 'mcfg-main', mci.mainSeconds ?? 10, 1, 300)}
+        ${cfgRow('Fahrzeuge', 'Position, Tanks, Beladung und AutoDrive-Status aller Fahrzeuge auf der Karte.', 'mcfg-vehicles', mci.vehicleSeconds ?? 2, 1, 60)}
+        ${cfgRow('Felder', 'Wachstumsstufe, Bodenzustand und Erntestatus aller eigenen Felder.', 'mcfg-fields', mci.fieldSeconds ?? 60, 10, 600)}
+        ${cfgRow('Wetter', 'Aktuelle Wetterlage, stündliche und tagesweise Vorhersage.', 'mcfg-weather', mci.weatherSeconds ?? 30, 5, 300)}
+        <div style="grid-column:1/-1">${cfgRow('IPC-Commands', 'Wie oft das Spiel auf Befehle aus dem Dashboard prüft (z.B. Produktionsmodus setzen, Fahrzeug steuern). Empfohlen: 1–2 Sek.', 'mcfg-commands', mci.commandSeconds ?? 1, 1, 10)}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">Bodenkarte</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:-12px">
+        Steuert die Qualität der Bodenzustand-Overlays auf der Karte (Unkraut, Pflug, Kalk …). Höhere Auflösung = schärferes Bild = mehr CPU-Last.
+      </div>
+      <div style="display:flex;gap:32px;flex-wrap:wrap">
+        ${cfgRow('Auflösung', 'Pixelgröße des Rasters. Empfohlen: 128.<br>Werte: 32 / 64 / 128 / 256 / 512.', 'mcfg-soil-res', mcs.resolution ?? 128, 32, 512, 'px')}
+        ${cfgRow('Zeilen pro Tick', 'Zeilen pro Spiel-Tick.<br>Höher = schnellere Aktualisierung, mehr Last. Empfohlen: 2.', 'mcfg-soil-rows', mcs.rowsPerTick ?? 2, 1, 16, 'Zeilen')}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:4px">
+        <button onclick="saveModConfig()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
+      </div>
+      <div id="mcfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
+    </div>`;
+
+  el.innerHTML = serverBlock + modCfgBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
     + sgInfo
     + section('Silos', silos)
@@ -5124,6 +5168,44 @@ function renderSettings() {
     + section('Tierställe', husbandries)
     + fieldsSection
     || '<div class="state-box"><span>Keine Daten verfügbar.</span></div>';
+}
+
+let modConfigCache = null;
+
+async function loadModConfig() {
+  try {
+    const res = await fetch('/api/mod-config');
+    if (!res.ok) return;
+    modConfigCache = await res.json();
+  } catch(e) { console.warn('mod-config fetch failed', e); }
+}
+
+async function saveModConfig() {
+  const get = id => parseInt(document.getElementById(id)?.value ?? '0', 10);
+  const cfg = {
+    exportIntervals: {
+      mainSeconds:    get('mcfg-main'),
+      vehicleSeconds: get('mcfg-vehicles'),
+      fieldSeconds:   get('mcfg-fields'),
+      weatherSeconds: get('mcfg-weather'),
+      commandSeconds: get('mcfg-commands'),
+    },
+    soilMap: {
+      resolution:  get('mcfg-soil-res'),
+      rowsPerTick: get('mcfg-soil-rows'),
+    },
+  };
+  try {
+    const res = await fetch('/api/mod-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    modConfigCache = await res.json();
+    const el = document.getElementById('mcfg-saved');
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+  } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
 }
 
 async function saveAlertSettings() {
@@ -7415,7 +7497,7 @@ function rerenderCurrentView() {
   if (currentView === 'fields')      renderFields(appData.fields);
   if (currentView === 'vehicles')    renderVehicleFleet(appData);
   if (currentView === 'alerts')      renderAlerts(appData);
-  if (currentView === 'settings')    renderSettings();
+  if (currentView === 'settings')    { loadModConfig().then(renderSettings); }
   if (currentView === 'map')         renderMap(appData);
   if (_mdpCurrent)                   openMapDetail(_mdpCurrent.type, _mdpCurrent.id);
 }
