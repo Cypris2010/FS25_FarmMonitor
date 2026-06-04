@@ -2925,44 +2925,7 @@
         <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
         <div class="legend-divider"></div>
         <div class="legend-section-title">Bodenlayer</div>
-        <label class="layer-toggle"><input type="checkbox" data-layer="weed"   onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(239,68,68,0.25)"></span>
-            <span class="legend-step" style="background:rgba(239,68,68,0.45)"></span>
-            <span class="legend-step" style="background:rgba(239,68,68,0.65)"></span>
-          </span> Unkraut</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="stone"  onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(156,163,175,0.35)"></span>
-            <span class="legend-step" style="background:rgba(156,163,175,0.65)"></span>
-          </span> Steine</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="plow"   onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(167,139,250,0.65)"></span>
-            <span class="legend-step" style="background:rgba(167,139,250,0.10)"></span>
-          </span> Pflug nötig</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="spray"  onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(52,211,153,0.65)"></span>
-            <span class="legend-step" style="background:rgba(52,211,153,0.43)"></span>
-            <span class="legend-step" style="background:rgba(52,211,153,0.22)"></span>
-          </span> Dünger fehlt</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="lime"   onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(29,78,216,0.65)"></span>
-            <span class="legend-step" style="background:rgba(29,78,216,0.49)"></span>
-            <span class="legend-step" style="background:rgba(29,78,216,0.33)"></span>
-            <span class="legend-step" style="background:rgba(29,78,216,0.16)"></span>
-          </span> Kalk fehlt</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="mulch"  onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(146,64,14,0.65)"></span>
-            <span class="legend-step" style="background:rgba(146,64,14,0.10)"></span>
-          </span> Mulch fehlt</label>
-        <label class="layer-toggle"><input type="checkbox" data-layer="roller" onchange="toggleSoilLayer(this)">
-          <span class="legend-steps">
-            <span class="legend-step" style="background:rgba(96,165,250,0.65)"></span>
-          </span> Walze nötig</label>
+        <div id="soil-layer-legend" style="display:contents"></div>
       </div>
 
       <!-- Map Detail Backdrop + Panel -->
@@ -5463,14 +5426,24 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     if (!f.polygon?.x?.length) continue;
     const svgPts = f.polygon.x.map((x, i) => worldToMap(x, f.polygon.z[i], terrainSize));
     const pts = svgPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const { fill, stroke } = _fieldGrowthColor(f);
     const el = document.createElementNS('http://www.w3.org/2000/svg','polygon');
     el.setAttribute('points', pts);
-    el.setAttribute('fill', fill);
-    el.setAttribute('stroke', stroke);
-    el.setAttribute('stroke-width', '1.5');
-    el.style.cursor = 'pointer';
-    addTapListener(el, () => openMapDetail('field', f.id));
+
+    if (f.owned === false) {
+      // Unowned field: subtle outline only, no fill
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', 'rgba(180,180,180,0.30)');
+      el.setAttribute('stroke-width', '1');
+      el.setAttribute('stroke-dasharray', '3,3');
+    } else {
+      const { fill, stroke } = _fieldGrowthColor(f);
+      el.setAttribute('fill', fill);
+      el.setAttribute('stroke', stroke);
+      el.setAttribute('stroke-width', '1.5');
+      el.style.cursor = 'pointer';
+      addTapListener(el, () => openMapDetail('field', f.id));
+    }
+
     const title = document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent = `Feld ${f.id}${f.fruitTitle ? ' – ' + f.fruitTitle : ''}`;
     el.appendChild(title);
@@ -5487,12 +5460,19 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
     txt.setAttribute('text-anchor', 'middle');
     txt.setAttribute('dominant-baseline', 'middle');
-    txt.setAttribute('fill', 'rgba(255,255,255,0.9)');
-    txt.setAttribute('stroke', 'rgba(0,0,0,0.6)');
+    if (f.owned === false) {
+      txt.setAttribute('fill', 'rgba(160,160,160,0.60)');
+      txt.setAttribute('stroke', 'rgba(0,0,0,0.35)');
+      txt.setAttribute('font-size', '9');
+      txt.setAttribute('font-weight', '400');
+    } else {
+      txt.setAttribute('fill', 'rgba(255,255,255,0.9)');
+      txt.setAttribute('stroke', 'rgba(0,0,0,0.6)');
+      txt.setAttribute('font-size', '11');
+      txt.setAttribute('font-weight', '600');
+    }
     txt.setAttribute('stroke-width', '3');
     txt.setAttribute('paint-order', 'stroke');
-    txt.setAttribute('font-size', '11');
-    txt.setAttribute('font-weight', '600');
     txt.setAttribute('font-family', 'system-ui, sans-serif');
     txt.textContent = f.id;
     lg.appendChild(txt);
@@ -5500,52 +5480,54 @@ function renderFieldPolygons(fieldsData, terrainSize) {
   }
 }
 
+// Base color per layer (opacity is defined per band below)
 const SOIL_LAYER_COLORS = {
-  weed:   [239,  68,  68],
-  stone:  [156, 163, 175],
-  plow:   [167, 139, 250],
-  spray:  [ 52, 211, 153],
-  lime:   [ 29,  78, 216],
-  mulch:  [146,  64,  14],
-  roller: [ 96, 165, 250],
+  weed:   '#ef4444',
+  stone:  '#9ca3af',
+  plow:   '#a78bfa',
+  spray:  '#34d399',
+  lime:   '#1d4ed8',
+  mulch:  '#92400e',
+  roller: '#60a5fa',
 };
-// These layers have high values = "good" (lime present, fertilised, mulched, ploughed).
-// Invert alpha so dark = "needs work", transparent = "all good".
-const SOIL_LAYER_INVERTED = new Set(['lime', 'spray', 'mulch', 'plow']);
+
+// Each band runs Marching Squares at a different threshold.
+// Bands stack: worse areas are covered by more bands → appear darker automatically.
+// above=true  → fill where value > t  (bad = high, e.g. weed/stone)
+// above=false → fill where value < t  (bad = low, e.g. lime/spray/plow)
+const SOIL_LAYER_BANDS = {
+  // lime: levels 0/1/2/3 → exported as 0/85/170/255
+  lime: [
+    { t: 240, above: false, opacity: 0.25 },  // levels 0–2 (not fully limed)
+    { t: 128, above: false, opacity: 0.25 },  // levels 0–1 (low lime)
+    { t:  64, above: false, opacity: 0.25 },  // level 0   (no lime at all)
+  ],
+  // spray: levels 0/1/2 → exported as 0/127/255
+  spray: [
+    { t: 200, above: false, opacity: 0.30 },  // levels 0–1 (not fully fertilized)
+    { t:  64, above: false, opacity: 0.30 },  // level 0   (no fertilizer)
+  ],
+  plow:   [{ t: 127, above: false, opacity: 0.55 }],
+  mulch:  [{ t: 127, above: false, opacity: 0.55 }],
+  roller: [{ t: 127, above: true,  opacity: 0.55 }],
+  // weed: levels 0–9 → exported as 0/28/56/85/113/141/170/198/227/255
+  //   1–2 = young weed (not penalizing), 3–5 = penalizing, 6–9 = severe
+  weed: [
+    { t:   0, above: true, opacity: 0.20 },  // levels 1–9 (any weed)
+    { t:  56, above: true, opacity: 0.25 },  // levels 3–9 (penalizing)
+    { t: 141, above: true, opacity: 0.25 },  // levels 6–9 (severe)
+  ],
+  // stone: levels 0–4 → exported as 0/64/127/191/255
+  // Level 1 (value 63) = Basissteine überall auf der Karte (Ausgangszustand) → ignorieren
+  stone: [
+    { t:  63, above: true, opacity: 0.20 },  // levels 2–4 (echte Steine)
+    { t: 126, above: true, opacity: 0.25 },  // levels 3–4
+    { t: 190, above: true, opacity: 0.25 },  // level 4
+  ],
+};
 
 const activeSoilLayers = new Set();
-const soilLayerElements = {};  // name → <image> SVG element
-
-// Web Worker for box-blur — keeps main thread free
-const _blurWorkerSrc = `
-self.onmessage = function(e) {
-  const { values, res, rad, r, g, b, name, inverted } = e.data;
-  const alpha = new Uint8Array(values.length);
-  for (let i = 0; i < values.length; i++) {
-    const v = inverted ? (255 - values[i]) : values[i];
-    alpha[i] = Math.round(v * 0.65);
-  }
-  const blurred = new Uint8Array(values.length);
-  for (let y = 0; y < res; y++) {
-    for (let x = 0; x < res; x++) {
-      let sum = 0, count = 0;
-      for (let dy = -rad; dy <= rad; dy++) {
-        for (let dx = -rad; dx <= rad; dx++) {
-          const nx = x + dx, ny = y + dy;
-          if (nx >= 0 && nx < res && ny >= 0 && ny < res) { sum += alpha[ny*res+nx]; count++; }
-        }
-      }
-      blurred[y*res+x] = sum / count;
-    }
-  }
-  const px = new Uint8ClampedArray(res * res * 4);
-  for (let i = 0; i < blurred.length; i++) {
-    px[i*4]=r; px[i*4+1]=g; px[i*4+2]=b; px[i*4+3]=blurred[i];
-  }
-  self.postMessage({ px: px.buffer, res, name }, [px.buffer]);
-};
-`;
-const _blurWorker = new Worker(URL.createObjectURL(new Blob([_blurWorkerSrc], { type: 'text/javascript' })));
+const soilLayerElements = {};  // name → [<path>, ...] one per band
 
 function toggleSoilLayer(checkbox) {
   const name = checkbox.dataset.layer;
@@ -5554,7 +5536,8 @@ function toggleSoilLayer(checkbox) {
     fetchAndRenderSoilLayer(name);
   } else {
     activeSoilLayers.delete(name);
-    if (soilLayerElements[name]) { soilLayerElements[name].remove(); delete soilLayerElements[name]; }
+    const paths = soilLayerElements[name];
+    if (paths) { paths.forEach(p => p.remove()); delete soilLayerElements[name]; }
   }
 }
 
@@ -5567,57 +5550,161 @@ async function fetchAndRenderSoilLayer(name) {
   } catch(e) { console.warn('soil layer fetch failed:', name, e); }
 }
 
-// Pending blur callbacks keyed by layer name (worker may only handle one at a time)
-const _blurPending = {};
-_blurWorker.onmessage = function(e) {
-  const { px, res, name } = e.data;
-  const cb = _blurPending[name];
-  delete _blurPending[name];
-  if (cb) cb(new Uint8ClampedArray(px), res);
-};
-
-function renderSoilLayerData(name, data) {
-  const res = data.res || 128;
-  const values = data.data;
+function renderSoilLayerData(name, layerData) {
+  const res    = layerData.res || 128;
+  const values = layerData.data;
   if (!values || values.length !== res * res) return;
 
-  const [r, g, b] = SOIL_LAYER_COLORS[name] || [255, 255, 255];
+  const bands    = SOIL_LAYER_BANDS[name];
+  const color    = SOIL_LAYER_COLORS[name] || '#ffffff';
+  const cellSize = MAP_PX * 0.5 / res;
+  const ox       = MAP_PX * 0.25;
+  const oy       = MAP_PX * 0.25;
+  const svgLayer = document.getElementById('layer-soil');
+  if (!svgLayer || !bands) return;
 
-  // Offload blur to Web Worker — callback paints to SVG when done
-  _blurPending[name] = (px, res) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = res; canvas.height = res;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(new ImageData(px, res, res), 0, 0);
-    const dataUrl = canvas.toDataURL('image/png');
-    _applySoilLayerImage(name, dataUrl);
-  };
-  _blurWorker.postMessage({ values, res, rad: 0, r, g, b, name, inverted: SOIL_LAYER_INVERTED.has(name) });
+  if (!soilLayerElements[name]) soilLayerElements[name] = [];
+  const paths = soilLayerElements[name];
+
+  // Create missing path elements
+  while (paths.length < bands.length) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('fill-rule', 'evenodd');
+    p.setAttribute('stroke', 'none');
+    p.style.pointerEvents = 'none';
+    svgLayer.appendChild(p);
+    paths.push(p);
+  }
+
+  bands.forEach((band, i) => {
+    const loops = _marchingSquares(values, res, band.t, band.above, cellSize, ox, oy);
+    const d = loops.map(loop =>
+      loop.map((p, j) => (j === 0 ? `M${p.x.toFixed(1)},${p.y.toFixed(1)}` : `L${p.x.toFixed(1)},${p.y.toFixed(1)}`)).join('') + 'Z'
+    ).join(' ');
+    paths[i].setAttribute('fill', color);
+    paths[i].setAttribute('fill-opacity', String(band.opacity));
+    paths[i].setAttribute('d', d || '');
+  });
 }
 
-function _applySoilLayerImage(name, dataUrl) {
-  const layer = document.getElementById('layer-soil');
-  if (!layer) return;
-  let img = soilLayerElements[name];
-  if (!img) {
-    img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-    img.setAttribute('x', String(MAP_PX * 0.25));
-    img.setAttribute('y', String(MAP_PX * 0.25));
-    img.setAttribute('width', String(MAP_PX * 0.5));
-    img.setAttribute('height', String(MAP_PX * 0.5));
-    img.setAttribute('preserveAspectRatio', 'none');
-    img.style.imageRendering = 'pixelated';
-    img.style.pointerEvents = 'none';
-    layer.appendChild(img);
-    soilLayerElements[name] = img;
+// Marching Squares: traces closed contour loops from a flat res×res value grid.
+// above=true → fill cells where value > threshold; above=false → fill where value < threshold.
+// Returns array of loops, each loop an array of {x,y} SVG points.
+function _marchingSquares(data, res, threshold, above, cellSize, ox, oy) {
+  function val(r, c) {
+    if (r < 0 || r >= res || c < 0 || c >= res) return above ? 0 : 255;
+    return data[r * res + c];
   }
-  img.setAttribute('href', dataUrl);
+  function inside(r, c) { const v = val(r, c); return above ? v > threshold : v < threshold; }
+
+  function hEdge(r, c) {
+    const v0 = val(r, c), v1 = val(r, c + 1);
+    const t = (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+    return { key: `h${r}_${c}`, x: ox + (c + t) * cellSize, y: oy + r * cellSize };
+  }
+  function vEdge(r, c) {
+    const v0 = val(r, c), v1 = val(r + 1, c);
+    const t = (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+    return { key: `v${r}_${c}`, x: ox + c * cellSize, y: oy + (r + t) * cellSize };
+  }
+
+  const segments = [];
+  for (let r = -1; r < res; r++) {
+    for (let c = -1; c < res; c++) {
+      const mask = (inside(r, c) ? 8 : 0) | (inside(r, c + 1) ? 4 : 0) |
+                   (inside(r + 1, c + 1) ? 2 : 0) | (inside(r + 1, c) ? 1 : 0);
+      if (mask === 0 || mask === 15) continue;
+      const T = () => hEdge(r, c),     B = () => hEdge(r + 1, c);
+      const L = () => vEdge(r, c),     R = () => vEdge(r, c + 1);
+      switch (mask) {
+        case  1: segments.push([L(), B()]); break;
+        case  2: segments.push([B(), R()]); break;
+        case  3: segments.push([L(), R()]); break;
+        case  4: segments.push([T(), R()]); break;
+        case  5: segments.push([T(), R()]); segments.push([B(), L()]); break;
+        case  6: segments.push([T(), B()]); break;
+        case  7: segments.push([T(), L()]); break;
+        case  8: segments.push([T(), L()]); break;
+        case  9: segments.push([T(), B()]); break;
+        case 10: segments.push([T(), L()]); segments.push([B(), R()]); break;
+        case 11: segments.push([T(), R()]); break;
+        case 12: segments.push([L(), R()]); break;
+        case 13: segments.push([B(), R()]); break;
+        case 14: segments.push([L(), B()]); break;
+      }
+    }
+  }
+
+  // Build adjacency graph from segments (each edge point connects to exactly 2 segments)
+  const coords = new Map(), graph = new Map();
+  for (const [p0, p1] of segments) {
+    coords.set(p0.key, { x: p0.x, y: p0.y });
+    coords.set(p1.key, { x: p1.x, y: p1.y });
+    if (!graph.has(p0.key)) graph.set(p0.key, []);
+    if (!graph.has(p1.key)) graph.set(p1.key, []);
+    graph.get(p0.key).push(p1.key);
+    graph.get(p1.key).push(p0.key);
+  }
+
+  // Trace closed loops by following adjacency
+  const visited = new Set();
+  const loops = [];
+  for (const startKey of graph.keys()) {
+    if (visited.has(startKey)) continue;
+    const loop = [];
+    let cur = startKey, prev = null;
+    for (let i = 0; i < 50000; i++) {
+      visited.add(cur);
+      loop.push(coords.get(cur));
+      const next = (graph.get(cur) || []).find(n => n !== prev);
+      if (!next || next === startKey || visited.has(next)) break;
+      prev = cur; cur = next;
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}
+
+// Labels and tooltips for the legend — the only place that needs updating when layers change
+const SOIL_LAYER_META = {
+  weed:   { label: 'Unkraut',     tooltip: 'jung → penalisierend → stark' },
+  stone:  { label: 'Steine',      tooltip: 'wenig → mittel → viel' },
+  plow:   { label: 'Pflug nötig', tooltip: '' },
+  spray:  { label: 'Dünger fehlt',tooltip: 'halb gedüngt → kein Dünger' },
+  lime:   { label: 'Kalk fehlt',  tooltip: 'wenig Kalk → kein Kalk' },
+  mulch:  { label: 'Mulch fehlt', tooltip: '' },
+  roller: { label: 'Walze nötig', tooltip: '' },
+};
+
+function buildSoilLayerLegend() {
+  const container = document.getElementById('soil-layer-legend');
+  if (!container) return;
+
+  function hexToRgb(hex) {
+    return [1,3,5].map(i => parseInt(hex.slice(i, i+2), 16)).join(',');
+  }
+
+  // Stacked opacity after n bands: 1 - product of (1 - band_i.opacity)
+  function stackedOpacity(bands, n) {
+    let t = 1;
+    for (let i = 0; i < n; i++) t *= (1 - bands[i].opacity);
+    return +(1 - t).toFixed(2);
+  }
+
+  container.innerHTML = Object.keys(SOIL_LAYER_META).map(name => {
+    const meta  = SOIL_LAYER_META[name];
+    const bands = SOIL_LAYER_BANDS[name] || [];
+    const rgb   = hexToRgb(SOIL_LAYER_COLORS[name] || '#ffffff');
+    const steps = bands.map((_, i) =>
+      `<span class="legend-step" style="background:rgba(${rgb},${stackedOpacity(bands, i+1)})"></span>`
+    ).join('');
+    const title = meta.tooltip ? ` title="${meta.tooltip}"` : '';
+    return `<label class="layer-toggle"><input type="checkbox" data-layer="${name}" onchange="toggleSoilLayer(this)"><span class="legend-steps"${title}>${steps}</span> ${meta.label}</label>`;
+  }).join('');
 }
 
 function refreshActiveSoilLayers() {
-  for (const name of activeSoilLayers) {
-    fetchAndRenderSoilLayer(name);
-  }
+  for (const name of activeSoilLayers) fetchAndRenderSoilLayer(name);
 }
 
 // Poll soil layers independently every 30s — decoupled from SSE render cycle
@@ -7401,6 +7488,7 @@ function renderMap(data) {
     renderFieldPolygons(data.fields, terrainSize);
     renderHotspotPins(data.hotspots, terrainSize);
     centerMap();
+    buildSoilLayerLegend();
   }
 
   updateVehicles(data.vehicles, terrainSize);

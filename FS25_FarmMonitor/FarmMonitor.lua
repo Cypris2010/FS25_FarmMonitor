@@ -2796,8 +2796,8 @@ function FarmMonitor:initSoilState()
     local res = FarmMonitor.soilResolution or 128
 
     local defs = {
-        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, minVal = 1 },
-        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, minVal = 2 },
+        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, maxVal = 9 },
+        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, maxVal = 4 },
         { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1 },
         { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL) },
         { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL) },
@@ -2950,12 +2950,43 @@ function FarmMonitor:collectFields()
     for _, farmland in pairs(g_farmlandManager.farmlands or {}) do
         if farmland ~= nil
             and farmland.showOnFarmlandsScreen
-            and farmland.farmId == farmId
             and farmland.field ~= nil
         then
+            local owned  = (farmland.farmId == farmId)
             local field  = farmland.field
             local areaHa      = farmland.areaInHa or 0
             local fieldAreaHa = field.areaHa or 0
+
+            -- Field polygon (exported for all fields)
+            local polygon = nil
+            if field.densityMapPolygon ~= nil then
+                local pxArr = FarmMonitor.arr()
+                local pzArr = FarmMonitor.arr()
+                local pts = field.densityMapPolygon
+                if pts.pointsX ~= nil then
+                    for i, v in ipairs(pts.pointsX) do
+                        table.insert(pxArr, MathUtil.round(v * 10) / 10)
+                        table.insert(pzArr, MathUtil.round((pts.pointsZ[i] or 0) * 10) / 10)
+                    end
+                end
+                if #pxArr > 0 then
+                    polygon = FarmMonitor.obj("x", pxArr, "z", pzArr)
+                end
+            end
+            local cx, cz = field:getCenterOfFieldWorldPosition()
+
+            -- For unowned fields: only export outline data, skip expensive calculations
+            if not owned then
+                table.insert(result, FarmMonitor.obj(
+                    "id",         farmland.name or tostring(farmland.id or 0),
+                    "farmlandId", farmland.id or 0,
+                    "owned",      false,
+                    "cx",         cx ~= nil and (MathUtil.round(cx * 10) / 10) or nil,
+                    "cz",         cz ~= nil and (MathUtil.round(cz * 10) / 10) or nil,
+                    "polygon",    polygon,
+                    "area",       MathUtil.round(areaHa * 100) / 100
+                ))
+            else
 
             -- Fruit type & growth state via density map at field centre
             local fruitTypeName        = ""
@@ -2971,7 +3002,6 @@ function FarmMonitor:collectFields()
             local seedLph              = nil
             local seedTotal            = nil
 
-            local cx, cz = field:getCenterOfFieldWorldPosition()
             if cx ~= nil then
                 local ftIdx, gs = FSDensityMapUtil.getFruitTypeIndexAtWorldPos(cx, cz)
                 if ftIdx ~= nil and ftIdx > 0 then
@@ -3017,23 +3047,6 @@ function FarmMonitor:collectFields()
                 soil = computeSoilStatus(field, samplers)
             end
 
-            -- Field polygon
-            local polygon = nil
-            if field.densityMapPolygon ~= nil then
-                local pxArr = FarmMonitor.arr()
-                local pzArr = FarmMonitor.arr()
-                local pts = field.densityMapPolygon
-                if pts.pointsX ~= nil then
-                    for i, v in ipairs(pts.pointsX) do
-                        table.insert(pxArr, MathUtil.round(v * 10) / 10)
-                        table.insert(pzArr, MathUtil.round((pts.pointsZ[i] or 0) * 10) / 10)
-                    end
-                end
-                if #pxArr > 0 then
-                    polygon = FarmMonitor.obj("x", pxArr, "z", pzArr)
-                end
-            end
-
             -- Harvest yield multiplier via engine function
             local yieldBonus = nil
             if fruitTypeIndex ~= nil and mission.getHarvestScaleMultiplier ~= nil then
@@ -3054,6 +3067,7 @@ function FarmMonitor:collectFields()
             table.insert(result, FarmMonitor.obj(
                 "id",              farmland.name or tostring(farmland.id or 0),
                 "farmlandId",      farmland.id or 0,
+                "owned",           true,
                 "cx",              cx ~= nil and (MathUtil.round(cx * 10) / 10) or nil,
                 "cz",              cz ~= nil and (MathUtil.round(cz * 10) / 10) or nil,
                 "polygon",         polygon,
@@ -3085,6 +3099,7 @@ function FarmMonitor:collectFields()
                 "matHerbLph",      herbLph > 0 and MathUtil.round(herbLph)             or nil,
                 "matHerbTotal",    herbLph > 0 and MathUtil.round(herbLph * fieldAreaHa) or nil
             ))
+            end -- owned
         end
     end
 
