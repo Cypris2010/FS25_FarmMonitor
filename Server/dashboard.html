@@ -5500,20 +5500,53 @@ function renderFieldPolygons(fieldsData, terrainSize) {
   }
 }
 
+// Base color per layer (opacity is defined per band below)
 const SOIL_LAYER_COLORS = {
-  weed:   'rgba(239, 68, 68,  0.55)',
-  stone:  'rgba(156,163,175,  0.55)',
-  plow:   'rgba(167,139,250,  0.55)',
-  spray:  'rgba( 52,211,153,  0.55)',
-  lime:   'rgba( 29, 78,216,  0.55)',
-  mulch:  'rgba(146, 64, 14,  0.55)',
-  roller: 'rgba( 96,165,250,  0.55)',
+  weed:   '#ef4444',
+  stone:  '#9ca3af',
+  plow:   '#a78bfa',
+  spray:  '#34d399',
+  lime:   '#1d4ed8',
+  mulch:  '#92400e',
+  roller: '#60a5fa',
 };
-// Layers where high value = good (treated). Fill areas that are LOW (problem areas).
-const SOIL_LAYER_INVERTED = new Set(['lime', 'spray', 'mulch', 'plow']);
+
+// Each band runs Marching Squares at a different threshold.
+// Bands stack: worse areas are covered by more bands → appear darker automatically.
+// above=true  → fill where value > t  (bad = high, e.g. weed/stone)
+// above=false → fill where value < t  (bad = low, e.g. lime/spray/plow)
+const SOIL_LAYER_BANDS = {
+  // lime: levels 0/1/2/3 → exported as 0/85/170/255
+  lime: [
+    { t: 240, above: false, opacity: 0.25 },  // levels 0–2 (not fully limed)
+    { t: 128, above: false, opacity: 0.25 },  // levels 0–1 (low lime)
+    { t:  64, above: false, opacity: 0.25 },  // level 0   (no lime at all)
+  ],
+  // spray: levels 0/1/2 → exported as 0/127/255
+  spray: [
+    { t: 200, above: false, opacity: 0.30 },  // levels 0–1 (not fully fertilized)
+    { t:  64, above: false, opacity: 0.30 },  // level 0   (no fertilizer)
+  ],
+  plow:   [{ t: 127, above: false, opacity: 0.55 }],
+  mulch:  [{ t: 127, above: false, opacity: 0.55 }],
+  roller: [{ t: 127, above: true,  opacity: 0.55 }],
+  // weed: levels 0–9 → exported as 0/28/56/85/113/141/170/198/227/255
+  //   1–2 = young weed (not penalizing), 3–5 = penalizing, 6–9 = severe
+  weed: [
+    { t:   0, above: true, opacity: 0.20 },  // levels 1–9 (any weed)
+    { t:  56, above: true, opacity: 0.25 },  // levels 3–9 (penalizing)
+    { t: 141, above: true, opacity: 0.25 },  // levels 6–9 (severe)
+  ],
+  // stone: levels 0–4 → exported as 0/64/127/191/255
+  stone: [
+    { t:   0, above: true, opacity: 0.20 },  // levels 1–4 (any stones)
+    { t: 126, above: true, opacity: 0.25 },  // levels 2–4 (medium)
+    { t: 190, above: true, opacity: 0.25 },  // levels 3–4 (many)
+  ],
+};
 
 const activeSoilLayers = new Set();
-const soilLayerElements = {};  // name → SVG <path> element
+const soilLayerElements = {};  // name → [<path>, ...] one per band
 
 function toggleSoilLayer(checkbox) {
   const name = checkbox.dataset.layer;
@@ -5522,7 +5555,8 @@ function toggleSoilLayer(checkbox) {
     fetchAndRenderSoilLayer(name);
   } else {
     activeSoilLayers.delete(name);
-    if (soilLayerElements[name]) { soilLayerElements[name].remove(); delete soilLayerElements[name]; }
+    const paths = soilLayerElements[name];
+    if (paths) { paths.forEach(p => p.remove()); delete soilLayerElements[name]; }
   }
 }
 
@@ -5540,29 +5574,36 @@ function renderSoilLayerData(name, layerData) {
   const values = layerData.data;
   if (!values || values.length !== res * res) return;
 
-  const above    = !SOIL_LAYER_INVERTED.has(name);
+  const bands    = SOIL_LAYER_BANDS[name];
+  const color    = SOIL_LAYER_COLORS[name] || '#ffffff';
   const cellSize = MAP_PX * 0.5 / res;
   const ox       = MAP_PX * 0.25;
   const oy       = MAP_PX * 0.25;
-
-  const loops = _marchingSquares(values, res, 127, above, cellSize, ox, oy);
-  const d = loops.map(loop =>
-    loop.map((p, i) => (i === 0 ? `M${p.x.toFixed(1)},${p.y.toFixed(1)}` : `L${p.x.toFixed(1)},${p.y.toFixed(1)}`)).join('') + 'Z'
-  ).join(' ');
-
   const svgLayer = document.getElementById('layer-soil');
-  if (!svgLayer) return;
-  let path = soilLayerElements[name];
-  if (!path) {
-    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('fill-rule', 'evenodd');
-    path.setAttribute('stroke', 'none');
-    path.style.pointerEvents = 'none';
-    svgLayer.appendChild(path);
-    soilLayerElements[name] = path;
+  if (!svgLayer || !bands) return;
+
+  if (!soilLayerElements[name]) soilLayerElements[name] = [];
+  const paths = soilLayerElements[name];
+
+  // Create missing path elements
+  while (paths.length < bands.length) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('fill-rule', 'evenodd');
+    p.setAttribute('stroke', 'none');
+    p.style.pointerEvents = 'none';
+    svgLayer.appendChild(p);
+    paths.push(p);
   }
-  path.setAttribute('fill', SOIL_LAYER_COLORS[name] || 'rgba(255,255,255,0.5)');
-  path.setAttribute('d', d || '');
+
+  bands.forEach((band, i) => {
+    const loops = _marchingSquares(values, res, band.t, band.above, cellSize, ox, oy);
+    const d = loops.map(loop =>
+      loop.map((p, j) => (j === 0 ? `M${p.x.toFixed(1)},${p.y.toFixed(1)}` : `L${p.x.toFixed(1)},${p.y.toFixed(1)}`)).join('') + 'Z'
+    ).join(' ');
+    paths[i].setAttribute('fill', color);
+    paths[i].setAttribute('fill-opacity', String(band.opacity));
+    paths[i].setAttribute('d', d || '');
+  });
 }
 
 // Marching Squares: traces closed contour loops from a flat res×res value grid.

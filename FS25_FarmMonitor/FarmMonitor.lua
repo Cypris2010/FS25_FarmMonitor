@@ -2796,8 +2796,8 @@ function FarmMonitor:initSoilState()
     local res = FarmMonitor.soilResolution or 128
 
     local defs = {
-        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, minVal = 1 },
-        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, minVal = 2 },
+        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, maxVal = 9 },
+        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, maxVal = 4 },
         { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1 },
         { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL) },
         { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL) },
