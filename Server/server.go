@@ -351,6 +351,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		Marker1         string `json:"marker1,omitempty"`
 		Marker2         string `json:"marker2,omitempty"`
 		ObjectInfoIndex string `json:"objectInfoIndex,omitempty"`
+		Value           string `json:"value,omitempty"`   // for AD speed/loop/setting commands
+		Setting         string `json:"setting,omitempty"` // for autodrive.setting
 	}
 	type xmlCommand struct {
 		XMLName         xml.Name `xml:"command"`
@@ -367,6 +369,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		Marker1         string   `xml:"marker1,attr"`
 		Marker2         string   `xml:"marker2,attr"`
 		ObjectInfoIndex string   `xml:"objectInfoIndex,attr"`
+		Value           string   `xml:"value,attr"`   // for AD speed/loop/setting commands
+		Setting         string   `xml:"setting,attr"` // for autodrive.setting
 	}
 	type xmlCommands struct {
 		XMLName  xml.Name     `xml:"commands"`
@@ -406,6 +410,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			Marker1:          cmd.Marker1,
 			Marker2:          cmd.Marker2,
 			ObjectInfoIndex:  cmd.ObjectInfoIndex,
+			Value:            cmd.Value,
+			Setting:          cmd.Setting,
 		}
 
 		mu.Lock()

@@ -152,6 +152,8 @@ function FarmMonitorADCommandEvent:writeStream(streamId, connection)
     streamWriteString(streamId, self.cmd.marker1  or "")
     streamWriteString(streamId, self.cmd.marker2  or "")
     streamWriteString(streamId, self.cmd.fillType or "")
+    streamWriteString(streamId, self.cmd.setting  or "")  -- for autodrive.setting
+    streamWriteString(streamId, self.cmd.value    or "")  -- for setting/loopCounter/speedLimit
 end
 
 function FarmMonitorADCommandEvent:readStream(streamId, connection)
@@ -163,6 +165,8 @@ function FarmMonitorADCommandEvent:readStream(streamId, connection)
         marker1  = streamReadString(streamId),
         marker2  = streamReadString(streamId),
         fillType = streamReadString(streamId),
+        setting  = streamReadString(streamId),
+        value    = streamReadString(streamId),
     }
     self:run(connection)
 end
@@ -1382,23 +1386,34 @@ function FarmMonitor:collectVehicles()
                 end)
             end
 
-            local adActive          = nil
-            local adMode            = nil
-            local adDriverName      = nil
-            local adDestination     = nil
-            local adDestination2    = nil
-            local adRemainingTime   = nil
-            local adFillType        = nil
-            local adLoopCounter     = nil
-            local adLoopsDone       = nil
-            local adCurrentTarget   = nil
-            local adBlocked         = nil
-            local adError           = nil
-            local adOnRouteToRefuel = nil
-            local adOnRouteToPark   = nil
-            local adIsLoading       = nil
-            local adIsUnloading     = nil
-            local adModeState       = nil
+            local adActive           = nil
+            local adMode             = nil
+            local adDriverName       = nil
+            local adDestination      = nil
+            local adDestination2     = nil
+            local adRemainingTime    = nil
+            local adFillType         = nil
+            local adLoopCounter      = nil
+            local adLoopsDone        = nil
+            local adCurrentTarget    = nil
+            local adBlocked          = nil
+            local adError            = nil
+            local adOnRouteToRefuel  = nil
+            local adOnRouteToPark    = nil
+            local adIsLoading        = nil
+            local adIsUnloading      = nil
+            local adModeState        = nil
+            local adSpeedLimit       = nil
+            local adFieldSpeedLimit  = nil
+            local adLoadByFillLevel  = nil
+            local adAutoUnloadTarget = nil
+            local adAutoPickupTarget = nil
+            local adStartHelper      = nil
+            local adUsedHelper       = nil
+            local adParkDestination  = nil
+            local adCurrentTaskInfo  = nil
+            local adHarvesterPairingOk = nil
+            local adSettings           = nil
             if hasAutoDrive and vehicle.ad ~= nil and vehicle.ad.stateModule ~= nil then
                 pcall(function()
                     local sm = vehicle.ad.stateModule
@@ -1419,9 +1434,9 @@ function FarmMonitor:collectVehicles()
                             if ft then adFillType = ft.name end
                         end
                     end
-                    -- Loop counter
+                    -- Loop counter (0 = infinite, always export when AD present)
                     local lc = sm:getLoopCounter()
-                    if lc and lc > 0 then
+                    if lc ~= nil then
                         adLoopCounter = lc
                         adLoopsDone   = sm:getLoopsDone() or 0
                     end
@@ -1476,6 +1491,60 @@ function FarmMonitor:collectVehicles()
                             end
                         end
                     end
+                    -- Speed limits
+                    if sm.getSpeedLimit ~= nil then
+                        local sl = sm:getSpeedLimit()
+                        if sl and sl > 0 then adSpeedLimit = MathUtil.round(sl) end
+                    end
+                    if sm.getFieldSpeedLimit ~= nil then
+                        local fsl = sm:getFieldSpeedLimit()
+                        if fsl and fsl > 0 then adFieldSpeedLimit = MathUtil.round(fsl) end
+                    end
+                    -- Toggle states
+                    if sm.getLoadByFillLevel ~= nil then
+                        adLoadByFillLevel = sm:getLoadByFillLevel() == true
+                    end
+                    if sm.getAutomaticUnloadTarget ~= nil then
+                        adAutoUnloadTarget = sm:getAutomaticUnloadTarget() == true
+                    end
+                    if sm.getAutomaticPickupTarget ~= nil then
+                        adAutoPickupTarget = sm:getAutomaticPickupTarget() == true
+                    end
+                    if sm.getStartHelper ~= nil then
+                        adStartHelper = sm:getStartHelper() == true
+                    end
+                    if sm.getUsedHelper ~= nil then
+                        local uh = sm:getUsedHelper()
+                        if uh ~= nil then adUsedHelper = uh end
+                    end
+                    -- Park destination (-1 = none configured)
+                    if sm.getParkDestinationAtJobFinished ~= nil then
+                        adParkDestination = sm:getParkDestinationAtJobFinished()
+                    end
+                    -- Current task info string
+                    if sm.getCurrentLocalizedTaskInfo ~= nil then
+                        local ti = sm:getCurrentLocalizedTaskInfo()
+                        if ti and ti ~= "" then adCurrentTaskInfo = ti end
+                    end
+                    -- Harvester pairing ok (CombineUnloader mode 5 only)
+                    if adMode == 5 and sm.getHarvesterPairingOk ~= nil then
+                        local ok2, pairing = pcall(sm.getHarvesterPairingOk, sm)
+                        if ok2 and pairing == true then adHarvesterPairingOk = true end
+                    end
+                    -- Vehicle settings (current index per setting)
+                    if vehicle.ad.settings ~= nil then
+                        adSettings = {}
+                        for _, sName in ipairs({
+                            "cornerSpeed", "pipeOffset", "followDistance", "unloadFillLevel",
+                            "exitField", "restrictToField", "followOnlyOnField", "avoidFruit",
+                            "parkInField", "rotateTargets", "autoRefuel", "autoRepair",
+                            "enableParkAtJobFinished", "autoTipSide", "autoTrailerCover",
+                            "ALUnload", "ALUnloadWaitTime"
+                        }) do
+                            local s = vehicle.ad.settings[sName]
+                            if s ~= nil then adSettings[sName] = s.current end
+                        end
+                    end
                 end)
             end
 
@@ -1524,6 +1593,17 @@ function FarmMonitor:collectVehicles()
                 "adIsLoading",       adIsLoading,
                 "adIsUnloading",     adIsUnloading,
                 "adModeState",           adModeState,
+                "adSpeedLimit",          adSpeedLimit,
+                "adFieldSpeedLimit",     adFieldSpeedLimit,
+                "adLoadByFillLevel",     adLoadByFillLevel,
+                "adAutoUnloadTarget",    adAutoUnloadTarget,
+                "adAutoPickupTarget",    adAutoPickupTarget,
+                "adStartHelper",         adStartHelper,
+                "adUsedHelper",          adUsedHelper,
+                "adParkDestination",     adParkDestination,
+                "adCurrentTaskInfo",     adCurrentTaskInfo,
+                "adHarvesterPairingOk",  adHarvesterPairingOk,
+                "adSettings",            adSettings,
                 "cpActive",              cpActive,
                 "cpJobType",             cpJobType,
                 "cpInfoText",            cpInfoText,
@@ -3275,6 +3355,8 @@ function FarmMonitor:processCommands()
             marker1         = getXMLString(xmlId, base .. "#marker1")         or "",
             marker2         = getXMLString(xmlId, base .. "#marker2")         or "",
             objectInfoIndex = getXMLString(xmlId, base .. "#objectInfoIndex") or "",
+            value           = getXMLString(xmlId, base .. "#value")           or "",
+            setting         = getXMLString(xmlId, base .. "#setting")         or "",
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -3308,6 +3390,18 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.configure"]           = FarmMonitor.cmdAutoDriveConfigure,
         ["autodrive.startStop"]           = FarmMonitor.cmdAutoDriveStartStop,
         ["autodrive.nextTarget"]          = FarmMonitor.cmdAutoDriveNextTarget,
+        ["autodrive.continue"]            = FarmMonitor.cmdAutoDriveContinue,
+        ["autodrive.park"]                = FarmMonitor.cmdAutoDrivePark,
+        ["autodrive.swapTargets"]         = FarmMonitor.cmdAutoDriveSwapTargets,
+        ["autodrive.loopCounter"]         = FarmMonitor.cmdAutoDriveLoopCounter,
+        ["autodrive.speedLimit"]          = FarmMonitor.cmdAutoDriveSpeedLimit,
+        ["autodrive.fieldSpeedLimit"]     = FarmMonitor.cmdAutoDriveFieldSpeedLimit,
+        ["autodrive.toggleLoadByFill"]    = FarmMonitor.cmdAutoDriveToggle,
+        ["autodrive.toggleAutoUnload"]    = FarmMonitor.cmdAutoDriveToggle,
+        ["autodrive.toggleAutoPickup"]    = FarmMonitor.cmdAutoDriveToggle,
+        ["autodrive.toggleStartHelper"]   = FarmMonitor.cmdAutoDriveToggle,
+        ["autodrive.toggleUsedHelper"]    = FarmMonitor.cmdAutoDriveToggle,
+        ["autodrive.setting"]             = FarmMonitor.cmdAutoDriveSetting,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3699,6 +3793,199 @@ function FarmMonitor:cmdAutoDriveNextTarget(cmd)
             error("autodrive.nextTarget not supported: " .. tostring(err2))
         end
     end
+end
+
+-- Shared prologue for all AD commands.
+-- - Raises if AutoDrive not loaded.
+-- - On a pure MP-client (no g_server): forwards the command to the server via
+--   FarmMonitorADCommandEvent and returns false — caller must return immediately.
+-- - On SP / listen-server host / dedicated-server-side execution: returns true.
+-- Note: dedicated server never reaches here via the dashboard (no g_localPlayer),
+--       but CAN receive commands forwarded from connected clients.
+function FarmMonitor:adBegin(cmd)
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
+    end
+    if g_server == nil and g_client ~= nil then
+        local conn = g_client:getServerConnection()
+        if conn == nil then error("No server connection available") end
+        conn:sendEvent(FarmMonitorADCommandEvent.new(cmd))
+        print("[FarmMonitor] AD command '" .. tostring(cmd.cmd) .. "' forwarded to server via FarmMonitorADCommandEvent")
+        return false
+    end
+    return true
+end
+
+function FarmMonitor:cmdAutoDriveContinue(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    local ok, err = pcall(function() sm:getCurrentMode():continue() end)
+    if not ok then error("autodrive.continue failed: " .. tostring(err)) end
+    print("[FarmMonitor] AD continue() called")
+end
+
+function FarmMonitor:cmdAutoDrivePark(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    if sm.getParkDestinationAtJobFinished == nil then
+        error("getParkDestinationAtJobFinished not available in this AD version")
+    end
+    local parkDest = sm:getParkDestinationAtJobFinished()
+    if parkDest == nil or parkDest < 0 then
+        error("No park destination configured for this vehicle")
+    end
+    sm:setFirstMarker(parkDest)
+    sm:setMode(1)  -- DriveTO
+    if sm:isActive() then vehicle:stopAutoDrive() end
+    sm:getCurrentMode():start()
+    print("[FarmMonitor] AD park: driving to marker " .. tostring(parkDest))
+end
+
+function FarmMonitor:cmdAutoDriveSwapTargets(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    local m1 = sm.firstMarker
+    local m2 = sm.secondMarker
+    if m1 == nil or m2 == nil then
+        error("Both markers must be set before swapping")
+    end
+    local id1 = m1.markerIndex
+    local id2 = m2.markerIndex
+    sm:setFirstMarker(id2)
+    sm:setSecondMarker(id1)
+    print("[FarmMonitor] AD swapTargets: " .. tostring(m1.name) .. " ↔ " .. tostring(m2.name))
+end
+
+function FarmMonitor:cmdAutoDriveLoopCounter(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    if sm.getLoopCounter == nil or sm.changeLoopCounter == nil then
+        error("Loop counter API not available in this AD version")
+    end
+    local target = tonumber(cmd.value)
+    if target == nil then error("Invalid loop counter value: " .. tostring(cmd.value)) end
+    target = math.max(0, math.min(99, math.floor(target)))
+    local current = sm:getLoopCounter() or 0
+    local delta = target - current
+    if delta ~= 0 then
+        sm:changeLoopCounter(delta, true)  -- true = allow fast/large jump
+    end
+    print("[FarmMonitor] AD loopCounter: " .. tostring(current) .. " → " .. tostring(target))
+end
+
+function FarmMonitor:cmdAutoDriveSpeedLimit(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    if sm.getSpeedLimit == nil or sm.increaseSpeedLimit == nil then
+        error("Speed limit API not available in this AD version")
+    end
+    local target = tonumber(cmd.value)
+    if target == nil then error("Invalid speed limit: " .. tostring(cmd.value)) end
+    target = math.max(2, math.floor(target))
+    local maxIter = 200
+    local i = 0
+    while sm:getSpeedLimit() < target and i < maxIter do
+        sm:increaseSpeedLimit(); i = i + 1
+    end
+    while sm:getSpeedLimit() > target and i < maxIter do
+        sm:decreaseSpeedLimit(); i = i + 1
+    end
+    print("[FarmMonitor] AD speedLimit → " .. tostring(target) .. " km/h (iter=" .. i .. ")")
+end
+
+function FarmMonitor:cmdAutoDriveFieldSpeedLimit(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    if sm.getFieldSpeedLimit == nil or sm.increaseFieldSpeedLimit == nil then
+        error("Field speed limit API not available in this AD version")
+    end
+    local target = tonumber(cmd.value)
+    if target == nil then error("Invalid field speed limit: " .. tostring(cmd.value)) end
+    target = math.max(2, math.floor(target))
+    local maxIter = 200
+    local i = 0
+    while sm:getFieldSpeedLimit() < target and i < maxIter do
+        sm:increaseFieldSpeedLimit(); i = i + 1
+    end
+    while sm:getFieldSpeedLimit() > target and i < maxIter do
+        sm:decreaseFieldSpeedLimit(); i = i + 1
+    end
+    print("[FarmMonitor] AD fieldSpeedLimit → " .. tostring(target) .. " km/h (iter=" .. i .. ")")
+end
+
+-- Handles all five toggle commands — cmd.cmd determines which toggle to apply.
+function FarmMonitor:cmdAutoDriveToggle(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    local sm = vehicle.ad.stateModule
+    local toggles = {
+        ["autodrive.toggleLoadByFill"]  = "toggleLoadByFillLevel",
+        ["autodrive.toggleAutoUnload"]  = "toggleAutomaticUnloadTarget",
+        ["autodrive.toggleAutoPickup"]  = "toggleAutomaticPickupTarget",
+        ["autodrive.toggleStartHelper"] = "toggleStartHelper",
+        ["autodrive.toggleUsedHelper"]  = "toggleUsedHelper",
+    }
+    local methodName = toggles[cmd.cmd]
+    if methodName == nil then error("Unknown toggle command: " .. tostring(cmd.cmd)) end
+    if sm[methodName] == nil then
+        error("Toggle method '" .. methodName .. "' not available in this AD version")
+    end
+    local ok, err = pcall(sm[methodName], sm)
+    if not ok then error("Toggle failed: " .. tostring(err)) end
+    print("[FarmMonitor] AD toggle: " .. methodName .. "()")
+end
+
+function FarmMonitor:cmdAutoDriveSetting(cmd)
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.settings == nil then
+        error("Vehicle not found or has no AutoDrive settings: " .. tostring(cmd.uniqueId))
+    end
+    local settingName = cmd.setting
+    if settingName == nil or settingName == "" then
+        error("Missing setting name in autodrive.setting command")
+    end
+    local valueIndex = tonumber(cmd.value)
+    if valueIndex == nil then
+        error("Invalid value index for setting '" .. settingName .. "': " .. tostring(cmd.value))
+    end
+    local s = vehicle.ad.settings[settingName]
+    if s == nil then error("Unknown AD setting: " .. tostring(settingName)) end
+    if s.values == nil or s.values[valueIndex] == nil then
+        error("Value index " .. valueIndex .. " out of range for setting '" .. settingName .. "'")
+    end
+    s.current = valueIndex
+    s.new     = valueIndex
+    -- Best-effort broadcast to other clients (only works if AutoDriveUpdateSettingsEvent is accessible)
+    pcall(function() AutoDriveUpdateSettingsEvent.sendEvent(vehicle) end)
+    print("[FarmMonitor] AD setting: " .. settingName .. " = index " .. valueIndex)
 end
 
 -- ---------------------------------------------------------------------------

@@ -2048,6 +2048,39 @@
   .vd-ad-status-val { color: var(--fg); font-weight: 600; }
   .vd-ad-status-val.active { color: rgba(0,210,240,1); font-weight: 700; }
   .vd-ad-no-ad { font-size: 11px; color: var(--fg-muted); opacity: .6; text-align: center; padding: 20px 0; }
+  /* AD panel — number controls (speed limit, loop counter) */
+  .vd-ad-ctrl-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .vd-ad-ctrl-lbl { font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--fg-muted); opacity: .65; flex: 0 0 auto; }
+  .vd-ad-num { display: flex; align-items: center; gap: 3px; }
+  .vd-ad-num-btn {
+    width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.05); color: var(--fg); cursor: pointer;
+    font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center;
+    transition: background .12s; flex-shrink: 0;
+  }
+  .vd-ad-num-btn:hover { background: rgba(255,255,255,.12); }
+  .vd-ad-num-btn:active { transform: scale(.9); }
+  .vd-ad-num-val { font-size: 12px; font-weight: 700; color: var(--fg); min-width: 58px; text-align: center; }
+  /* AD panel — action buttons (continue / park / swap) */
+  .vd-ad-btn-cont { background: rgba(220,160,0,.12); border-color: rgba(220,160,0,.35); color: rgba(230,170,0,.9); }
+  .vd-ad-btn-cont:hover { background: rgba(220,160,0,.24); }
+  .vd-ad-btn-park { background: rgba(0,180,130,.12); border-color: rgba(0,180,130,.35); color: rgba(0,200,150,.9); }
+  .vd-ad-btn-park:hover { background: rgba(0,180,130,.24); }
+  .vd-ad-btn-park:disabled { opacity: .3; cursor: not-allowed; }
+  .vd-ad-btn-swap { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.7); }
+  .vd-ad-btn-swap:hover { background: rgba(255,255,255,.13); }
+  /* AD panel — toggle buttons */
+  .vd-ad-toggle-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+  .vd-ad-toggle-btn {
+    flex: 1 1 calc(50% - 5px); min-width: 0; padding: 5px 6px;
+    border-radius: 6px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.04); color: var(--fg-muted); cursor: pointer;
+    font-size: 10px; font-weight: 600; text-align: center; line-height: 1.3;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .vd-ad-toggle-btn:hover { background: rgba(255,255,255,.09); color: var(--fg); }
+  .vd-ad-toggle-btn.on { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.4); color: rgba(0,205,240,1); }
+  .vd-ad-toggle-btn.cycle { flex: 1 1 100%; font-size: 10px; }
   /* ── AutoDrive Marker Search ────────────────────────────────────────── */
   .ad-ms { display: flex; flex-direction: column; position: relative; }
   .ad-ms-input-row {
@@ -5989,9 +6022,13 @@ function closeFleetSettings() {
 let _vdCurrentId = null;
 let _vdRootId    = null;
 let _vdLastRender = 0;
+function _adAnyDropdownOpen() {
+  return Object.values(_adMs).some(ms => ms?.isOpen);
+}
+
 function _renderVehicleDetailThrottled() {
   const now = Date.now();
-  if (now - _vdLastRender < 5000) return;  // max once per 5s from SSE
+  if (now - _vdLastRender < 2000) return;  // max once per 2s from SSE
   _vdLastRender = now;
   _renderVehicleDetail(_vdCurrentId);
 }
@@ -6447,9 +6484,6 @@ function _renderAdPanel(id) {
     </div>` : '';
 
   inner.innerHTML = `
-    <div class="vd-ad-title">AutoDrive</div>
-    ${statusBox}
-    <div class="vd-ad-divider"></div>
     <div class="vd-ad-field">
       <div class="vd-ad-label">Modus</div>
       <div class="vd-ad-mode-btns" id="ad-mode-btns">${modeBtns}</div>
@@ -6466,8 +6500,71 @@ function _renderAdPanel(id) {
         : `<button class="vd-ad-btn vd-ad-btn-start" onclick="_adStartStop('${id}', '${state.netId||''}', 'start')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z"/></svg>Start</button>`
       }
       <button class="vd-ad-btn vd-ad-btn-apply" onclick="_adConfigure('${id}', '${state.netId||''}')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10"/></svg>Übernehmen</button>
-      <button class="vd-ad-btn vd-ad-btn-next" onclick="_adNextTarget('${id}', '${state.netId||''}')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5v14l8 -7z"/><path d="M12 5v14l8 -7z"/><path d="M20 5v14"/></svg>Weiter</button>
+      <button class="vd-ad-btn vd-ad-btn-next" onclick="_adCmd('${id}','${state.netId||''}','autodrive.continue')" title="Weiterfahren nach Pause"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5v14l8 -7z"/><path d="M12 5v14l8 -7z"/><path d="M20 5v14"/></svg>Weiter</button>
     </div>
+    <div class="vd-ad-btn-row">
+      <button class="vd-ad-btn vd-ad-btn-park" ${(state.adParkDestination == null || state.adParkDestination < 0) ? 'disabled' : ''} onclick="_adCmd('${id}','${state.netId||''}','autodrive.park')" title="${state.adParkDestination >= 0 ? 'Zum Parkziel fahren' : 'Kein Parkziel konfiguriert'}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17v-8h4a2 2 0 0 1 0 4h-4"/></svg>Parken</button>
+      <button class="vd-ad-btn vd-ad-btn-swap" onclick="_adCmd('${id}','${state.netId||''}','autodrive.swapTargets')" title="Marker 1 ↔ Marker 2 tauschen">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l4-4 4 4"/><path d="M7 5v14"/><path d="M21 15l-4 4-4-4"/><path d="M17 19V5"/></svg>Tauschen</button>
+    </div>
+    ${(() => {
+      const vid = id, nid = state.netId||'';
+      const sl  = state.adSpeedLimit, fsl = state.adFieldSpeedLimit;
+      const lc  = state.adLoopCounter;
+      const hasSpeed = sl != null || fsl != null;
+      const hasLoop  = lc != null;
+      if (!hasSpeed && !hasLoop) return '';
+      const loopDisplay = lc === 0 ? '∞' : (lc != null ? `${state.adLoopsDone??0} / ${lc}` : '–');
+      return `
+    <div class="vd-ad-divider"></div>
+    ${hasSpeed ? `
+    ${sl != null ? `<div class="vd-ad-ctrl-row">
+      <span class="vd-ad-ctrl-lbl">Straße</span>
+      <div class="vd-ad-num">
+        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.speedLimit',{value:'${Math.max(2,sl-1)}' })">−</button>
+        <span class="vd-ad-num-val">${sl} km/h</span>
+        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.speedLimit',{value:'${sl+1}' })">+</button>
+      </div>
+    </div>` : ''}
+    ${fsl != null ? `<div class="vd-ad-ctrl-row">
+      <span class="vd-ad-ctrl-lbl">Feld</span>
+      <div class="vd-ad-num">
+        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.fieldSpeedLimit',{value:'${Math.max(2,fsl-1)}' })">−</button>
+        <span class="vd-ad-num-val">${fsl} km/h</span>
+        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.fieldSpeedLimit',{value:'${fsl+1}' })">+</button>
+      </div>
+    </div>` : ''}` : ''}
+    ${hasLoop ? `<div class="vd-ad-ctrl-row">
+      <span class="vd-ad-ctrl-lbl">Runden</span>
+      <div class="vd-ad-num">
+        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.loopCounter',{value:'${Math.max(0,(lc??0)-1)}' })">−</button>
+        <span class="vd-ad-num-val">${loopDisplay}</span>
+        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.loopCounter',{value:'${Math.min(99,(lc??0)+1)}' })">+</button>
+      </div>
+    </div>` : ''}`;
+    })()}
+    ${(() => {
+      const vid = id, nid = state.netId||'';
+      const helperLabels = {1:'CP', 2:'AIVE', 3:'AI', 5:'–'};
+      const toggles = [
+        state.adLoadByFillLevel  != null ? {cmd:'autodrive.toggleLoadByFill',  on:state.adLoadByFillLevel,  label:'Füllstand-Laden'} : null,
+        state.adAutoUnloadTarget != null ? {cmd:'autodrive.toggleAutoUnload',   on:state.adAutoUnloadTarget, label:'Auto-Entladen'} : null,
+        state.adAutoPickupTarget != null ? {cmd:'autodrive.toggleAutoPickup',   on:state.adAutoPickupTarget, label:'Auto-Beladen'} : null,
+        state.adStartHelper      != null ? {cmd:'autodrive.toggleStartHelper',  on:state.adStartHelper,      label:'Helper-Neustart'} : null,
+      ].filter(Boolean);
+      if (toggles.length === 0 && state.adUsedHelper == null) return '';
+      const toggleBtns = toggles.map(t =>
+        `<button class="vd-ad-toggle-btn${t.on?' on':''}" onclick="_adCmd('${vid}','${nid}','${t.cmd}')">${t.label}</button>`
+      ).join('');
+      const helperBtn = state.adUsedHelper != null
+        ? `<button class="vd-ad-toggle-btn cycle" onclick="_adCmd('${vid}','${nid}','autodrive.toggleUsedHelper')" title="Helper-Typ wechseln">Helper: ${helperLabels[state.adUsedHelper]??state.adUsedHelper}</button>`
+        : '';
+      return `
+    <div class="vd-ad-divider"></div>
+    <div class="vd-ad-label">Optionen</div>
+    <div class="vd-ad-toggle-grid">${toggleBtns}${helperBtn}</div>`;
+    })()}
   `;
   // Marker- und Filltype-Search State nach innerHTML-Injection initialisieren
   _adMsInit(1, markers, curM1);
@@ -6545,6 +6642,14 @@ async function _adNextTarget(vehicleId, netId) {
     body: JSON.stringify({ cmd: 'autodrive.nextTarget', uniqueId: vehicleId, netId: netId || '' })
   });
   console.log('[AD] nextTarget response', res.status);
+}
+
+// Generic AD command sender — used by all new AD controls
+async function _adCmd(vehicleId, netId, cmd, extra = {}) {
+  await fetch('/api/command', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd, uniqueId: String(vehicleId), netId: netId || '', ...extra })
+  });
 }
 
 async function _adConfigure(vehicleId, netId) {
@@ -7008,6 +7113,9 @@ function _renderVehicleDetail(id) {
     </button>`;
   }
   document.getElementById('vd-actions').innerHTML = actionsHtml;
+
+  // AD panel mitaktualisieren (Fahrzeugwechsel oder frische Render)
+  if (_adPanelOpen) _renderAdPanel(_vdRootId || id);
 }
 
 // Close panels/popovers on ESC
@@ -7517,6 +7625,8 @@ function startVehicleTracking() {
         if (currentView === 'vehicles')
           renderVehicleFleet(appData);
         if (_vdCurrentId != null) _renderVehicleDetailThrottled();
+        // AD-Panel immer direkt aktualisieren (kein Throttle), aber nur wenn kein Dropdown offen ist
+        if (_adPanelOpen && _vdRootId && !_adAnyDropdownOpen()) _renderAdPanel(_vdRootId);
       }
     } catch (e) {}
   };
