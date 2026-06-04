@@ -6047,6 +6047,11 @@ function closeFleetSettings() {
 let _vdCurrentId = null;
 let _vdRootId    = null;
 let _vdLastRender = 0;
+function _adPanelHasFocus() {
+  const inner = document.getElementById('vd-ad-inner');
+  return inner ? inner.contains(document.activeElement) && document.activeElement !== inner : false;
+}
+
 function _adAnyDropdownOpen() {
   return Object.values(_adMs).some(ms => ms?.isOpen);
 }
@@ -6073,6 +6078,7 @@ function openVehicleDetail(id) {
   const stateList = appData?.vehicles?.vehicles || [];
   const st = stateList.find(s => String(s.id) === String(id));
   _vdRootId = (st?.rootId) || id;
+  _adClearEditing(); // new vehicle — allow updates again
   _renderVehicleDetail(id);
   const overlay = document.getElementById('vehicle-detail-overlay');
   overlay.style.display = '';
@@ -6169,11 +6175,15 @@ function _cpStatusBadge(state) {
 
 // ── AutoDrive sub-panel ────────────────────────────────────────────
 let _adPanelOpen = false;
+let _adUserEditing = false; // true once user focused an input — blocks SSE re-renders until commit/close
+
+function _adClearEditing() { _adUserEditing = false; }
 
 function toggleAdPanel() {
   _adPanelOpen = !_adPanelOpen;
   document.getElementById('vd-ad-panel').classList.toggle('open', _adPanelOpen);
   document.getElementById('vd-ad-tab').classList.toggle('active', _adPanelOpen);
+  if (!_adPanelOpen) _adClearEditing();
   if (_adPanelOpen && _vdRootId) _renderAdPanel(_vdRootId);
 }
 
@@ -6372,10 +6382,17 @@ function _adMsValue(slot) {
 
 // Initialisiert den State für einen Slot nach dem Rendern des Panels
 function _adMsInit(slot, markers, selectedId) {
+  const existing = _adMs[slot];
+  // Preserve user selection on SSE re-renders of the same vehicle
+  if (existing && existing.vehicleId === _vdRootId) {
+    existing.markers = markers; // update marker list in case new markers arrived
+    return;
+  }
   const selName = selectedId != null ? (markers.find(m => m.id == selectedId)?.name || '') : '';
   _adMs[slot] = {
     markers, selectedId: selectedId ?? null, selectedName: selName,
     results: [], focusIndex: -1, open: false,
+    vehicleId: _vdRootId,
   };
 }
 
@@ -6388,7 +6405,7 @@ function _adMsHTML(slot, markers, selectedId, placeholder = 'Ziel suchen…') {
     <div class="ad-ms-input-row" id="ad-ms-row-${slot}">
       <input class="ad-ms-input" id="ad-ms-input-${slot}" type="text"
              value="${val}" placeholder="${placeholder}" autocomplete="off" spellcheck="false"
-             oninput="_adMsInput(${s})" onfocus="_adMsOpen(${s})" onblur="_adMsBlur(${s})"
+             oninput="_adMsInput(${s})" onfocus="_adUserEditing=true;_adMsOpen(${s})" onblur="_adMsBlur(${s})"
              onkeydown="_adMsKey(event,${s})">
       <button class="ad-ms-clear" id="ad-ms-clear-${slot}" tabindex="-1"
               onmousedown="event.preventDefault();_adMsClear(${s})" ${selName ? '' : 'hidden'}>✕</button>
@@ -6450,6 +6467,7 @@ const AD_MODES = [
   { id: 5, label: 'Ernter-Bgl.',       icon: 'input_silomode_5', m1: 'Entladeort', m2: 'Wartepunkt', ft: false },
 ];
 let _adSelectedMode = 1; // currently selected mode in the AD panel
+const _adPendingMode = {}; // vehicleId → user-selected mode (not yet applied)
 
 function _renderAdPanel(id) {
   const inner = document.getElementById('vd-ad-inner');
@@ -6467,7 +6485,7 @@ function _renderAdPanel(id) {
     return;
   }
 
-  const curMode   = state.adMode || 1;
+  const curMode   = _adPendingMode[id] ?? state.adMode ?? 1;
   _adSelectedMode = curMode;
   const curM1     = state.adDestination  ? (markers.find(m => m.name === state.adDestination)?.id  ?? '') : '';
   const curM2     = state.adDestination2 ? (markers.find(m => m.name === state.adDestination2)?.id ?? '') : '';
@@ -6596,6 +6614,7 @@ function _renderAdPanel(id) {
 
 function _selectAdMode(modeId) {
   _adSelectedMode = modeId;
+  if (_vdRootId) _adPendingMode[_vdRootId] = modeId;
   // Update active button styling
   document.querySelectorAll('.vd-ad-mode-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.vd-ad-mode-btn').forEach((btn, i) => {
@@ -6655,6 +6674,7 @@ async function _adStartStop(vehicleId, netId, action) {
     body: JSON.stringify({ cmd: 'autodrive.startStop', uniqueId: vehicleId, netId: netId || '', mode: action })
   });
   console.log('[AD] startStop response', res.status);
+  _adClearEditing();
 }
 
 async function _adNextTarget(vehicleId, netId) {
@@ -6718,6 +6738,8 @@ async function _adConfigure(vehicleId, netId) {
     body: JSON.stringify({ cmd: 'autodrive.configure', uniqueId: vehicleId, netId: netId || '', mode, marker1, marker2, fillType })
   });
   console.log('[AD] configure response', res.status);
+  delete _adPendingMode[vehicleId];
+  _adClearEditing();
 }
 
 function _renderImplCard(implId, implMeta, implState) {
@@ -7169,11 +7191,12 @@ function _renderVehicleDetail(id) {
   }
   document.getElementById('vd-actions').innerHTML = actionsHtml;
 
-  // AD panel mitaktualisieren (Fahrzeugwechsel oder frische Render)
-  if (_adPanelOpen) _renderAdPanel(_vdRootId || id);
+  // AD panel mitaktualisieren (Fahrzeugwechsel oder frische Render), aber nicht wenn User gerade editiert
+  if (_adPanelOpen && !_adUserEditing) _renderAdPanel(_vdRootId || id);
 }
 
 // Close panels/popovers on ESC
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (document.getElementById('eject-popover')?.classList.contains('open')) {
@@ -7681,7 +7704,7 @@ function startVehicleTracking() {
           renderVehicleFleet(appData);
         if (_vdCurrentId != null) _renderVehicleDetailThrottled();
         // AD-Panel immer direkt aktualisieren (kein Throttle), aber nur wenn kein Dropdown offen ist
-        if (_adPanelOpen && _vdRootId && !_adAnyDropdownOpen()) _renderAdPanel(_vdRootId);
+        if (_adPanelOpen && _vdRootId && !_adAnyDropdownOpen() && !_adUserEditing) _renderAdPanel(_vdRootId);
       }
     } catch (e) {}
   };
