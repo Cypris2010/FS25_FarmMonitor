@@ -5501,51 +5501,19 @@ function renderFieldPolygons(fieldsData, terrainSize) {
 }
 
 const SOIL_LAYER_COLORS = {
-  weed:   [239,  68,  68],
-  stone:  [156, 163, 175],
-  plow:   [167, 139, 250],
-  spray:  [ 52, 211, 153],
-  lime:   [ 29,  78, 216],
-  mulch:  [146,  64,  14],
-  roller: [ 96, 165, 250],
+  weed:   'rgba(239, 68, 68,  0.55)',
+  stone:  'rgba(156,163,175,  0.55)',
+  plow:   'rgba(167,139,250,  0.55)',
+  spray:  'rgba( 52,211,153,  0.55)',
+  lime:   'rgba( 29, 78,216,  0.55)',
+  mulch:  'rgba(146, 64, 14,  0.55)',
+  roller: 'rgba( 96,165,250,  0.55)',
 };
-// These layers have high values = "good" (lime present, fertilised, mulched, ploughed).
-// Invert alpha so dark = "needs work", transparent = "all good".
+// Layers where high value = good (treated). Fill areas that are LOW (problem areas).
 const SOIL_LAYER_INVERTED = new Set(['lime', 'spray', 'mulch', 'plow']);
 
 const activeSoilLayers = new Set();
-const soilLayerElements = {};  // name → <image> SVG element
-
-// Web Worker for box-blur — keeps main thread free
-const _blurWorkerSrc = `
-self.onmessage = function(e) {
-  const { values, res, rad, r, g, b, name, inverted } = e.data;
-  const alpha = new Uint8Array(values.length);
-  for (let i = 0; i < values.length; i++) {
-    const v = inverted ? (255 - values[i]) : values[i];
-    alpha[i] = Math.round(v * 0.65);
-  }
-  const blurred = new Uint8Array(values.length);
-  for (let y = 0; y < res; y++) {
-    for (let x = 0; x < res; x++) {
-      let sum = 0, count = 0;
-      for (let dy = -rad; dy <= rad; dy++) {
-        for (let dx = -rad; dx <= rad; dx++) {
-          const nx = x + dx, ny = y + dy;
-          if (nx >= 0 && nx < res && ny >= 0 && ny < res) { sum += alpha[ny*res+nx]; count++; }
-        }
-      }
-      blurred[y*res+x] = sum / count;
-    }
-  }
-  const px = new Uint8ClampedArray(res * res * 4);
-  for (let i = 0; i < blurred.length; i++) {
-    px[i*4]=r; px[i*4+1]=g; px[i*4+2]=b; px[i*4+3]=blurred[i];
-  }
-  self.postMessage({ px: px.buffer, res, name }, [px.buffer]);
-};
-`;
-const _blurWorker = new Worker(URL.createObjectURL(new Blob([_blurWorkerSrc], { type: 'text/javascript' })));
+const soilLayerElements = {};  // name → SVG <path> element
 
 function toggleSoilLayer(checkbox) {
   const name = checkbox.dataset.layer;
@@ -5567,57 +5535,116 @@ async function fetchAndRenderSoilLayer(name) {
   } catch(e) { console.warn('soil layer fetch failed:', name, e); }
 }
 
-// Pending blur callbacks keyed by layer name (worker may only handle one at a time)
-const _blurPending = {};
-_blurWorker.onmessage = function(e) {
-  const { px, res, name } = e.data;
-  const cb = _blurPending[name];
-  delete _blurPending[name];
-  if (cb) cb(new Uint8ClampedArray(px), res);
-};
-
-function renderSoilLayerData(name, data) {
-  const res = data.res || 128;
-  const values = data.data;
+function renderSoilLayerData(name, layerData) {
+  const res    = layerData.res || 128;
+  const values = layerData.data;
   if (!values || values.length !== res * res) return;
 
-  const [r, g, b] = SOIL_LAYER_COLORS[name] || [255, 255, 255];
+  const above    = !SOIL_LAYER_INVERTED.has(name);
+  const cellSize = MAP_PX * 0.5 / res;
+  const ox       = MAP_PX * 0.25;
+  const oy       = MAP_PX * 0.25;
 
-  // Offload blur to Web Worker — callback paints to SVG when done
-  _blurPending[name] = (px, res) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = res; canvas.height = res;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(new ImageData(px, res, res), 0, 0);
-    const dataUrl = canvas.toDataURL('image/png');
-    _applySoilLayerImage(name, dataUrl);
-  };
-  _blurWorker.postMessage({ values, res, rad: 0, r, g, b, name, inverted: SOIL_LAYER_INVERTED.has(name) });
+  const loops = _marchingSquares(values, res, 127, above, cellSize, ox, oy);
+  const d = loops.map(loop =>
+    loop.map((p, i) => (i === 0 ? `M${p.x.toFixed(1)},${p.y.toFixed(1)}` : `L${p.x.toFixed(1)},${p.y.toFixed(1)}`)).join('') + 'Z'
+  ).join(' ');
+
+  const svgLayer = document.getElementById('layer-soil');
+  if (!svgLayer) return;
+  let path = soilLayerElements[name];
+  if (!path) {
+    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('fill-rule', 'evenodd');
+    path.setAttribute('stroke', 'none');
+    path.style.pointerEvents = 'none';
+    svgLayer.appendChild(path);
+    soilLayerElements[name] = path;
+  }
+  path.setAttribute('fill', SOIL_LAYER_COLORS[name] || 'rgba(255,255,255,0.5)');
+  path.setAttribute('d', d || '');
 }
 
-function _applySoilLayerImage(name, dataUrl) {
-  const layer = document.getElementById('layer-soil');
-  if (!layer) return;
-  let img = soilLayerElements[name];
-  if (!img) {
-    img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-    img.setAttribute('x', String(MAP_PX * 0.25));
-    img.setAttribute('y', String(MAP_PX * 0.25));
-    img.setAttribute('width', String(MAP_PX * 0.5));
-    img.setAttribute('height', String(MAP_PX * 0.5));
-    img.setAttribute('preserveAspectRatio', 'none');
-    img.style.imageRendering = 'pixelated';
-    img.style.pointerEvents = 'none';
-    layer.appendChild(img);
-    soilLayerElements[name] = img;
+// Marching Squares: traces closed contour loops from a flat res×res value grid.
+// above=true → fill cells where value > threshold; above=false → fill where value < threshold.
+// Returns array of loops, each loop an array of {x,y} SVG points.
+function _marchingSquares(data, res, threshold, above, cellSize, ox, oy) {
+  function val(r, c) {
+    if (r < 0 || r >= res || c < 0 || c >= res) return above ? 0 : 255;
+    return data[r * res + c];
   }
-  img.setAttribute('href', dataUrl);
+  function inside(r, c) { const v = val(r, c); return above ? v > threshold : v < threshold; }
+
+  function hEdge(r, c) {
+    const v0 = val(r, c), v1 = val(r, c + 1);
+    const t = (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+    return { key: `h${r}_${c}`, x: ox + (c + t) * cellSize, y: oy + r * cellSize };
+  }
+  function vEdge(r, c) {
+    const v0 = val(r, c), v1 = val(r + 1, c);
+    const t = (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+    return { key: `v${r}_${c}`, x: ox + c * cellSize, y: oy + (r + t) * cellSize };
+  }
+
+  const segments = [];
+  for (let r = 0; r < res; r++) {
+    for (let c = 0; c < res; c++) {
+      const mask = (inside(r, c) ? 8 : 0) | (inside(r, c + 1) ? 4 : 0) |
+                   (inside(r + 1, c + 1) ? 2 : 0) | (inside(r + 1, c) ? 1 : 0);
+      if (mask === 0 || mask === 15) continue;
+      const T = () => hEdge(r, c),     B = () => hEdge(r + 1, c);
+      const L = () => vEdge(r, c),     R = () => vEdge(r, c + 1);
+      switch (mask) {
+        case  1: segments.push([L(), B()]); break;
+        case  2: segments.push([B(), R()]); break;
+        case  3: segments.push([L(), R()]); break;
+        case  4: segments.push([T(), R()]); break;
+        case  5: segments.push([T(), R()]); segments.push([B(), L()]); break;
+        case  6: segments.push([T(), B()]); break;
+        case  7: segments.push([T(), L()]); break;
+        case  8: segments.push([T(), L()]); break;
+        case  9: segments.push([T(), B()]); break;
+        case 10: segments.push([T(), L()]); segments.push([B(), R()]); break;
+        case 11: segments.push([T(), R()]); break;
+        case 12: segments.push([L(), R()]); break;
+        case 13: segments.push([B(), R()]); break;
+        case 14: segments.push([L(), B()]); break;
+      }
+    }
+  }
+
+  // Build adjacency graph from segments (each edge point connects to exactly 2 segments)
+  const coords = new Map(), graph = new Map();
+  for (const [p0, p1] of segments) {
+    coords.set(p0.key, { x: p0.x, y: p0.y });
+    coords.set(p1.key, { x: p1.x, y: p1.y });
+    if (!graph.has(p0.key)) graph.set(p0.key, []);
+    if (!graph.has(p1.key)) graph.set(p1.key, []);
+    graph.get(p0.key).push(p1.key);
+    graph.get(p1.key).push(p0.key);
+  }
+
+  // Trace closed loops by following adjacency
+  const visited = new Set();
+  const loops = [];
+  for (const startKey of graph.keys()) {
+    if (visited.has(startKey)) continue;
+    const loop = [];
+    let cur = startKey, prev = null;
+    for (let i = 0; i < 50000; i++) {
+      visited.add(cur);
+      loop.push(coords.get(cur));
+      const next = (graph.get(cur) || []).find(n => n !== prev);
+      if (!next || next === startKey || visited.has(next)) break;
+      prev = cur; cur = next;
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
 }
 
 function refreshActiveSoilLayers() {
-  for (const name of activeSoilLayers) {
-    fetchAndRenderSoilLayer(name);
-  }
+  for (const name of activeSoilLayers) fetchAndRenderSoilLayer(name);
 }
 
 // Poll soil layers independently every 30s — decoupled from SSE render cycle
