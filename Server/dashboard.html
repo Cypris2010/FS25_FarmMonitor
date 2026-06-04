@@ -3995,6 +3995,7 @@ function renderFields(data) {
   }
 
   const filtered = fields.filter(f => {
+    if (f.owned === false) return false;
     if (!editMode && !isFieldVisible(f.farmlandId)) return false;
     if (fieldFilter === 'harvest')   return f.harvestReady || f.needsPreparation;
     if (fieldFilter === 'attention') return !f.harvestReady && !f.needsPreparation && fieldNeedsAttention(f);
