@@ -707,10 +707,85 @@ type adIconCache struct {
 
 func newADIconCache() *adIconCache { return &adIconCache{icons: map[string][]byte{}} }
 
+func (c *adIconCache) reload(modsDir string) {
+	c.mu.Lock()
+	c.loaded = false
+	c.icons = map[string][]byte{}
+	c.mu.Unlock()
+	c.load(modsDir)
+}
+
 // defaultModsDir derives the FS25 mods directory from the data directory.
 // dataDir is .../modSettings/FS25_FarmMonitor → parent is FarmingSimulator2025 → mods sibling.
 func defaultModsDir(dataDir string) string {
 	return filepath.Join(filepath.Dir(filepath.Dir(dataDir)), "mods")
+}
+
+// gameSettingsModsDir reads modsDirectoryOverride from gameSettings.xml.
+// Returns "" if not active or file not found.
+func gameSettingsModsDir(dataDir string) string {
+	gsPath := filepath.Join(filepath.Dir(filepath.Dir(dataDir)), "gameSettings.xml")
+	data, err := os.ReadFile(gsPath)
+	if err != nil {
+		return ""
+	}
+	type override struct {
+		Active    string `xml:"active,attr"`
+		Directory string `xml:"directory,attr"`
+	}
+	type gameSettings struct {
+		Override override `xml:"modsDirectoryOverride"`
+	}
+	var gs gameSettings
+	if err := xml.Unmarshal(data, &gs); err != nil {
+		return ""
+	}
+	if gs.Override.Active == "true" && gs.Override.Directory != "" {
+		return gs.Override.Directory
+	}
+	return ""
+}
+
+// resolveModsDir returns the effective mods directory.
+// Priority: manual setting > gameSettings.xml override (if active) > default.
+func resolveModsDir(manualMods, dataDir string) string {
+	if manualMods != "" {
+		return manualMods
+	}
+	if d := gameSettingsModsDir(dataDir); d != "" {
+		return d
+	}
+	return defaultModsDir(dataDir)
+}
+
+// watchSavegameChange watches fields.json for savegame ID changes and reloads
+// AD icons with the then-current mods directory when a change is detected.
+func watchSavegameChange(dataDir, manualMods string, adIcons *adIconCache) {
+	fieldsPath := filepath.Join(dataDir, "fields.json")
+	currentID := ""
+	// Initial load
+	modsDir := resolveModsDir(manualMods, dataDir)
+	adIcons.load(modsDir)
+	for {
+		time.Sleep(5 * time.Second)
+		data, err := os.ReadFile(fieldsPath)
+		if err != nil {
+			continue
+		}
+		var obj struct {
+			SavegameId string `json:"savegameId"`
+		}
+		if err := json.Unmarshal(data, &obj); err != nil || obj.SavegameId == "" {
+			continue
+		}
+		if obj.SavegameId == currentID {
+			continue
+		}
+		currentID = obj.SavegameId
+		newModsDir := resolveModsDir(manualMods, dataDir)
+		log.Printf("[ad-icons] savegame changed (%s) → reloading icons from %s", obj.SavegameId, newModsDir)
+		adIcons.reload(newModsDir)
+	}
 }
 
 // readZipEntry reads a file from an open zip.ReadCloser by lowercase name match.
@@ -1142,13 +1217,8 @@ func main() {
 	mc := newMapCache()
 	go watchAndRebuildMap(filepath.Join(dataDir, "mapMeta.json"), mc)
 
-	modsDir := *mods
-	if modsDir == "" {
-		modsDir = defaultModsDir(dataDir)
-	}
-
 	adIcons := newADIconCache()
-	go adIcons.load(modsDir)
+	go watchSavegameChange(dataDir, *mods, adIcons)
 
 
 	mux := http.NewServeMux()
