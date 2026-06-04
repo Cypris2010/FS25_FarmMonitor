@@ -1988,7 +1988,7 @@
     height: 100%; overflow-y: auto;
     display: flex; flex-direction: column;
     padding: 16px 14px;
-    gap: 14px;
+    gap: 10px;
   }
   /* AD panel elements */
   .vd-ad-title {
@@ -2023,7 +2023,7 @@
   .vd-ad-mode-btn.active img { opacity: 1; filter: drop-shadow(0 0 3px rgba(0,180,220,.6)); }
   .vd-ad-mode-btn span { font-size: 8.5px; color: rgba(255,255,255,.65); text-align: center; line-height: 1.2; }
   .vd-ad-mode-btn.active span { color: rgba(0,180,220,.95); }
-  .vd-ad-btn-row { display: flex; gap: 6px; margin-top: 4px; }
+  .vd-ad-btn-row { display: flex; gap: 6px; }
   .vd-ad-btn {
     flex: 1; padding: 7px 6px; border-radius: 7px; border: 1px solid;
     font-size: 11px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s;
@@ -2048,19 +2048,44 @@
   .vd-ad-status-val { color: var(--fg); font-weight: 600; }
   .vd-ad-status-val.active { color: rgba(0,210,240,1); font-weight: 700; }
   .vd-ad-no-ad { font-size: 11px; color: var(--fg-muted); opacity: .6; text-align: center; padding: 20px 0; }
-  /* AD panel — number controls (speed limit, loop counter) */
-  .vd-ad-ctrl-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .vd-ad-ctrl-lbl { font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--fg-muted); opacity: .65; flex: 0 0 auto; }
-  .vd-ad-num { display: flex; align-items: center; gap: 3px; }
-  .vd-ad-num-btn {
-    width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line);
+  /* AD panel — rocker switch controls (speed limit, loop counter) */
+  .vd-ad-rocker { display: flex; align-items: center; justify-content: center; gap: 0; flex: 1; }
+  .vd-ad-rocker-btn {
+    width: 36px; height: 52px; border: 1px solid var(--line);
     background: rgba(255,255,255,.05); color: var(--fg); cursor: pointer;
-    font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center;
-    transition: background .12s; flex-shrink: 0;
+    font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;
+    transition: background .12s; flex-shrink: 0; user-select: none;
+    touch-action: manipulation;
   }
-  .vd-ad-num-btn:hover { background: rgba(255,255,255,.12); }
-  .vd-ad-num-btn:active { transform: scale(.9); }
-  .vd-ad-num-val { font-size: 12px; font-weight: 700; color: var(--fg); min-width: 58px; text-align: center; }
+  .vd-ad-rocker-btn:first-child { border-radius: 8px 0 0 8px; }
+  .vd-ad-rocker-btn:last-child  { border-radius: 0 8px 8px 0; }
+  .vd-ad-rocker-btn:hover  { background: rgba(255,255,255,.13); }
+  .vd-ad-rocker-btn:active { background: rgba(255,255,255,.22); }
+  .vd-ad-rocker-center {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; height: 52px;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.03);
+  }
+  .vd-ad-rocker-icon-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+  .vd-ad-rocker-icon { width: 38px; height: 38px; object-fit: contain; opacity: .85; display: block; }
+  .vd-ad-rocker-icon-ti { font-size: 28px; color: var(--fg-muted); line-height: 1; }
+  .vd-ad-rocker-val {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    font-size: 10px; font-weight: 800; color: #fff;
+    text-shadow: 0 0 4px #000, 0 1px 3px #000;
+    line-height: 1; white-space: nowrap; pointer-events: none;
+  }
+  /* compact rocker (loop counter) — icon + value side by side, half height */
+  .vd-ad-rocker.sm .vd-ad-rocker-btn  { height: 28px; }
+  .vd-ad-rocker.sm .vd-ad-rocker-center { height: 28px; flex-direction: row; gap: 6px; }
+  .vd-ad-rocker.sm .vd-ad-rocker-icon-wrap { position: static; }
+  .vd-ad-rocker.sm .vd-ad-rocker-icon-ti  { font-size: 16px; }
+  .vd-ad-rocker.sm .vd-ad-rocker-val {
+    position: static; transform: none;
+    font-size: 12px; font-weight: 700; color: var(--fg);
+    text-shadow: none;
+  }
   /* AD panel — action buttons (continue / park / swap) */
   .vd-ad-btn-cont { background: rgba(220,160,0,.12); border-color: rgba(220,160,0,.35); color: rgba(230,170,0,.9); }
   .vd-ad-btn-cont:hover { background: rgba(220,160,0,.24); }
@@ -6510,39 +6535,36 @@ function _renderAdPanel(id) {
     </div>
     ${(() => {
       const vid = id, nid = state.netId||'';
-      const sl  = state.adSpeedLimit, fsl = state.adFieldSpeedLimit;
-      const lc  = state.adLoopCounter;
+      // Use pending values for instant feedback; fall back to server state
+      const sl  = _adNumGet(vid, 'speedLimit',      state.adSpeedLimit);
+      const fsl = _adNumGet(vid, 'fieldSpeedLimit', state.adFieldSpeedLimit);
+      const lc  = _adNumGet(vid, 'loopCounter',     state.adLoopCounter);
       const hasSpeed = sl != null || fsl != null;
       const hasLoop  = lc != null;
       if (!hasSpeed && !hasLoop) return '';
       const loopDisplay = lc === 0 ? '∞' : (lc != null ? `${state.adLoopsDone??0} / ${lc}` : '–');
+      const rocker = (field, cmd, icon, isAdIcon, label, val, valDisplay, min, max, delta, compact=false) => `
+      <div class="vd-ad-rocker${compact?' sm':''}" onwheel="event.preventDefault();_adNumAdjust('${vid}','${nid}','${field}','${cmd}',event.deltaY>0?-${delta}:${delta},${min},${max},${val})" >
+        <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
+        <div class="vd-ad-rocker-center">
+          <div class="vd-ad-rocker-icon-wrap">
+            ${isAdIcon
+              ? `<img class="vd-ad-rocker-icon" src="/api/ad-icons/${icon}" onerror="this.style.display='none'">`
+              : `<i class="ti ${icon} vd-ad-rocker-icon-ti"></i>`}
+            <span class="vd-ad-rocker-val">${valDisplay}</span>
+          </div>
+        </div>
+        <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${+delta},${min},${max},${val})">+</button>
+      </div>`;
       return `
-    <div class="vd-ad-divider"></div>
-    ${hasSpeed ? `
-    ${sl != null ? `<div class="vd-ad-ctrl-row">
-      <span class="vd-ad-ctrl-lbl">Straße</span>
-      <div class="vd-ad-num">
-        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.speedLimit',{value:'${Math.max(2,sl-1)}' })">−</button>
-        <span class="vd-ad-num-val">${sl} km/h</span>
-        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.speedLimit',{value:'${sl+1}' })">+</button>
-      </div>
+    ${(sl != null || fsl != null) ? `<div style="display:flex;gap:8px;width:100%;">
+    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  '', sl,    sl+' km/h',             2,  200, 1) : ''}
+    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  '', fsl,   fsl+' km/h',            2,  200, 1) : ''}
     </div>` : ''}
-    ${fsl != null ? `<div class="vd-ad-ctrl-row">
-      <span class="vd-ad-ctrl-lbl">Feld</span>
-      <div class="vd-ad-num">
-        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.fieldSpeedLimit',{value:'${Math.max(2,fsl-1)}' })">−</button>
-        <span class="vd-ad-num-val">${fsl} km/h</span>
-        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.fieldSpeedLimit',{value:'${fsl+1}' })">+</button>
-      </div>
-    </div>` : ''}` : ''}
-    ${hasLoop ? `<div class="vd-ad-ctrl-row">
-      <span class="vd-ad-ctrl-lbl">Runden</span>
-      <div class="vd-ad-num">
-        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.loopCounter',{value:'${Math.max(0,(lc??0)-1)}' })">−</button>
-        <span class="vd-ad-num-val">${loopDisplay}</span>
-        <button class="vd-ad-num-btn" onclick="_adCmd('${vid}','${nid}','autodrive.loopCounter',{value:'${Math.min(99,(lc??0)+1)}' })">+</button>
-      </div>
-    </div>` : ''}`;
+    ${hasLoop ? `<div style="display:flex;gap:8px;width:100%;">
+    ${rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, '', lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true)}
+    </div>` : ''}
+    `;
     })()}
     ${(() => {
       const vid = id, nid = state.netId||'';
@@ -6650,6 +6672,39 @@ async function _adCmd(vehicleId, netId, cmd, extra = {}) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cmd, uniqueId: String(vehicleId), netId: netId || '', ...extra })
   });
+}
+
+// Optimistic debounce for numeric adjustments (speed/loop)
+// Pending values are read by _renderAdPanel so the display feels instant.
+const _adNumPending = {}; // key = "vid:field" → { value, timer }
+
+function _adNumGet(vid, field, fallback) {
+  const p = _adNumPending[vid + ':' + field];
+  return p !== undefined ? p.value : fallback;
+}
+
+function _adNumHasPending(vid) {
+  return Object.keys(_adNumPending).some(k => k.startsWith(vid + ':'));
+}
+
+function _adNumAdjust(vid, nid, field, cmd, delta, min, max, serverVal) {
+  const k = vid + ':' + field;
+  const cur = _adNumPending[k] !== undefined ? _adNumPending[k].value : serverVal;
+  const val = Math.min(max, Math.max(min, cur + delta));
+  if (_adNumPending[k]?.timer) clearTimeout(_adNumPending[k].timer);
+  _adNumPending[k] = {
+    value: val,
+    timer: setTimeout(async () => {
+      await _adCmd(vid, nid, cmd, { value: String(val) });
+      // Keep showing the new value for 3s while waiting for SSE confirmation
+      if (_adNumPending[k]) {
+        _adNumPending[k].timer = null;
+        _adNumPending[k].expiry = setTimeout(() => delete _adNumPending[k], 3000);
+      }
+    }, 600)
+  };
+  // Re-render immediately so the new value is visible without waiting for SSE
+  if (_adPanelOpen && _vdRootId) _renderAdPanel(_vdRootId);
 }
 
 async function _adConfigure(vehicleId, netId) {
