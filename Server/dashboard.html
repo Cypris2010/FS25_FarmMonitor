@@ -5463,14 +5463,12 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     if (f.owned === false) {
       txt.setAttribute('fill', 'rgba(160,160,160,0.60)');
       txt.setAttribute('stroke', 'rgba(0,0,0,0.35)');
-      txt.setAttribute('font-size', '9');
-      txt.setAttribute('font-weight', '400');
     } else {
-      txt.setAttribute('fill', 'rgba(255,255,255,0.9)');
+      txt.setAttribute('fill', 'rgba(134,239,172,0.95)');
       txt.setAttribute('stroke', 'rgba(0,0,0,0.6)');
-      txt.setAttribute('font-size', '11');
-      txt.setAttribute('font-weight', '600');
     }
+    txt.setAttribute('font-size', '11');
+    txt.setAttribute('font-weight', '600');
     txt.setAttribute('stroke-width', '3');
     txt.setAttribute('paint-order', 'stroke');
     txt.setAttribute('font-family', 'system-ui, sans-serif');
