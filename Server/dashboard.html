@@ -2109,17 +2109,17 @@
   .vd-ad-toggle-btn.on { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.4); color: rgba(0,205,240,1); }
   .vd-ad-toggle-btn.cycle { flex: 1 1 100%; font-size: 10px; }
   /* AD panel — vehicle settings icon buttons */
-  .vd-ad-setting-icons { display: flex; gap: 4px; }
+  .vd-ad-setting-icons { display: flex; gap: 5px; width: 100%; }
   .vd-ad-setting-btn {
-    display: flex; align-items: center; justify-content: center;
-    padding: 5px; border-radius: 6px; border: 1px solid var(--line);
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 7px 4px; border-radius: 6px; border: 1px solid var(--line);
     background: rgba(255,255,255,.04); cursor: pointer;
     transition: background .15s, border-color .15s;
     -webkit-appearance: none; outline: none; touch-action: manipulation;
   }
   .vd-ad-setting-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
   .vd-ad-setting-btn:active { transform: scale(.95); }
-  .vd-ad-setting-icon { width: 35px; height: 35px; image-rendering: pixelated; opacity: .75; display: block; }
+  .vd-ad-setting-icon { width: 40px; height: 40px; image-rendering: pixelated; opacity: .75; display: block; }
   /* ── AutoDrive Marker Search ────────────────────────────────────────── */
   .ad-ms { display: flex; flex-direction: column; position: relative; }
   .ad-ms-input-row {
@@ -6610,8 +6610,14 @@ function _renderAdPanel(id) {
         const max = maxStates[name] || 2;
         return `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid2}','${nid2}','${name}',${max},${idx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/${name}_${idx}" onerror="this.style.display='none'" title="${name}"></button>`;
       };
+      const shKey = vid2+':input_startHelper';
+      const shServerIdx = state.adStartHelper == null ? null : (state.adStartHelper ? 2 : 1);
+      const shIdx = (_adSettingPending[shKey] !== undefined) ? _adSettingPending[shKey] : shServerIdx;
+      const startHelperBtn = shIdx == null ? '' :
+        `<button class="vd-ad-setting-btn" onclick="_adToggleStartHelper('${vid2}','${nid2}',${shIdx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/input_startHelper_${shIdx}" onerror="this.style.display='none'" title="input_startHelper"></button>`;
       return `
     <div class="vd-ad-setting-icons">
+      ${startHelperBtn}
       ${iconBtn('rotateTargets',   s.rotateTargets)}
       ${iconBtn('exitField',       s.exitField)}
       ${iconBtn('restrictToField', s.restrictToField)}
@@ -6730,6 +6736,15 @@ async function _adCmd(vehicleId, netId, cmd, extra = {}) {
 
 // Optimistic state for AD settings icon buttons
 const _adSettingPending = {}; // key = "vid:settingName" → next index
+
+async function _adToggleStartHelper(vid, nid, currentIdx) {
+  const next = currentIdx === 1 ? 2 : 1;
+  const k = vid + ':input_startHelper';
+  _adSettingPending[k] = next;
+  _renderAdPanel(_vdRootId);
+  await _adCmd(vid, nid, 'autodrive.toggleStartHelper');
+  setTimeout(() => { delete _adSettingPending[k]; }, 3000);
+}
 
 async function _adSettingCycle(vid, nid, name, maxStates, currentIdx) {
   const next = (currentIdx % maxStates) + 1;
