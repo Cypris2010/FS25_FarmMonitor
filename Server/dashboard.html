@@ -5535,10 +5535,11 @@ const SOIL_LAYER_BANDS = {
     { t: 141, above: true, opacity: 0.25 },  // levels 6–9 (severe)
   ],
   // stone: levels 0–4 → exported as 0/64/127/191/255
+  // Level 1 (value 63) = Basissteine überall auf der Karte (Ausgangszustand) → ignorieren
   stone: [
-    { t:   0, above: true, opacity: 0.20 },  // levels 1–4 (any stones)
-    { t: 126, above: true, opacity: 0.25 },  // levels 2–4 (medium)
-    { t: 190, above: true, opacity: 0.25 },  // levels 3–4 (many)
+    { t:  63, above: true, opacity: 0.20 },  // levels 2–4 (echte Steine)
+    { t: 126, above: true, opacity: 0.25 },  // levels 3–4
+    { t: 190, above: true, opacity: 0.25 },  // level 4
   ],
 };
 
@@ -5625,8 +5626,8 @@ function _marchingSquares(data, res, threshold, above, cellSize, ox, oy) {
   }
 
   const segments = [];
-  for (let r = 0; r < res; r++) {
-    for (let c = 0; c < res; c++) {
+  for (let r = -1; r < res; r++) {
+    for (let c = -1; c < res; c++) {
       const mask = (inside(r, c) ? 8 : 0) | (inside(r, c + 1) ? 4 : 0) |
                    (inside(r + 1, c + 1) ? 2 : 0) | (inside(r + 1, c) ? 1 : 0);
       if (mask === 0 || mask === 15) continue;
