@@ -1671,12 +1671,15 @@
     position: relative;
     cursor: grab;
     user-select: none;
+    -webkit-user-select: none;
   }
   .map-container.dragging { cursor: grabbing; }
   .map-inner {
     position: absolute;
     top: 0; left: 0;
     transform-origin: 0 0;
+    user-select: none;
+    -webkit-user-select: none;
   }
   #map-overview {
     display: block;
