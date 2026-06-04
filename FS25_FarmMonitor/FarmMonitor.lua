@@ -3884,7 +3884,10 @@ function FarmMonitor:cmdAutoDriveLoopCounter(cmd)
     local current = sm:getLoopCounter() or 0
     local delta = target - current
     if delta ~= 0 then
-        sm:changeLoopCounter(delta, true)  -- true = allow fast/large jump
+        local increment = delta > 0
+        for i = 1, math.abs(delta) do
+            sm:changeLoopCounter(increment, false)
+        end
     end
     print("[FarmMonitor] AD loopCounter: " .. tostring(current) .. " → " .. tostring(target))
 end

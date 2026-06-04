@@ -2055,8 +2055,10 @@
     background: rgba(255,255,255,.05); color: var(--fg); cursor: pointer;
     font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;
     transition: background .12s; flex-shrink: 0; user-select: none;
-    touch-action: manipulation;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none; outline: none;
   }
+  .vd-ad-rocker-btn:focus { outline: none; }
   .vd-ad-rocker-btn:first-child { border-radius: 8px 0 0 8px; }
   .vd-ad-rocker-btn:last-child  { border-radius: 0 8px 8px 0; }
   .vd-ad-rocker-btn:hover  { background: rgba(255,255,255,.13); }
@@ -6560,8 +6562,8 @@ function _renderAdPanel(id) {
       const hasSpeed = sl != null || fsl != null;
       const hasLoop  = lc != null;
       if (!hasSpeed && !hasLoop) return '';
-      const loopDisplay = lc === 0 ? '∞' : (lc != null ? `${state.adLoopsDone??0} / ${lc}` : '–');
-      const rocker = (field, cmd, icon, isAdIcon, label, val, valDisplay, min, max, delta, compact=false) => `
+      const loopDisplay = lc === 0 ? '∞' : (lc != null ? String(lc) : '–');
+      const rocker =(field, cmd, icon, isAdIcon, label, val, valDisplay, min, max, delta, compact=false) => `
       <div class="vd-ad-rocker${compact?' sm':''}" onwheel="event.preventDefault();_adNumAdjust('${vid}','${nid}','${field}','${cmd}',event.deltaY>0?-${delta}:${delta},${min},${max},${val})" >
         <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
         <div class="vd-ad-rocker-center">
@@ -6569,18 +6571,18 @@ function _renderAdPanel(id) {
             ${isAdIcon
               ? `<img class="vd-ad-rocker-icon" src="/api/ad-icons/${icon}" onerror="this.style.display='none'">`
               : `<i class="ti ${icon} vd-ad-rocker-icon-ti"></i>`}
-            <span class="vd-ad-rocker-val">${valDisplay}</span>
+            <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid}-${field}">${valDisplay}</span>
           </div>
         </div>
         <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${+delta},${min},${max},${val})">+</button>
       </div>`;
       return `
+    ${hasLoop ? `<div style="display:flex;gap:8px;width:100%;">
+    ${rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, '', lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true)}
+    </div>` : ''}
     ${(sl != null || fsl != null) ? `<div style="display:flex;gap:8px;width:100%;">
     ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  '', sl,    sl+' km/h',             2,  200, 1) : ''}
     ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  '', fsl,   fsl+' km/h',            2,  200, 1) : ''}
-    </div>` : ''}
-    ${hasLoop ? `<div style="display:flex;gap:8px;width:100%;">
-    ${rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, '', lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true)}
     </div>` : ''}
     `;
     })()}
@@ -6707,6 +6709,11 @@ function _adNumHasPending(vid) {
   return Object.keys(_adNumPending).some(k => k.startsWith(vid + ':'));
 }
 
+function _adNumFormatVal(field, val) {
+  if (field === 'loopCounter') return val === 0 ? '∞' : String(val);
+  return val + ' km/h';
+}
+
 function _adNumAdjust(vid, nid, field, cmd, delta, min, max, serverVal) {
   const k = vid + ':' + field;
   const cur = _adNumPending[k] !== undefined ? _adNumPending[k].value : serverVal;
@@ -6723,8 +6730,9 @@ function _adNumAdjust(vid, nid, field, cmd, delta, min, max, serverVal) {
       }
     }, 600)
   };
-  // Re-render immediately so the new value is visible without waiting for SSE
-  if (_adPanelOpen && _vdRootId) _renderAdPanel(_vdRootId);
+  // Update only the value span — no full panel re-render to avoid flash
+  const span = document.getElementById('ad-rocker-val-' + vid + '-' + field);
+  if (span) span.textContent = _adNumFormatVal(field, val);
 }
 
 async function _adConfigure(vehicleId, netId) {
@@ -7196,6 +7204,12 @@ function _renderVehicleDetail(id) {
 }
 
 // Close panels/popovers on ESC
+
+// On touch devices, blur focused button after tap so focus ring doesn't stick
+document.addEventListener('touchend', e => {
+  const el = document.activeElement;
+  if (el && el !== document.body) el.blur();
+}, { passive: true });
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
