@@ -2108,6 +2108,18 @@
   .vd-ad-toggle-btn:hover { background: rgba(255,255,255,.09); color: var(--fg); }
   .vd-ad-toggle-btn.on { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.4); color: rgba(0,205,240,1); }
   .vd-ad-toggle-btn.cycle { flex: 1 1 100%; font-size: 10px; }
+  /* AD panel — vehicle settings icon buttons */
+  .vd-ad-setting-icons { display: flex; gap: 4px; }
+  .vd-ad-setting-btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 5px; border-radius: 6px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.04); cursor: pointer;
+    transition: background .15s, border-color .15s;
+    -webkit-appearance: none; outline: none; touch-action: manipulation;
+  }
+  .vd-ad-setting-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+  .vd-ad-setting-btn:active { transform: scale(.95); }
+  .vd-ad-setting-icon { width: 35px; height: 35px; image-rendering: pixelated; opacity: .75; display: block; }
   /* ── AutoDrive Marker Search ────────────────────────────────────────── */
   .ad-ms { display: flex; flex-direction: column; position: relative; }
   .ad-ms-input-row {
@@ -6186,7 +6198,7 @@ function toggleAdPanel() {
   document.getElementById('vd-ad-panel').classList.toggle('open', _adPanelOpen);
   document.getElementById('vd-ad-tab').classList.toggle('active', _adPanelOpen);
   if (!_adPanelOpen) _adClearEditing();
-  if (_adPanelOpen && _vdRootId) _renderAdPanel(_vdRootId);
+  if (_adPanelOpen && _vdRootId) { _preloadAdSettingIcons(); _renderAdPanel(_vdRootId); }
 }
 
 // ---------------------------------------------------------------------------
@@ -6587,6 +6599,26 @@ function _renderAdPanel(id) {
     `;
     })()}
     ${(() => {
+      const s = state.adSettings;
+      if (!s) return '';
+      const vid2 = id, nid2 = state.netId||'';
+      const maxStates = {rotateTargets:4, exitField:3, restrictToField:2, avoidFruit:2};
+      const iconBtn = (name, fallbackIdx) => {
+        if (fallbackIdx == null) return '';
+        const k = vid2+':'+name;
+        const idx = (_adSettingPending[k] !== undefined) ? _adSettingPending[k] : fallbackIdx;
+        const max = maxStates[name] || 2;
+        return `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid2}','${nid2}','${name}',${max},${idx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/${name}_${idx}" onerror="this.style.display='none'" title="${name}"></button>`;
+      };
+      return `
+    <div class="vd-ad-setting-icons">
+      ${iconBtn('rotateTargets',   s.rotateTargets)}
+      ${iconBtn('exitField',       s.exitField)}
+      ${iconBtn('restrictToField', s.restrictToField)}
+      ${iconBtn('avoidFruit',      s.avoidFruit)}
+    </div>`;
+    })()}
+    ${(() => {
       const vid = id, nid = state.netId||'';
       const helperLabels = {1:'CP', 2:'AIVE', 3:'AI', 5:'–'};
       const toggles = [
@@ -6694,6 +6726,28 @@ async function _adCmd(vehicleId, netId, cmd, extra = {}) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cmd, uniqueId: String(vehicleId), netId: netId || '', ...extra })
   });
+}
+
+// Optimistic state for AD settings icon buttons
+const _adSettingPending = {}; // key = "vid:settingName" → next index
+
+async function _adSettingCycle(vid, nid, name, maxStates, currentIdx) {
+  const next = (currentIdx % maxStates) + 1;
+  const k = vid + ':' + name;
+  _adSettingPending[k] = next;
+  _renderAdPanel(_vdRootId);
+  await _adCmd(vid, nid, 'autodrive.setting', { setting: name, value: String(next) });
+  setTimeout(() => { delete _adSettingPending[k]; }, 3000);
+}
+
+function _preloadAdSettingIcons() {
+  const icons = [
+    'rotateTargets_1','rotateTargets_2','rotateTargets_3','rotateTargets_4',
+    'exitField_1','exitField_2','exitField_3',
+    'restrictToField_1','restrictToField_2',
+    'avoidFruit_1','avoidFruit_2',
+  ];
+  icons.forEach(name => { const img = new Image(); img.src = '/api/ad-icons/' + name; });
 }
 
 // Optimistic debounce for numeric adjustments (speed/loop)
