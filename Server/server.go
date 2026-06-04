@@ -1044,6 +1044,7 @@ type serverConfig struct {
 	Port *int    `json:"port,omitempty"`
 	Host *string `json:"host,omitempty"`
 	Data *string `json:"data,omitempty"`
+	Mods *string `json:"mods,omitempty"`
 }
 
 type settingsFile struct {
@@ -1083,6 +1084,7 @@ func main() {
 	port := flag.Int("port", 8080, "HTTP port")
 	host := flag.String("host", "127.0.0.1", "Listen address (use 0.0.0.0 for LAN access)")
 	data := flag.String("data", "", "Path to the directory containing the JSON data files (default: auto-detect from modSettings)")
+	mods := flag.String("mods", "", "Path to the FS25 mods directory (default: auto-derive from data path)")
 	flag.Parse()
 
 	// Apply saved settings for any flag not explicitly set via CLI.
@@ -1097,6 +1099,9 @@ func main() {
 		}
 		if !explicit["data"] && s.Server.Data != nil && *s.Server.Data != "" {
 			*data = *s.Server.Data
+		}
+		if !explicit["mods"] && s.Server.Mods != nil && *s.Server.Mods != "" {
+			*mods = *s.Server.Mods
 		}
 	}
 
@@ -1137,8 +1142,13 @@ func main() {
 	mc := newMapCache()
 	go watchAndRebuildMap(filepath.Join(dataDir, "mapMeta.json"), mc)
 
+	modsDir := *mods
+	if modsDir == "" {
+		modsDir = defaultModsDir(dataDir)
+	}
+
 	adIcons := newADIconCache()
-	go adIcons.load(defaultModsDir(dataDir))
+	go adIcons.load(modsDir)
 
 
 	mux := http.NewServeMux()
