@@ -6654,11 +6654,12 @@ function _renderAdPanel(id) {
       <button class="vd-ad-setting-btn" disabled style="opacity:.2;cursor:default"></button>
       <button class="vd-ad-setting-btn" disabled style="opacity:.2;cursor:default"></button>
     </div>
-    ${s.pipeOffset != null ? (() => {
+    ${(s.pipeOffset != null || s.followDistance != null) ? (() => {
       const vid3 = vid2, nid3 = nid2;
       const po = (_adNumPending[vid3+':pipeOffset'] !== undefined) ? _adNumPending[vid3+':pipeOffset'].value : s.pipeOffset;
-      return `<div style="display:flex;gap:8px;width:100%;">
-    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',event.deltaY>0?-1:1,1,85,${s.pipeOffset})">
+      const fd = (_adNumPending[vid3+':followDistance'] !== undefined) ? _adNumPending[vid3+':followDistance'].value : s.followDistance;
+      const poRocker = s.pipeOffset != null ? `
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',event.deltaY>0?-1:1,1,85,${s.pipeOffset})" title="Abstand Rohr">
       <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',-1,1,85,${s.pipeOffset})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
@@ -6667,8 +6668,19 @@ function _renderAdPanel(id) {
         </div>
       </div>
       <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',1,1,85,${s.pipeOffset})">+</button>
-    </div>
-    </div>`;
+    </div>` : '';
+      const fdRocker = s.followDistance != null ? `
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',event.deltaY>0?-1:1,1,33,${s.followDistance})" title="Abstand Häcksler">
+      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',-1,1,33,${s.followDistance})">−</button>
+      <div class="vd-ad-rocker-center">
+        <div class="vd-ad-rocker-icon-wrap">
+          <i class="ti ti-arrows-up-down vd-ad-rocker-icon-ti"></i>
+          <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-followDistance">${_adNumFormatVal('followDistance', fd)}</span>
+        </div>
+      </div>
+      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
+    </div>` : '';
+      return `<div style="display:flex;gap:8px;width:100%;">${poRocker}${fdRocker}</div>`;
     })() : ''}`;
     })()}
     ${(() => {
@@ -6837,7 +6849,8 @@ function _adNumHasPending(vid) {
   return Object.keys(_adNumPending).some(k => k.startsWith(vid + ':'));
 }
 
-// All 85 pipeOffset values from AutoDrive settings (index 1-based → array 0-based)
+// AutoDrive numeric setting lookup tables (index 1-based → array 0-based)
+// pipeOffset: 85 values, -5.0 to +5.0 m (0.25 steps outside ±1 m, 0.05 inside)
 const AD_PIPE_OFFSETS = [
   -5.0,-4.75,-4.5,-4.25,-4.0,-3.75,-3.5,-3.25,-3.0,-2.75,-2.5,-2.25,-2.0,-1.75,-1.5,-1.25,-1.0,
   -0.95,-0.9,-0.85,-0.8,-0.75,-0.7,-0.65,-0.6,-0.55,-0.5,-0.45,-0.4,-0.35,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,
@@ -6846,12 +6859,22 @@ const AD_PIPE_OFFSETS = [
   1.0,1.05,1.1,1.15,1.2,1.25,1.3,1.35,1.4,1.45,1.5,1.55,1.6,1.65,1.7,1.75,
   2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0,4.25,4.5,4.75,5.0
 ];
+// followDistance: 33 values, 0 to 8.0 m (uniform 0.25 steps)
+const AD_FOLLOW_DISTANCES = [
+  0,0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,
+  4.0,4.25,4.5,4.75,5.0,5.25,5.5,5.75,6.0,6.25,6.5,6.75,7.0,7.25,7.5,7.75,8.0
+];
 function _adNumFormatVal(field, val) {
   if (field === 'loopCounter') return val === 0 ? '∞' : String(val);
   if (field === 'pipeOffset') {
     const v = AD_PIPE_OFFSETS[val - 1];
     if (v == null) return '–';
     return (v > 0 ? '+' : '') + String(v) + ' m';
+  }
+  if (field === 'followDistance') {
+    const v = AD_FOLLOW_DISTANCES[val - 1];
+    if (v == null) return '–';
+    return String(v) + ' m';
   }
   return val + ' km/h';
 }

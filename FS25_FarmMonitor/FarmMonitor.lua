@@ -3403,6 +3403,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.toggleUsedHelper"]    = FarmMonitor.cmdAutoDriveToggle,
         ["autodrive.setting"]             = FarmMonitor.cmdAutoDriveSetting,
         ["autodrive.pipeOffset"]          = FarmMonitor.cmdAutoDrivePipeOffset,
+        ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3993,8 +3994,12 @@ function FarmMonitor:cmdAutoDriveSetting(cmd)
 end
 
 function FarmMonitor:cmdAutoDrivePipeOffset(cmd)
-    -- Thin wrapper: reuse cmdAutoDriveSetting with settingName="pipeOffset"
     cmd.setting = "pipeOffset"
+    FarmMonitor:cmdAutoDriveSetting(cmd)
+end
+
+function FarmMonitor:cmdAutoDriveFollowDistance(cmd)
+    cmd.setting = "followDistance"
     FarmMonitor:cmdAutoDriveSetting(cmd)
 end
 
