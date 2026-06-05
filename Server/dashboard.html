@@ -6680,7 +6680,7 @@ function _renderAdPanel(id) {
       </div>
       <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
     </div>` : '';
-      return `<div style="display:flex;gap:8px;width:100%;">${poRocker}${fdRocker}</div>`;
+      return `${poRocker ? `<div style="display:flex;gap:8px;width:100%;">${poRocker}</div>` : ''}${fdRocker ? `<div style="display:flex;gap:8px;width:100%;">${fdRocker}</div>` : ''}`;
     })() : ''}`;
     })()}
     ${(() => {
