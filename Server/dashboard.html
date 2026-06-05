@@ -6680,7 +6680,19 @@ function _renderAdPanel(id) {
       </div>
       <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
     </div>` : '';
-      return `${poRocker ? `<div style="display:flex;gap:8px;width:100%;">${poRocker}</div>` : ''}${fdRocker ? `<div style="display:flex;gap:8px;width:100%;">${fdRocker}</div>` : ''}`;
+      const ufl = (_adNumPending[vid3+':unloadFillLevel'] !== undefined) ? _adNumPending[vid3+':unloadFillLevel'].value : s.unloadFillLevel;
+      const uflRocker = s.unloadFillLevel != null ? `
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',event.deltaY>0?-1:1,1,14,${s.unloadFillLevel})" title="Abladen ab Level">
+      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',-1,1,14,${s.unloadFillLevel})">−</button>
+      <div class="vd-ad-rocker-center">
+        <div class="vd-ad-rocker-icon-wrap">
+          <img class="vd-ad-rocker-icon" src="/api/ad-icons/input_toggleAutomaticUnloadTarget_2" onerror="this.style.display='none'">
+          <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-unloadFillLevel">${_adNumFormatVal('unloadFillLevel', ufl)}</span>
+        </div>
+      </div>
+      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',1,1,14,${s.unloadFillLevel})">+</button>
+    </div>` : '';
+      return `${poRocker ? `<div style="display:flex;gap:8px;width:100%;">${poRocker}</div>` : ''}${fdRocker ? `<div style="display:flex;gap:8px;width:100%;">${fdRocker}</div>` : ''}${uflRocker ? `<div style="display:flex;gap:8px;width:100%;">${uflRocker}</div>` : ''}`;
     })() : ''}`;
     })()}
     ${(() => {
@@ -6864,6 +6876,8 @@ const AD_FOLLOW_DISTANCES = [
   0,0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,
   4.0,4.25,4.5,4.75,5.0,5.25,5.5,5.75,6.0,6.25,6.5,6.75,7.0,7.25,7.5,7.75,8.0
 ];
+// unloadFillLevel: 14 values, 0%–100%
+const AD_UNLOAD_LEVELS = ['0%','10%','20%','30%','40%','50%','60%','70%','80%','85%','90%','95%','99%','100%'];
 function _adNumFormatVal(field, val) {
   if (field === 'loopCounter') return val === 0 ? '∞' : String(val);
   if (field === 'pipeOffset') {
@@ -6876,6 +6890,7 @@ function _adNumFormatVal(field, val) {
     if (v == null) return '–';
     return String(v) + ' m';
   }
+  if (field === 'unloadFillLevel') return AD_UNLOAD_LEVELS[val - 1] ?? '–';
   return val + ' km/h';
 }
 

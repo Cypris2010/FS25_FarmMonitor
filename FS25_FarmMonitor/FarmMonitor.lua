@@ -3404,6 +3404,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.setting"]             = FarmMonitor.cmdAutoDriveSetting,
         ["autodrive.pipeOffset"]          = FarmMonitor.cmdAutoDrivePipeOffset,
         ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
+        ["autodrive.unloadFillLevel"]     = FarmMonitor.cmdAutoDriveUnloadFillLevel,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -4000,6 +4001,11 @@ end
 
 function FarmMonitor:cmdAutoDriveFollowDistance(cmd)
     cmd.setting = "followDistance"
+    FarmMonitor:cmdAutoDriveSetting(cmd)
+end
+
+function FarmMonitor:cmdAutoDriveUnloadFillLevel(cmd)
+    cmd.setting = "unloadFillLevel"
     FarmMonitor:cmdAutoDriveSetting(cmd)
 end
 
