@@ -3402,6 +3402,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.toggleStartHelper"]   = FarmMonitor.cmdAutoDriveToggle,
         ["autodrive.toggleUsedHelper"]    = FarmMonitor.cmdAutoDriveToggle,
         ["autodrive.setting"]             = FarmMonitor.cmdAutoDriveSetting,
+        ["autodrive.pipeOffset"]          = FarmMonitor.cmdAutoDrivePipeOffset,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -3989,6 +3990,12 @@ function FarmMonitor:cmdAutoDriveSetting(cmd)
     -- Best-effort broadcast to other clients (only works if AutoDriveUpdateSettingsEvent is accessible)
     pcall(function() AutoDriveUpdateSettingsEvent.sendEvent(vehicle) end)
     print("[FarmMonitor] AD setting: " .. settingName .. " = index " .. valueIndex)
+end
+
+function FarmMonitor:cmdAutoDrivePipeOffset(cmd)
+    -- Thin wrapper: reuse cmdAutoDriveSetting with settingName="pipeOffset"
+    cmd.setting = "pipeOffset"
+    FarmMonitor:cmdAutoDriveSetting(cmd)
 end
 
 -- ---------------------------------------------------------------------------
