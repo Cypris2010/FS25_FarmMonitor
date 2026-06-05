@@ -6517,7 +6517,6 @@ function _renderAdPanel(id) {
 
   const m2Block = modeInfo.m2 ? `
     <div class="vd-ad-field">
-      <div class="vd-ad-label">${modeInfo.m2}</div>
       <div style="display:flex;align-items:center;gap:5px">
         ${curMode===5||curMode===2?`<img src="/api/ad-icons/input_toggleAutomaticUnloadTarget_2" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:curMode===4?`<img src="/api/ad-icons/input_toggleAutomaticUnloadTarget_4" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
         ${_adMsHTML(2, markers, curM2)}
@@ -6526,7 +6525,6 @@ function _renderAdPanel(id) {
 
   const ftBlock = modeInfo.ft ? `
     <div class="vd-ad-field">
-      <div class="vd-ad-label">Fülltyp</div>
       <div style="display:flex;align-items:center;gap:5px">
         ${curMode===2||curMode===4?`<img src="/api/ad-icons/input_toggleLoadByFillLevel_1" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
         ${_adMsHTML('ft', _adFtItems(), curFT, 'Fülltyp suchen…')}
@@ -6550,15 +6548,14 @@ function _renderAdPanel(id) {
       <div class="vd-ad-mode-btns" id="ad-mode-btns">${modeBtns}</div>
     </div>
     <div class="vd-ad-field">
-      <div class="vd-ad-label" id="ad-m1-label">${modeInfo.m1}</div>
       <div style="display:flex;align-items:stretch;gap:5px">
         <img id="ad-m1-combine-icon" src="/api/ad-icons/${curMode===2?'input_toggleAutomaticUnloadTarget_4':curMode===3?'input_toggleAutomaticUnloadTarget_2':'input_toggleAutomaticUnloadTarget_1'}"
              style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0;${curMode===5||curMode===1||curMode===2||curMode===3||curMode===4?'':'display:none'}">
         ${_adMsHTML(1, markers, curM1)}
       </div>
     </div>
-    <div id="ad-m2-wrap">${m2Block}</div>
-    <div id="ad-ft-wrap">${ftBlock}</div>
+    <div id="ad-m2-wrap"${m2Block?'':' style="display:none"'}>${m2Block}</div>
+    <div id="ad-ft-wrap"${ftBlock?'':' style="display:none"'}>${ftBlock}</div>
     <div class="vd-ad-btn-row">
       ${isActive
         ? `<button class="vd-ad-btn vd-ad-btn-stop" title="Stopp" onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="5" y="5" width="14" height="14" rx="1"/></svg></button>`
@@ -6702,7 +6699,6 @@ function _onAdModeChange() {
   const modeInfo = AD_MODES.find(m => m.id === modeId) || AD_MODES[0];
   const markers = appData?.autoDriveMarkers?.markers || [];
 
-  document.getElementById('ad-m1-label').textContent = modeInfo.m1;
   const combineIcon = document.getElementById('ad-m1-combine-icon');
   if (combineIcon) {
     combineIcon.style.display = (modeId === 5 || modeId === 1 || modeId === 2 || modeId === 3 || modeId === 4) ? '' : 'none';
@@ -6712,9 +6708,9 @@ function _onAdModeChange() {
   const m2wrap = document.getElementById('ad-m2-wrap');
   if (m2wrap) {
     if (modeInfo.m2) {
+      m2wrap.style.display = '';
       m2wrap.innerHTML = `
         <div class="vd-ad-field">
-          <div class="vd-ad-label">${modeInfo.m2}</div>
           <div style="display:flex;align-items:center;gap:5px">
             ${modeId===5||modeId===2?`<img src="/api/ad-icons/input_toggleAutomaticUnloadTarget_2" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:modeId===4?`<img src="/api/ad-icons/input_toggleAutomaticUnloadTarget_4" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
             ${_adMsHTML(2, markers, null)}
@@ -6723,6 +6719,7 @@ function _onAdModeChange() {
       _adMsInit(2, markers, null);
     } else {
       m2wrap.innerHTML = '';
+      m2wrap.style.display = 'none';
       delete _adMs[2];
     }
   }
@@ -6730,9 +6727,9 @@ function _onAdModeChange() {
   const ftwrap = document.getElementById('ad-ft-wrap');
   if (ftwrap) {
     if (modeInfo.ft) {
+      ftwrap.style.display = '';
       ftwrap.innerHTML = `
         <div class="vd-ad-field">
-          <div class="vd-ad-label">Fülltyp</div>
           <div style="display:flex;align-items:center;gap:5px">
             ${modeId===2||modeId===4?`<img src="/api/ad-icons/input_toggleLoadByFillLevel_1" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
             ${_adMsHTML('ft', _adFtItems(), null, 'Fülltyp suchen…')}
@@ -6741,6 +6738,7 @@ function _onAdModeChange() {
       _adMsInit('ft', _adFtItems(), null);
     } else {
       ftwrap.innerHTML = '';
+      ftwrap.style.display = 'none';
       delete _adMs['ft'];
     }
   }
