@@ -1435,31 +1435,29 @@ function FarmMonitor:collectVehicles()
                         end
                     end
                     -- Loop counter (0 = infinite, always export when AD present)
-                    if sm.getLoopCounter ~= nil then
-                        local lc = sm:getLoopCounter()
-                        if lc ~= nil then
-                            adLoopCounter = lc
-                            if sm.getLoopsDone ~= nil then
-                                adLoopsDone = sm:getLoopsDone() or 0
-                            end
-                        end
+                    -- Use individual pcalls: AD uses metatables, nil-checks on methods don't work
+                    local ok_lc, lc = pcall(function() return sm:getLoopCounter() end)
+                    if ok_lc and lc ~= nil then
+                        adLoopCounter = lc
+                        local ok_ld, ld = pcall(function() return sm:getLoopsDone() end)
+                        if ok_ld and ld ~= nil then adLoopsDone = ld end
                     end
                     -- Current active target leg
-                    if adMode == 2 and sm.getCurrentMode ~= nil then
+                    if adMode == 2 then
                         -- PickupAndDeliver: state-based detection
-                        local modeObj = sm:getCurrentMode()
-                        if modeObj and modeObj.state then
+                        local ok_gm, modeObj = pcall(function() return sm:getCurrentMode() end)
+                        if ok_gm and modeObj and modeObj.state then
                             local s = modeObj.state
                             if s == 2 or s == 8 then adCurrentTarget = 1
                             elseif s == 3 or s == 7 then adCurrentTarget = 2
                             end
                         end
-                    elseif adMode == 5 and adDestination2 ~= nil and sm.getCurrentMode ~= nil then
+                    elseif adMode == 5 and adDestination2 ~= nil then
                         -- CombineUnloader: table-based states, compare via class metatable
                         -- Marker 1 (firstMarker)  = Wartepunkt (wait/start near field)
                         -- Marker 2 (secondMarker) = Entladeort (unload delivery point)
-                        local modeObj = sm:getCurrentMode()
-                        if modeObj and modeObj.state then
+                        local ok_gm, modeObj = pcall(function() return sm:getCurrentMode() end)
+                        if ok_gm and modeObj and modeObj.state then
                             if modeObj.state == modeObj.STATE_DRIVE_TO_UNLOAD then
                                 adCurrentTarget = 2   -- driving to unload = Marker 2
                             elseif modeObj.state == modeObj.STATE_DRIVE_TO_START
@@ -1481,9 +1479,9 @@ function FarmMonitor:collectVehicles()
                         if vehicle.ad.trailerModule.isUnloading == true then adIsUnloading = true end
                     end
                     -- Mode state string (CombineUnloader mode 5 — table-based states)
-                    if adActive and adMode == 5 and sm.getCurrentMode ~= nil then
-                        local ms = sm:getCurrentMode()
-                        if ms and ms.state then
+                    if adActive and adMode == 5 then
+                        local ok_ms, ms = pcall(function() return sm:getCurrentMode() end)
+                        if ok_ms and ms and ms.state then
                             if     ms.state == ms.STATE_WAIT_TO_BE_CALLED          then adModeState = "waitToBeCalled"
                             elseif ms.state == ms.STATE_DRIVE_TO_COMBINE           then adModeState = "driveToCombine"
                             elseif ms.state == ms.STATE_FOLLOW_COMBINE
@@ -1496,43 +1494,30 @@ function FarmMonitor:collectVehicles()
                         end
                     end
                     -- Speed limits
-                    if sm.getSpeedLimit ~= nil then
-                        local sl = sm:getSpeedLimit()
-                        if sl and sl > 0 then adSpeedLimit = MathUtil.round(sl) end
-                    end
-                    if sm.getFieldSpeedLimit ~= nil then
-                        local fsl = sm:getFieldSpeedLimit()
-                        if fsl and fsl > 0 then adFieldSpeedLimit = MathUtil.round(fsl) end
-                    end
+                    local ok_sl, sl = pcall(function() return sm:getSpeedLimit() end)
+                    if ok_sl and sl and sl > 0 then adSpeedLimit = MathUtil.round(sl) end
+                    local ok_fsl, fsl = pcall(function() return sm:getFieldSpeedLimit() end)
+                    if ok_fsl and fsl and fsl > 0 then adFieldSpeedLimit = MathUtil.round(fsl) end
                     -- Toggle states
-                    if sm.getLoadByFillLevel ~= nil then
-                        adLoadByFillLevel = sm:getLoadByFillLevel() == true
-                    end
-                    if sm.getAutomaticUnloadTarget ~= nil then
-                        adAutoUnloadTarget = sm:getAutomaticUnloadTarget() == true
-                    end
-                    if sm.getAutomaticPickupTarget ~= nil then
-                        adAutoPickupTarget = sm:getAutomaticPickupTarget() == true
-                    end
-                    if sm.getStartHelper ~= nil then
-                        adStartHelper = sm:getStartHelper() == true
-                    end
-                    if sm.getUsedHelper ~= nil then
-                        local uh = sm:getUsedHelper()
-                        if uh ~= nil then adUsedHelper = uh end
-                    end
+                    local ok_lbfl, lbfl = pcall(function() return sm:getLoadByFillLevel() end)
+                    if ok_lbfl then adLoadByFillLevel = lbfl == true end
+                    local ok_aut, aut = pcall(function() return sm:getAutomaticUnloadTarget() end)
+                    if ok_aut then adAutoUnloadTarget = aut == true end
+                    local ok_apt, apt = pcall(function() return sm:getAutomaticPickupTarget() end)
+                    if ok_apt then adAutoPickupTarget = apt == true end
+                    local ok_sh, sh = pcall(function() return sm:getStartHelper() end)
+                    if ok_sh then adStartHelper = sh == true end
+                    local ok_uh, uh = pcall(function() return sm:getUsedHelper() end)
+                    if ok_uh and uh ~= nil then adUsedHelper = uh end
                     -- Park destination (-1 = none configured)
-                    if sm.getParkDestinationAtJobFinished ~= nil then
-                        adParkDestination = sm:getParkDestinationAtJobFinished()
-                    end
+                    local ok_pd, pd = pcall(function() return sm:getParkDestinationAtJobFinished() end)
+                    if ok_pd then adParkDestination = pd end
                     -- Current task info string
-                    if sm.getCurrentLocalizedTaskInfo ~= nil then
-                        local ti = sm:getCurrentLocalizedTaskInfo()
-                        if ti and ti ~= "" then adCurrentTaskInfo = ti end
-                    end
+                    local ok_ti, ti = pcall(function() return sm:getCurrentLocalizedTaskInfo() end)
+                    if ok_ti and ti and ti ~= "" then adCurrentTaskInfo = ti end
                     -- Harvester pairing ok (CombineUnloader mode 5 only)
-                    if adMode == 5 and sm.getHarvesterPairingOk ~= nil then
-                        local ok2, pairing = pcall(sm.getHarvesterPairingOk, sm)
+                    if adMode == 5 then
+                        local ok2, pairing = pcall(function() return sm:getHarvesterPairingOk() end)
                         if ok2 and pairing == true then adHarvesterPairingOk = true end
                     end
                     -- Vehicle settings (current index per setting)
