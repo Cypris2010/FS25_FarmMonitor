@@ -6145,6 +6145,15 @@ function openVehicleDetail(id) {
   }
 }
 
+// Close detail panel when clicking outside — but not on fleet cards (they handle themselves)
+document.addEventListener('pointerdown', function(e) {
+  if (!_vdRootId) return;
+  const panel = document.getElementById('vd-panel');
+  if (!panel || panel.contains(e.target)) return;
+  if (e.target.closest('.fleet-cell')) return;
+  closeVehicleDetail();
+}, true);
+
 let _vdTransitionEndHandler = null;
 function closeVehicleDetail() {
   const overlay = document.getElementById('vehicle-detail-overlay');
