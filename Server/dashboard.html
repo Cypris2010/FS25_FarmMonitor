@@ -6581,7 +6581,7 @@ function _renderAdPanel(id) {
       const loopDisplay = lc === 0 ? '∞' : (lc != null ? String(lc) : '–');
       const rocker =(field, cmd, icon, isAdIcon, label, val, valDisplay, min, max, delta, compact=false) => `
       <div class="vd-ad-rocker${compact?' sm':''}" onwheel="event.preventDefault();_adNumAdjust('${vid}','${nid}','${field}','${cmd}',event.deltaY>0?-${delta}:${delta},${min},${max},${val})"${label?` title="${label}"`:''}>
-        <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
+        <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
         <div class="vd-ad-rocker-center">
           <div class="vd-ad-rocker-icon-wrap">
             ${isAdIcon === 'svg'
@@ -6592,7 +6592,7 @@ function _renderAdPanel(id) {
             <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid}-${field}">${valDisplay}</span>
           </div>
         </div>
-        <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${+delta},${min},${max},${val})">+</button>
+        <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${+delta},${min},${max},${val})">+</button>
       </div>`;
       const csIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="18" height="18" style="display:block;opacity:.75;flex-shrink:0"><path fill="currentColor" d="M128.842 62.334c-23.151 0-43.737 5.138-59.522 17.666-104.521 82.955 16 400 16 400h400S62.472 282.86 142.142 144c36.264-63.205 188.819 28.358 236.457 59.102-13.827 12.298-36.347 21.55-62.675 35.735 42.774 7.379 107.957-6.075 133.072-19.825-16.707-54.737-41.265-98.913-83.787-123.87 12.637 27.463 22.197 50.35 23.248 70.883-27.068-17.556-164.658-103.69-259.615-103.691z"/></svg>`;
       return `
@@ -6611,18 +6611,20 @@ function _renderAdPanel(id) {
       if (!s) return '';
       const vid2 = id, nid2 = state.netId||'';
       const maxStates = {rotateTargets:4, exitField:3, restrictToField:2, avoidFruit:2};
+      const iconBtnTitles = {rotateTargets:'Rotierend anfahren', exitField:'Feld verlassen', restrictToField:'Auf Feld beschränken', avoidFruit:'Früchte vermeiden'};
       const iconBtn = (name, fallbackIdx) => {
         if (fallbackIdx == null) return '';
         const k = vid2+':'+name;
         const idx = (_adSettingPending[k] !== undefined) ? _adSettingPending[k] : fallbackIdx;
         const max = maxStates[name] || 2;
-        return `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid2}','${nid2}','${name}',${max},${idx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/${name}_${idx}" onerror="this.style.display='none'" title="${name}"></button>`;
+        const tip = iconBtnTitles[name] || name;
+        return `<button class="vd-ad-setting-btn" title="${tip}" onclick="_adSettingCycle('${vid2}','${nid2}','${name}',${max},${idx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/${name}_${idx}" onerror="this.style.display='none'"></button>`;
       };
       const shKey = vid2+':input_startHelper';
       const shServerIdx = state.adStartHelper == null ? null : (state.adStartHelper ? 2 : 1);
       const shIdx = (_adSettingPending[shKey] !== undefined) ? _adSettingPending[shKey] : shServerIdx;
       const startHelperBtn = shIdx == null ? '' :
-        `<button class="vd-ad-setting-btn" onclick="_adToggleStartHelper('${vid2}','${nid2}',${shIdx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/input_startHelper_${shIdx}" onerror="this.style.display='none'" title="input_startHelper"></button>`;
+        `<button class="vd-ad-setting-btn" title="Helper-Start" onclick="_adToggleStartHelper('${vid2}','${nid2}',${shIdx})"><img class="vd-ad-setting-icon" src="/api/ad-icons/input_startHelper_${shIdx}" onerror="this.style.display='none'"></button>`;
       const fieldPath = `<path fill="#c1c2c1" d="M213.18,457.76v-21.21h-49.33c11.44-43.6,27.97-85.4,49.33-124.86v-51.01c-1.11,1.72-2.24,3.43-3.33,5.17-33.22,52.77-57.68,110.13-72.84,170.71h-60.87v-90.01c27.98-48.95,62.96-93.31,104.04-131.88,39.39-36.98,83.8-68.06,132.03-92.47,2.5-.08,4.92-.16,7.27-.23,6.15-.19,12.31-.26,18.48-.25-33.02,26.66-62.81,56.59-89.19,89.5h33.8c28.37-32.78,60.5-62.19,96.11-87.92,5.44.41,10.88.9,16.31,1.47-21.9,27.37-41.81,56.28-59.56,86.45h30.37c17.84-28.84,37.74-56.43,59.55-82.47,3.5.56,7,1.13,10.5,1.75v5.92c-10.59,24.5-20.3,49.49-29.1,74.79h27.58c.51-1.42,1-2.85,1.52-4.28v4.28h23.87c.72,0,1.42.03,2.13.09v-102.29l-10.49-2.06c-43.95-8.64-88.59-12.34-132.68-10.98-36.26,1.12-96.94,2.99-167.05,30.84-34.17,13.57-66.54,31.62-96.23,53.65l-5.25,3.9v278.19h163.44c-.26-1.56-.4-3.16-.4-4.79ZM76.14,197.5c26.43-18.95,55.02-34.59,85.09-46.53,32.79-13.03,63.04-19.99,89.69-23.85-31.57,19.99-61.21,42.92-88.53,68.57-32.54,30.56-61.43,64.59-86.25,101.54v-99.73Z"/>`;
       // index 1 = OFF (parking2: P-Box durchgestrichen), index 2 = ON (parking1: P-Box gefüllt)
       const parkingSvg = [null,
@@ -6667,37 +6669,37 @@ function _renderAdPanel(id) {
       const fd = (_adNumPending[vid3+':followDistance'] !== undefined) ? _adNumPending[vid3+':followDistance'].value : s.followDistance;
       const poRocker = s.pipeOffset != null ? `
     <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',event.deltaY>0?-1:1,1,85,${s.pipeOffset})" title="Abstand Rohr">
-      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',-1,1,85,${s.pipeOffset})">−</button>
+      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',-1,1,85,${s.pipeOffset})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <i class="ti ti-arrows-left-right vd-ad-rocker-icon-ti"></i>
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-pipeOffset">${_adNumFormatVal('pipeOffset', po)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',1,1,85,${s.pipeOffset})">+</button>
+      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',1,1,85,${s.pipeOffset})">+</button>
     </div>` : '';
       const fdRocker = s.followDistance != null ? `
     <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',event.deltaY>0?-1:1,1,33,${s.followDistance})" title="Abstand Häcksler">
-      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',-1,1,33,${s.followDistance})">−</button>
+      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',-1,1,33,${s.followDistance})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <i class="ti ti-arrows-up-down vd-ad-rocker-icon-ti"></i>
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-followDistance">${_adNumFormatVal('followDistance', fd)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
+      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
     </div>` : '';
       const ufl = (_adNumPending[vid3+':unloadFillLevel'] !== undefined) ? _adNumPending[vid3+':unloadFillLevel'].value : s.unloadFillLevel;
       const uflRocker = s.unloadFillLevel != null ? `
     <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',event.deltaY>0?-1:1,1,14,${s.unloadFillLevel})" title="Abladen ab Level">
-      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',-1,1,14,${s.unloadFillLevel})">−</button>
+      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',-1,1,14,${s.unloadFillLevel})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <img class="vd-ad-rocker-icon" src="/api/ad-icons/input_toggleAutomaticUnloadTarget_2" onerror="this.style.display='none'">
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-unloadFillLevel">${_adNumFormatVal('unloadFillLevel', ufl)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',1,1,14,${s.unloadFillLevel})">+</button>
+      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',1,1,14,${s.unloadFillLevel})">+</button>
     </div>` : '';
       return `${poRocker ? `<div style="display:flex;gap:8px;width:100%;">${poRocker}</div>` : ''}${fdRocker ? `<div style="display:flex;gap:8px;width:100%;">${fdRocker}</div>` : ''}${uflRocker ? `<div style="display:flex;gap:8px;width:100%;">${uflRocker}</div>` : ''}`;
     })() : ''}`;
@@ -6713,7 +6715,7 @@ function _renderAdPanel(id) {
       ].filter(Boolean);
       if (toggles.length === 0 && state.adUsedHelper == null) return '';
       const toggleBtns = toggles.map(t =>
-        `<button class="vd-ad-toggle-btn${t.on?' on':''}" onclick="_adCmd('${vid}','${nid}','${t.cmd}')">${t.label}</button>`
+        `<button class="vd-ad-toggle-btn${t.on?' on':''}" title="${t.label} ${t.on?'deaktivieren':'aktivieren'}" onclick="_adCmd('${vid}','${nid}','${t.cmd}')">${t.label}</button>`
       ).join('');
       const helperBtn = state.adUsedHelper != null
         ? `<button class="vd-ad-toggle-btn cycle" onclick="_adCmd('${vid}','${nid}','autodrive.toggleUsedHelper')" title="Helper-Typ wechseln">Helper: ${helperLabels[state.adUsedHelper]??state.adUsedHelper}</button>`
