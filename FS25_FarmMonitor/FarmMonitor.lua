@@ -3963,10 +3963,8 @@ function FarmMonitor:cmdAutoDriveToggle(cmd)
 end
 
 function FarmMonitor:cmdAutoDriveSetting(cmd)
-    if not FarmMonitor:adBegin(cmd) then return end
-    local vehicle = FarmMonitor:resolveVehicle(cmd)
-    if vehicle == nil or vehicle.ad == nil or vehicle.ad.settings == nil then
-        error("Vehicle not found or has no AutoDrive settings: " .. tostring(cmd.uniqueId))
+    if not (g_modIsLoaded and g_modIsLoaded["FS25_AutoDrive"]) then
+        error("AutoDrive not loaded")
     end
     local settingName = cmd.setting
     if settingName == nil or settingName == "" then
@@ -3976,6 +3974,44 @@ function FarmMonitor:cmdAutoDriveSetting(cmd)
     if valueIndex == nil then
         error("Invalid value index for setting '" .. settingName .. "': " .. tostring(cmd.value))
     end
+
+    -- Pure MP-client: follow exactly the same path AutoDrive itself uses.
+    -- AutoDrive's own flow is: client sets value locally → sends AutoDriveUpdateSettingsEvent
+    -- to server → server applies + broadcasts to all clients.
+    -- We replicate this exactly so the DS processes and syncs the change correctly.
+    if g_server == nil and g_client ~= nil then
+        local vehicle = FarmMonitor:resolveVehicle(cmd)
+        if vehicle == nil or vehicle.ad == nil or vehicle.ad.settings == nil then
+            error("Vehicle not found or has no AutoDrive settings")
+        end
+        local s = vehicle.ad.settings[settingName]
+        if s == nil then error("Unknown AD setting: " .. tostring(settingName)) end
+        if s.values == nil or s.values[valueIndex] == nil then
+            error("Value index " .. valueIndex .. " out of range for setting '" .. settingName .. "'")
+        end
+        -- 1. Apply locally on client (instant feedback, same as AD does)
+        s.current = valueIndex
+        s.new     = valueIndex
+        -- 2. Send to server via AutoDrive's own event — server will apply + broadcast back to all clients
+        local ok_ev, err_ev = pcall(function()
+            AutoDriveUpdateSettingsEvent.sendEvent(vehicle)
+        end)
+        if ok_ev then
+            print("[FarmMonitor] AD setting (client→AD-event→server): " .. settingName .. " = index " .. valueIndex)
+        else
+            -- Fallback: send via FarmMonitorADCommandEvent so server at least sets the value
+            print("[FarmMonitor] AD setting AutoDriveUpdateSettingsEvent failed (" .. tostring(err_ev) .. "), using FarmMonitorADCommandEvent fallback")
+            local conn = g_client:getServerConnection()
+            if conn then conn:sendEvent(FarmMonitorADCommandEvent.new(cmd)) end
+        end
+        return
+    end
+
+    -- SP / listen-server host / DS-side execution (via FarmMonitorADCommandEvent fallback):
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.settings == nil then
+        error("Vehicle not found or has no AutoDrive settings: " .. tostring(cmd.uniqueId))
+    end
     local s = vehicle.ad.settings[settingName]
     if s == nil then error("Unknown AD setting: " .. tostring(settingName)) end
     if s.values == nil or s.values[valueIndex] == nil then
@@ -3983,8 +4019,12 @@ function FarmMonitor:cmdAutoDriveSetting(cmd)
     end
     s.current = valueIndex
     s.new     = valueIndex
-    -- Best-effort broadcast to other clients (only works if AutoDriveUpdateSettingsEvent is accessible)
-    pcall(function() AutoDriveUpdateSettingsEvent.sendEvent(vehicle) end)
+    -- Broadcast to all clients (only reached in SP or as fallback)
+    pcall(function()
+        if AutoDriveUpdateSettingsEvent ~= nil then
+            g_server:broadcastEvent(AutoDriveUpdateSettingsEvent.new(vehicle))
+        end
+    end)
     print("[FarmMonitor] AD setting: " .. settingName .. " = index " .. valueIndex)
 end
 
