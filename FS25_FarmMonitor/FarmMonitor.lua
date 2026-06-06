@@ -1435,13 +1435,17 @@ function FarmMonitor:collectVehicles()
                         end
                     end
                     -- Loop counter (0 = infinite, always export when AD present)
-                    local lc = sm:getLoopCounter()
-                    if lc ~= nil then
-                        adLoopCounter = lc
-                        adLoopsDone   = sm:getLoopsDone() or 0
+                    if sm.getLoopCounter ~= nil then
+                        local lc = sm:getLoopCounter()
+                        if lc ~= nil then
+                            adLoopCounter = lc
+                            if sm.getLoopsDone ~= nil then
+                                adLoopsDone = sm:getLoopsDone() or 0
+                            end
+                        end
                     end
                     -- Current active target leg
-                    if adMode == 2 then
+                    if adMode == 2 and sm.getCurrentMode ~= nil then
                         -- PickupAndDeliver: state-based detection
                         local modeObj = sm:getCurrentMode()
                         if modeObj and modeObj.state then
@@ -1450,7 +1454,7 @@ function FarmMonitor:collectVehicles()
                             elseif s == 3 or s == 7 then adCurrentTarget = 2
                             end
                         end
-                    elseif adMode == 5 and adDestination2 ~= nil then
+                    elseif adMode == 5 and adDestination2 ~= nil and sm.getCurrentMode ~= nil then
                         -- CombineUnloader: table-based states, compare via class metatable
                         -- Marker 1 (firstMarker)  = Wartepunkt (wait/start near field)
                         -- Marker 2 (secondMarker) = Entladeort (unload delivery point)
@@ -1477,7 +1481,7 @@ function FarmMonitor:collectVehicles()
                         if vehicle.ad.trailerModule.isUnloading == true then adIsUnloading = true end
                     end
                     -- Mode state string (CombineUnloader mode 5 — table-based states)
-                    if adActive and adMode == 5 then
+                    if adActive and adMode == 5 and sm.getCurrentMode ~= nil then
                         local ms = sm:getCurrentMode()
                         if ms and ms.state then
                             if     ms.state == ms.STATE_WAIT_TO_BE_CALLED          then adModeState = "waitToBeCalled"
