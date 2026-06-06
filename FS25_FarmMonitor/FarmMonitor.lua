@@ -4066,10 +4066,11 @@ end
 function FarmMonitor.obj(...)
     local t   = {}
     local ord = {}
-    local args = {...}
-    for i = 1, #args, 2 do
-        local k = args[i]
-        t[k] = args[i + 1]
+    local n   = select('#', ...)   -- count ALL args including nils (Lua 5.1 safe)
+    for i = 1, n, 2 do
+        local k = select(i, ...)
+        local v = select(i + 1, ...)
+        t[k] = v
         table.insert(ord, k)
     end
     t.__order = ord
