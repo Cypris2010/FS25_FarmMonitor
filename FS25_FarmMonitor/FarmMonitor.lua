@@ -1539,7 +1539,8 @@ function FarmMonitor:collectVehicles()
                             "exitField", "restrictToField", "followOnlyOnField", "avoidFruit",
                             "parkInField", "rotateTargets", "autoRefuel", "autoRepair",
                             "enableParkAtJobFinished", "autoTipSide", "autoTrailerCover",
-                            "ALUnload", "ALUnloadWaitTime"
+                            "ALUnload", "ALUnloadWaitTime",
+                            "preCallLevel", "callSecondUnloader", "activeUnloading", "chaseSide"
                         }) do
                             local s = vehicle.ad.settings[sName]
                             if s ~= nil then adSettings[sName] = s.current end
@@ -1603,6 +1604,7 @@ function FarmMonitor:collectVehicles()
                 "adParkDestination",     adParkDestination,
                 "adCurrentTaskInfo",     adCurrentTaskInfo,
                 "adHarvesterPairingOk",  adHarvesterPairingOk,
+                "adIsHarvester",         vehicle.spec_combine ~= nil or nil,
                 "adSettings",            adSettings,
                 "cpActive",              cpActive,
                 "cpJobType",             cpJobType,
@@ -3406,6 +3408,8 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
         ["autodrive.unloadFillLevel"]     = FarmMonitor.cmdAutoDriveUnloadFillLevel,
         ["autodrive.cornerSpeed"]         = FarmMonitor.cmdAutoDriveCornerSpeed,
+        ["autodrive.preCallLevel"]        = FarmMonitor.cmdAutoDrivePreCallLevel,
+        ["autodrive.chaseSide"]           = FarmMonitor.cmdAutoDriveChaseSide,
     }
     local handler = handlers[cmd.cmd]
     if handler then
@@ -4012,6 +4016,16 @@ end
 
 function FarmMonitor:cmdAutoDriveCornerSpeed(cmd)
     cmd.setting = "cornerSpeed"
+    FarmMonitor:cmdAutoDriveSetting(cmd)
+end
+
+function FarmMonitor:cmdAutoDrivePreCallLevel(cmd)
+    cmd.setting = "preCallLevel"
+    FarmMonitor:cmdAutoDriveSetting(cmd)
+end
+
+function FarmMonitor:cmdAutoDriveChaseSide(cmd)
+    cmd.setting = "chaseSide"
     FarmMonitor:cmdAutoDriveSetting(cmd)
 end
 

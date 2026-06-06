@@ -6704,6 +6704,42 @@ function _renderAdPanel(id) {
       return `${poRocker ? `<div style="display:flex;gap:8px;width:100%;">${poRocker}</div>` : ''}${fdRocker ? `<div style="display:flex;gap:8px;width:100%;">${fdRocker}</div>` : ''}${uflRocker ? `<div style="display:flex;gap:8px;width:100%;">${uflRocker}</div>` : ''}`;
     })() : ''}`;
     })()}
+    ${state.adIsHarvester ? (() => {
+      const vid4 = id, nid4 = state.netId||'';
+      const s = state.adSettings || {};
+      const pcl = _adNumGet(vid4, 'preCallLevel', s.preCallLevel);
+      const cs  = _adNumGet(vid4, 'chaseSide',    s.chaseSide);
+      const pclRocker = s.preCallLevel != null ? `
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',event.deltaY>0?-1:1,1,12,${s.preCallLevel})" title="Früher rufen ab">
+      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',-1,1,12,${s.preCallLevel})">−</button>
+      <div class="vd-ad-rocker-center">
+        <div class="vd-ad-rocker-icon-wrap">
+          <i class="ti ti-bell vd-ad-rocker-icon-ti"></i>
+          <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid4}-preCallLevel">${_adNumFormatVal('preCallLevel', pcl)}</span>
+        </div>
+      </div>
+      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',1,1,12,${s.preCallLevel})">+</button>
+    </div>` : '';
+      const csRocker = s.chaseSide != null ? `
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',event.deltaY>0?-1:1,1,4,${s.chaseSide})" title="Entladeseite Häcksler">
+      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',-1,1,4,${s.chaseSide})">−</button>
+      <div class="vd-ad-rocker-center">
+        <div class="vd-ad-rocker-icon-wrap">
+          <i class="ti ti-arrows-left-right vd-ad-rocker-icon-ti"></i>
+          <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid4}-chaseSide">${_adNumFormatVal('chaseSide', cs)}</span>
+        </div>
+      </div>
+      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',1,1,4,${s.chaseSide})">+</button>
+    </div>` : '';
+      const su2 = s.callSecondUnloader != null ? `<button class="vd-ad-toggle-btn${s.callSecondUnloader===2?' on':''}" title="2. Ablader rufen ${s.callSecondUnloader===2?'deaktivieren':'aktivieren'}" onclick="_adSettingCycle('${vid4}','${nid4}','callSecondUnloader',2,${s.callSecondUnloader})">2. Ablader</button>` : '';
+      const au  = s.activeUnloading   != null ? `<button class="vd-ad-toggle-btn${s.activeUnloading===2?' on':''}"   title="Aktives Abfahren ${s.activeUnloading===2?'deaktivieren':'aktivieren'}"   onclick="_adSettingCycle('${vid4}','${nid4}','activeUnloading',2,${s.activeUnloading})">Aktiv abfahren</button>` : '';
+      if (!pclRocker && !csRocker && !su2 && !au) return '';
+      return `
+    <div class="vd-ad-divider"></div>
+    ${pclRocker ? `<div style="display:flex;gap:8px;width:100%;">${pclRocker}</div>` : ''}
+    ${csRocker  ? `<div style="display:flex;gap:8px;width:100%;">${csRocker}</div>`  : ''}
+    ${(su2||au) ? `<div class="vd-ad-toggle-grid">${su2}${au}</div>` : ''}`;
+    })() : ''}
     ${(() => {
       const vid = id, nid = state.netId||'';
       const helperLabels = {1:'CP', 2:'AIVE', 3:'AI', 5:'–'};
@@ -6889,6 +6925,10 @@ const AD_FOLLOW_DISTANCES = [
 const AD_UNLOAD_LEVELS = ['0%','10%','20%','30%','40%','50%','60%','70%','80%','85%','90%','95%','99%','100%'];
 // cornerSpeed: 30 values, 50%–200% (5% steps, last step is 195%→200%)
 const AD_CORNER_SPEEDS = ['50%','55%','60%','65%','70%','75%','80%','85%','90%','95%','100%','105%','110%','115%','120%','125%','130%','135%','140%','145%','150%','155%','160%','165%','170%','175%','180%','185%','190%','200%'];
+// preCallLevel: 12 values, 0%–100%
+const AD_PRECALL_LEVELS = ['0%','10%','20%','30%','40%','50%','60%','70%','80%','85%','90%','100%'];
+// chaseSide: 4 values
+const AD_CHASE_SIDES = ['AUTO','Links','Hinten','Rechts'];
 function _adNumFormatVal(field, val) {
   if (field === 'loopCounter') return val === 0 ? '∞' : String(val);
   if (field === 'pipeOffset') {
@@ -6902,7 +6942,9 @@ function _adNumFormatVal(field, val) {
     return String(v) + ' m';
   }
   if (field === 'unloadFillLevel') return AD_UNLOAD_LEVELS[val - 1] ?? '–';
-  if (field === 'cornerSpeed') return AD_CORNER_SPEEDS[val - 1] ?? '–';
+  if (field === 'cornerSpeed')    return AD_CORNER_SPEEDS[val - 1] ?? '–';
+  if (field === 'preCallLevel')   return AD_PRECALL_LEVELS[val - 1] ?? '–';
+  if (field === 'chaseSide')      return AD_CHASE_SIDES[val - 1] ?? '–';
   return val + ' km/h';
 }
 
