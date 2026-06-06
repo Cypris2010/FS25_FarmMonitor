@@ -6580,7 +6580,7 @@ function _renderAdPanel(id) {
       if (!hasSpeed && !hasLoop && !hasCS) return '';
       const loopDisplay = lc === 0 ? '∞' : (lc != null ? String(lc) : '–');
       const rocker =(field, cmd, icon, isAdIcon, label, val, valDisplay, min, max, delta, compact=false) => `
-      <div class="vd-ad-rocker${compact?' sm':''}" onwheel="event.preventDefault();_adNumAdjust('${vid}','${nid}','${field}','${cmd}',event.deltaY>0?-${delta}:${delta},${min},${max},${val})" >
+      <div class="vd-ad-rocker${compact?' sm':''}" onwheel="event.preventDefault();_adNumAdjust('${vid}','${nid}','${field}','${cmd}',event.deltaY>0?-${delta}:${delta},${min},${max},${val})"${label?` title="${label}"`:''}>
         <button class="vd-ad-rocker-btn" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
         <div class="vd-ad-rocker-center">
           <div class="vd-ad-rocker-icon-wrap">
@@ -6597,12 +6597,12 @@ function _renderAdPanel(id) {
       const csIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="18" height="18" style="display:block;opacity:.75;flex-shrink:0"><path fill="currentColor" d="M128.842 62.334c-23.151 0-43.737 5.138-59.522 17.666-104.521 82.955 16 400 16 400h400S62.472 282.86 142.142 144c36.264-63.205 188.819 28.358 236.457 59.102-13.827 12.298-36.347 21.55-62.675 35.735 42.774 7.379 107.957-6.075 133.072-19.825-16.707-54.737-41.265-98.913-83.787-123.87 12.637 27.463 22.197 50.35 23.248 70.883-27.068-17.556-164.658-103.69-259.615-103.691z"/></svg>`;
       return `
     ${(hasLoop || hasCS) ? `<div style="display:flex;gap:8px;width:100%;">
-    ${hasLoop ? rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, '', lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true) : ''}
-    ${hasCS   ? rocker('cornerSpeed', 'autodrive.cornerSpeed', csIcon, 'svg', '', cs, AD_CORNER_SPEEDS[cs-1]??'–', 1, 30, 1, true) : ''}
+    ${hasLoop ? rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, 'Wiederholungen', lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true) : ''}
+    ${hasCS   ? rocker('cornerSpeed', 'autodrive.cornerSpeed', csIcon, 'svg', 'Kurvengeschwindigkeit', cs, AD_CORNER_SPEEDS[cs-1]??'–', 1, 30, 1, true) : ''}
     </div>` : ''}
     ${(sl != null || fsl != null) ? `<div style="display:flex;gap:8px;width:100%;">
-    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  '', sl,    sl+' km/h',             2,  200, 1) : ''}
-    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  '', fsl,   fsl+' km/h',            2,  200, 1) : ''}
+    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  'Geschwindigkeitslimit',      sl,    sl+' km/h',  2,  200, 1) : ''}
+    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  'Feldgeschwindigkeitslimit',  fsl,   fsl+' km/h', 2,  200, 1) : ''}
     </div>` : ''}
     `;
     })()}
