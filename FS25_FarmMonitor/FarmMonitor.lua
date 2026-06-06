@@ -1393,6 +1393,7 @@ function FarmMonitor:collectVehicles()
             local adDestination2     = nil
             local adRemainingTime    = nil
             local adFillType         = nil
+            local adSelectedFillTypes = nil
             local adLoopCounter      = nil
             local adLoopsDone        = nil
             local adCurrentTarget    = nil
@@ -1426,12 +1427,29 @@ function FarmMonitor:collectVehicles()
                     end
                     local t = sm.remainingDriveTime
                     if t and t > 0 then adRemainingTime = MathUtil.round(t) end
-                    -- Fill type only for modes that use it (2=PickupAndDeliver, 3=DeliverTo, 4=Load)
+                    -- Fill types only for modes that use them (2=PickupAndDeliver, 3=DeliverTo, 4=Load)
                     if adMode == 2 or adMode == 3 or adMode == 4 then
+                        -- Primary (currently active) fill type
                         local ftIdx = sm:getFillType()
                         if ftIdx and ftIdx > 1 then
                             local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
                             if ft then adFillType = ft.name end
+                        end
+                        -- Full multi-selection list
+                        local ok_sft, sft = pcall(function() return sm:getSelectedFillTypes() end)
+                        if ok_sft and sft and #sft > 0 then
+                            local arr = {}
+                            for _, idx in ipairs(sft) do
+                                if idx > 1 then
+                                    local ft = g_fillTypeManager:getFillTypeByIndex(idx)
+                                    if ft then table.insert(arr, ft.name) end
+                                end
+                            end
+                            if #arr > 0 then adSelectedFillTypes = arr end
+                        end
+                        -- Fallback: if no list but primary known, wrap it
+                        if adSelectedFillTypes == nil and adFillType ~= nil then
+                            adSelectedFillTypes = {adFillType}
                         end
                     end
                     -- Loop counter (0 = infinite, always export when AD present)
@@ -1572,7 +1590,8 @@ function FarmMonitor:collectVehicles()
                 "adDestination",    adDestination,
                 "adDestination2",   adDestination2,
                 "adRemainingTime",  adRemainingTime,
-                "adFillType",       adFillType,
+                "adFillType",          adFillType,
+                "adSelectedFillTypes", adSelectedFillTypes,
                 "adLoopCounter",    adLoopCounter,
                 "adLoopsDone",      adLoopsDone,
                 "adCurrentTarget",   adCurrentTarget,
@@ -3392,6 +3411,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.toggleAutoPickup"]    = FarmMonitor.cmdAutoDriveToggle,
         ["autodrive.toggleStartHelper"]   = FarmMonitor.cmdAutoDriveToggle,
         ["autodrive.toggleUsedHelper"]    = FarmMonitor.cmdAutoDriveToggle,
+        ["autodrive.toggleFillType"]      = FarmMonitor.cmdAutoDriveToggleFillType,
         ["autodrive.setting"]             = FarmMonitor.cmdAutoDriveSetting,
         ["autodrive.pipeOffset"]          = FarmMonitor.cmdAutoDrivePipeOffset,
         ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
@@ -3960,6 +3980,27 @@ function FarmMonitor:cmdAutoDriveToggle(cmd)
     local ok, err = pcall(sm[methodName], sm)
     if not ok then error("Toggle failed: " .. tostring(err)) end
     print("[FarmMonitor] AD toggle: " .. methodName .. "()")
+end
+
+function FarmMonitor:cmdAutoDriveToggleFillType(cmd)
+    -- Routes via adBegin() → FarmMonitorADCommandEvent on MP-client, direct on server/SP.
+    -- toggleFillTypeSelection raises dirty flags → propagates to all clients automatically.
+    if not FarmMonitor:adBegin(cmd) then return end
+    local vehicle = FarmMonitor:resolveVehicle(cmd)
+    if vehicle == nil or vehicle.ad == nil or vehicle.ad.stateModule == nil then
+        error("Vehicle not found or has no AutoDrive: " .. tostring(cmd.uniqueId))
+    end
+    if cmd.fillType == nil or cmd.fillType == "" then
+        error("Missing fillType for autodrive.toggleFillType command")
+    end
+    local ft = g_fillTypeManager:getFillTypeByName(cmd.fillType)
+    if ft == nil then
+        error("Unknown fillType: " .. tostring(cmd.fillType))
+    end
+    local sm = vehicle.ad.stateModule
+    local ok, err = pcall(sm.toggleFillTypeSelection, sm, ft.index)
+    if not ok then error("toggleFillTypeSelection failed: " .. tostring(err)) end
+    print("[FarmMonitor] AD toggleFillType: " .. cmd.fillType .. " (idx=" .. tostring(ft.index) .. ")")
 end
 
 function FarmMonitor:cmdAutoDriveSetting(cmd)

@@ -2109,6 +2109,43 @@
   .vd-ad-toggle-btn:hover { background: rgba(255,255,255,.09); color: var(--fg); }
   .vd-ad-toggle-btn.on { background: rgba(0,180,220,.15); border-color: rgba(0,180,220,.4); color: rgba(0,205,240,1); }
   .vd-ad-toggle-btn.cycle { flex: 1 1 100%; font-size: 10px; }
+  /* AD panel — tag-input style multi-filltype field */
+  .ad-ft-field {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
+    padding: 4px 7px; border-radius: 8px; min-height: 32px; width: 100%; box-sizing: border-box;
+    border: 1px solid var(--line); background: rgba(0,0,0,.25); cursor: text;
+    transition: border-color .15s, background .15s;
+  }
+  .ad-ft-field:focus-within { border-color: rgba(0,180,220,.5); background: rgba(0,180,220,.06); }
+  .ad-ft-chip {
+    display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+    padding: 2px 5px 2px 7px; border-radius: 10px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    font-size: 10px; color: var(--fg-muted); line-height: 1; white-space: nowrap;
+  }
+  .ad-ft-chip.active { background: rgba(0,180,220,.18); border-color: rgba(0,180,220,.5); color: rgba(0,210,240,1); }
+  .ad-ft-chip button {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: inherit; opacity: .55; font-size: 10px; line-height: 1; display: flex; align-items: center;
+    transition: opacity .12s;
+  }
+  .ad-ft-chip button:hover { opacity: 1; }
+  .ad-ft-real-input {
+    flex: 1; min-width: 70px; background: none; border: none; outline: none;
+    color: var(--fg); font-size: 11px; padding: 1px 0; font-family: inherit;
+  }
+  .ad-ft-real-input::placeholder { color: var(--fg-muted); opacity: .5; }
+  .ad-ft-dropdown { position: relative; width: 100%; }
+  .ad-ft-dd-list {
+    position: absolute; top: 2px; left: 0; right: 0; z-index: 200;
+    background: #0e1a0e; border: 1px solid rgba(0,180,220,.2); border-radius: 6px;
+    max-height: 160px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,.55);
+  }
+  .ad-ft-dd-item {
+    padding: 7px 10px; font-size: 11px; color: var(--fg-muted); cursor: pointer;
+    transition: background .1s;
+  }
+  .ad-ft-dd-item:hover, .ad-ft-dd-item.focused { background: rgba(0,180,220,.12); color: rgba(0,200,240,1); }
   /* AD panel — vehicle settings icon buttons */
   .vd-ad-setting-icons { display: flex; gap: 5px; width: 100%; }
   .vd-ad-setting-btn {
@@ -6439,6 +6476,161 @@ function _adFtItems() {
 }
 
 // ---------------------------------------------------------------------------
+// Multi-FillType Tag-Input UI
+// ---------------------------------------------------------------------------
+
+// Per-vehicle local state: Set of selected FT names (optimistic, mirrors server)
+const _adFtLocal = {}; // vid → Set of ftName strings
+const _adFtDdState = {}; // vid → { open, results, focusIndex }
+
+// Init local state from server (respects pending lock)
+function _adFtInit(vid, state) {
+  if (_adFtLocal[vid]?._pending) return;
+  const src = state.adSelectedFillTypes || (state.adFillType ? [state.adFillType] : []);
+  _adFtLocal[vid] = new Set(src);
+}
+
+// Filter filltype items by query string
+function _adFtFilter(query) {
+  const all = _adFtItems();
+  const q = (query || '').toLowerCase().trim();
+  return q ? all.filter(f => f.name.toLowerCase().includes(q)) : all;
+}
+
+// Render the tag-input field (chips + text input) into .ad-ft-field container
+function _adFtRenderField(vid, nid, activeFt) {
+  const field = document.getElementById('ad-ft-field-' + vid);
+  if (!field) return;
+  const sel = _adFtLocal[vid] || new Set();
+  const wasFocused = document.activeElement?.id === 'ad-ft-input-' + vid;
+  const curQuery = wasFocused ? (document.getElementById('ad-ft-input-' + vid)?.value || '') : '';
+
+  const chips = [...sel].map(name => {
+    const title = appData?.fillTypesByName?.[name]?.title || name;
+    const isActive = name === activeFt;
+    return `<span class="ad-ft-chip${isActive ? ' active' : ''}" title="${isActive ? 'Aktiver Fülltyp' : ''}">
+      <span>${title}</span>
+      <button onmousedown="event.preventDefault();_adToggleFillType('${vid}','${nid}','${name}')" title="Entfernen">✕</button>
+    </span>`;
+  }).join('');
+
+  const ph = sel.size === 0 ? 'Fülltyp suchen…' : '';
+  field.innerHTML = chips + `<input class="ad-ft-real-input" id="ad-ft-input-${vid}"
+    value="${curQuery.replace(/"/g,'&quot;')}" placeholder="${ph}" autocomplete="off" spellcheck="false"
+    oninput="_adFtInput('${vid}','${nid}')"
+    onkeydown="_adFtKey(event,'${vid}','${nid}')"
+    onfocus="_adFtOpen('${vid}','${nid}')"
+    onblur="_adFtBlur('${vid}')">`;
+
+  if (wasFocused) {
+    const inp = document.getElementById('ad-ft-input-' + vid);
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  }
+}
+
+// Render the dropdown below the field
+function _adFtRenderDropdown(vid, nid) {
+  const dd = document.getElementById('ad-ft-dd-' + vid);
+  if (!dd) return;
+  const st = _adFtDdState[vid];
+  if (!st?.open) { dd.innerHTML = ''; return; }
+  const items = (st.results || []).filter(f => !(_adFtLocal[vid]?.has(f.id)));
+  if (!items.length) { dd.innerHTML = ''; return; }
+  dd.innerHTML = `<div class="ad-ft-dd-list">${items.map((f, i) =>
+    `<div class="ad-ft-dd-item${i === st.focusIndex ? ' focused' : ''}"
+       onmousedown="event.preventDefault();_adFtSelect('${vid}','${nid}','${f.id}')">${f.name}</div>`
+  ).join('')}</div>`;
+}
+
+function _adFtOpen(vid, nid) {
+  _adUserEditing = true;
+  if (!_adFtDdState[vid]) _adFtDdState[vid] = {};
+  _adFtDdState[vid].open = true;
+  _adFtDdState[vid].focusIndex = -1;
+  const q = document.getElementById('ad-ft-input-' + vid)?.value || '';
+  _adFtDdState[vid].results = _adFtFilter(q);
+  _adFtRenderDropdown(vid, nid);
+}
+
+function _adFtBlur(vid) {
+  setTimeout(() => {
+    if (!_adFtDdState[vid]) return;
+    _adFtDdState[vid].open = false;
+    const dd = document.getElementById('ad-ft-dd-' + vid);
+    if (dd) dd.innerHTML = '';
+    _adUserEditing = false;
+  }, 160);
+}
+
+function _adFtInput(vid, nid) {
+  const q = document.getElementById('ad-ft-input-' + vid)?.value || '';
+  if (!_adFtDdState[vid]) _adFtDdState[vid] = {};
+  _adFtDdState[vid].open = true;
+  _adFtDdState[vid].focusIndex = -1;
+  _adFtDdState[vid].results = _adFtFilter(q);
+  _adFtRenderDropdown(vid, nid);
+}
+
+function _adFtKey(e, vid, nid) {
+  const st = _adFtDdState[vid];
+  if (!st) return;
+  const items = (st.results || []).filter(f => !(_adFtLocal[vid]?.has(f.id)));
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    st.focusIndex = Math.min((st.focusIndex ?? -1) + 1, items.length - 1);
+    _adFtRenderDropdown(vid, nid);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    st.focusIndex = Math.max((st.focusIndex ?? 0) - 1, -1);
+    _adFtRenderDropdown(vid, nid);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (st.focusIndex >= 0 && items[st.focusIndex]) {
+      _adFtSelect(vid, nid, items[st.focusIndex].id);
+    }
+  } else if (e.key === 'Escape') {
+    _adFtDdState[vid].open = false;
+    document.getElementById('ad-ft-dd-' + vid && (document.getElementById('ad-ft-dd-' + vid).innerHTML = ''));
+    document.getElementById('ad-ft-input-' + vid)?.blur();
+  } else if (e.key === 'Backspace') {
+    const inp = document.getElementById('ad-ft-input-' + vid);
+    if (inp?.value === '' && (_adFtLocal[vid]?.size ?? 0) > 0) {
+      const last = [..._adFtLocal[vid]].at(-1);
+      if (last) _adToggleFillType(vid, nid, last);
+    }
+  }
+}
+
+function _adFtSelect(vid, nid, ftName) {
+  const inp = document.getElementById('ad-ft-input-' + vid);
+  if (inp) inp.value = '';
+  if (_adFtDdState[vid]) { _adFtDdState[vid].focusIndex = -1; _adFtDdState[vid].results = _adFtFilter(''); }
+  _adToggleFillType(vid, nid, ftName);
+  // Keep dropdown open for multi-select
+  setTimeout(() => {
+    const i = document.getElementById('ad-ft-input-' + vid);
+    if (i) { i.focus(); _adFtRenderDropdown(vid, nid); }
+  }, 20);
+}
+
+// Toggle one FT in the local set + send command + re-render field
+async function _adToggleFillType(vid, nid, ftName) {
+  if (!_adFtLocal[vid]) _adFtLocal[vid] = new Set();
+  _adFtLocal[vid]._pending = true;
+  if (_adFtLocal[vid].has(ftName)) {
+    _adFtLocal[vid].delete(ftName);
+  } else {
+    _adFtLocal[vid].add(ftName);
+  }
+  const stateList = appData?.vehicles?.vehicles || [];
+  const st = stateList.find(s => String(s.id) === String(vid)) || {};
+  _adFtRenderField(vid, nid, st.adFillType);
+  _adFtRenderDropdown(vid, nid);
+  await _adCmd(vid, nid, 'autodrive.toggleFillType', { fillType: ftName });
+  setTimeout(() => { if (_adFtLocal[vid]) delete _adFtLocal[vid]._pending; }, 3000);
+}
+
+// ---------------------------------------------------------------------------
 function _buildMarkerOptions(markers, selectedId) {
   if (!markers || markers.length === 0) return '<option value="">– keine Marker –</option>';
   // Group markers by group name
@@ -6504,7 +6696,6 @@ function _renderAdPanel(id) {
   _adSelectedMode = curMode;
   const curM1     = state.adDestination  ? (markers.find(m => m.name === state.adDestination)?.id  ?? '') : '';
   const curM2     = state.adDestination2 ? (markers.find(m => m.name === state.adDestination2)?.id ?? '') : '';
-  const curFT     = '';
   const isActive  = state.adActive === true;
 
   const modeInfo = AD_MODES.find(m => m.id === curMode) || AD_MODES[0];
@@ -6524,11 +6715,16 @@ function _renderAdPanel(id) {
       </div>
     </div>` : '';
 
+  // Init local FT state from server (respects pending lock)
+  _adFtInit(id, state);
   const ftBlock = modeInfo.ft ? `
     <div class="vd-ad-field">
       <div style="display:flex;align-items:center;gap:5px">
         ${curMode===2||curMode===4?`<img src="/api/ad-icons/input_toggleLoadByFillLevel_1" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
-        ${_adMsHTML('ft', _adFtItems(), curFT, 'Fülltyp suchen…')}
+        <div style="flex:1;min-width:0">
+          <div class="ad-ft-field" id="ad-ft-field-${id}" onclick="document.getElementById('ad-ft-input-${id}')?.focus()"></div>
+          <div class="ad-ft-dropdown" id="ad-ft-dd-${id}"></div>
+        </div>
       </div>
     </div>` : '';
 
@@ -6762,10 +6958,13 @@ function _renderAdPanel(id) {
     <div class="vd-ad-toggle-grid">${toggleBtns}${helperBtn}</div>`;
     })()}
   `;
-  // Marker- und Filltype-Search State nach innerHTML-Injection initialisieren
+  // Marker-Search State nach innerHTML-Injection initialisieren
   _adMsInit(1, markers, curM1);
   if (modeInfo.m2) _adMsInit(2, markers, curM2);
-  if (modeInfo.ft) _adMsInit('ft', _adFtItems(), curFT);
+  // FillType: Tag-Input befüllen
+  if (modeInfo.ft) {
+    _adFtRenderField(id, state.netId || '', state.adFillType);
+  }
 }
 
 function _selectAdMode(modeId) {
@@ -6812,19 +7011,26 @@ function _onAdModeChange() {
   const ftwrap = document.getElementById('ad-ft-wrap');
   if (ftwrap) {
     if (modeInfo.ft) {
+      const ftState = (appData?.vehicles?.vehicles || []).find(s => String(s.id) === String(_vdRootId));
+      const nid = ftState?.netId || '';
       ftwrap.style.display = '';
       ftwrap.innerHTML = `
         <div class="vd-ad-field">
           <div style="display:flex;align-items:center;gap:5px">
             ${modeId===2||modeId===4?`<img src="/api/ad-icons/input_toggleLoadByFillLevel_1" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
-            ${_adMsHTML('ft', _adFtItems(), null, 'Fülltyp suchen…')}
+            <div style="flex:1;min-width:0">
+              <div class="ad-ft-field" id="ad-ft-field-${_vdRootId}" onclick="document.getElementById('ad-ft-input-${_vdRootId}')?.focus()"></div>
+              <div class="ad-ft-dropdown" id="ad-ft-dd-${_vdRootId}"></div>
+            </div>
           </div>
         </div>`;
-      _adMsInit('ft', _adFtItems(), null);
+      // Init local FT state if not already (preserves existing selection across mode switch)
+      if (!_adFtLocal[_vdRootId] && ftState) _adFtInit(_vdRootId, ftState);
+      _adFtRenderField(_vdRootId, nid, ftState?.adFillType);
     } else {
       ftwrap.innerHTML = '';
       ftwrap.style.display = 'none';
-      delete _adMs['ft'];
+      // Don't clear _adFtLocal — preserves selection if user switches back
     }
   }
 }
@@ -6973,7 +7179,9 @@ async function _adConfigure(vehicleId, netId) {
   const mode     = String(_adSelectedMode || 1);
   const marker1  = String(_adMsValue(1) ?? '');
   const marker2  = String(_adMsValue(2) ?? '');
-  const fillType = String(_adMsValue('ft') ?? '');
+  // FillTypes are managed directly via autodrive.toggleFillType commands (chip UI).
+  // configure does NOT touch fillType to avoid resetting the multi-selection.
+  const fillType = '';
   console.log('[AD] _adConfigure', vehicleId, 'netId='+netId, 'mode='+mode, 'marker1='+marker1, 'marker2='+marker2);
   const res = await fetch('/api/command', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
