@@ -2112,18 +2112,18 @@
   /* AD panel — tag-input style multi-filltype field */
   .ad-ft-field {
     display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
-    padding: 4px 7px; border-radius: 8px; min-height: 32px; width: 100%; box-sizing: border-box;
-    border: 1px solid var(--line); background: rgba(0,0,0,.25); cursor: text;
+    padding: 4px 7px; border-radius: 6px; min-height: 32px; width: 100%; box-sizing: border-box;
+    border: 1px solid var(--line); background: rgba(255,255,255,.06); cursor: text;
     transition: border-color .15s, background .15s;
   }
   .ad-ft-field:focus-within { border-color: rgba(0,180,220,.5); background: rgba(0,180,220,.06); }
   .ad-ft-chip {
     display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
     padding: 2px 5px 2px 7px; border-radius: 10px;
-    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
-    font-size: 10px; color: var(--fg-muted); line-height: 1; white-space: nowrap;
+    background: rgba(0,180,220,.12); border: 1px solid rgba(0,180,220,.3);
+    font-size: 10px; color: rgba(0,210,240,.9); line-height: 1; white-space: nowrap;
   }
-  .ad-ft-chip.active { background: rgba(0,180,220,.18); border-color: rgba(0,180,220,.5); color: rgba(0,210,240,1); }
+  .ad-ft-chip.active { background: rgba(0,180,220,.22); border-color: rgba(0,180,220,.55); color: rgba(0,220,255,1); }
   .ad-ft-chip button {
     background: none; border: none; padding: 0; cursor: pointer;
     color: inherit; opacity: .55; font-size: 10px; line-height: 1; display: flex; align-items: center;
@@ -6457,7 +6457,7 @@ function _adMsHTML(slot, markers, selectedId, placeholder = 'Ziel suchen…') {
     <div class="ad-ms-input-row" id="ad-ms-row-${slot}">
       <input class="ad-ms-input" id="ad-ms-input-${slot}" type="text"
              value="${val}" placeholder="${placeholder}" autocomplete="off" spellcheck="false"
-             oninput="_adMsInput(${s})" onfocus="_adUserEditing=true;_adMsOpen(${s})" onblur="_adMsBlur(${s})"
+             oninput="_adMsInput(${s})" onfocus="this._sf=true;_adUserEditing=true;_adMsOpen(${s})" onmouseup="if(this._sf){this._sf=false;event.preventDefault();this.select()}" onblur="_adMsBlur(${s})"
              onkeydown="_adMsKey(event,${s})">
       <button class="ad-ms-clear" id="ad-ms-clear-${slot}" tabindex="-1"
               onmousedown="event.preventDefault();_adMsClear(${s})" ${selName ? '' : 'hidden'}>✕</button>
@@ -6519,7 +6519,7 @@ function _adFtRenderField(vid, nid, activeFt) {
     value="${curQuery.replace(/"/g,'&quot;')}" placeholder="${ph}" autocomplete="off" spellcheck="false"
     oninput="_adFtInput('${vid}','${nid}')"
     onkeydown="_adFtKey(event,'${vid}','${nid}')"
-    onfocus="_adFtOpen('${vid}','${nid}')"
+    onfocus="this._sf=true;_adFtOpen('${vid}','${nid}')" onmouseup="if(this._sf){this._sf=false;event.preventDefault();this.select()}"
     onblur="_adFtBlur('${vid}')">`;
 
   if (wasFocused) {
