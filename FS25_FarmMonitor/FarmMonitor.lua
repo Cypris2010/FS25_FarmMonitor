@@ -182,6 +182,51 @@ function FarmMonitorADCommandEvent:run(connection)
 end
 
 -- ---------------------------------------------------------------------------
+-- FarmMonitorSpawnPalletsEvent
+-- Forwards production.spawnPallets from a pure MP-client to the server so
+-- pp:ReceiveSpawnEvent() is called with server authority.  Same pattern as
+-- FarmMonitorADCommandEvent — client sends, server dispatches cmdSpawnPallets.
+-- ---------------------------------------------------------------------------
+
+FarmMonitorSpawnPalletsEvent = {}
+FarmMonitorSpawnPalletsEvent_mt = Class(FarmMonitorSpawnPalletsEvent, Event)
+InitEventClass(FarmMonitorSpawnPalletsEvent, "FarmMonitorSpawnPalletsEvent")
+
+function FarmMonitorSpawnPalletsEvent.emptyNew()
+    return Event.new(FarmMonitorSpawnPalletsEvent_mt)
+end
+
+function FarmMonitorSpawnPalletsEvent.new(cmd)
+    local self = FarmMonitorSpawnPalletsEvent.emptyNew()
+    self.cmd = cmd
+    return self
+end
+
+function FarmMonitorSpawnPalletsEvent:writeStream(streamId, connection)
+    streamWriteString(streamId, self.cmd.uniqueId or "")
+    streamWriteString(streamId, self.cmd.fillType or "")
+    streamWriteString(streamId, tostring(self.cmd.amount or "1"))
+end
+
+function FarmMonitorSpawnPalletsEvent:readStream(streamId, connection)
+    self.cmd = {
+        cmd      = "production.spawnPallets",
+        uniqueId = streamReadString(streamId),
+        fillType = streamReadString(streamId),
+        amount   = streamReadString(streamId),
+    }
+    self:run(connection)
+end
+
+function FarmMonitorSpawnPalletsEvent:run(connection)
+    print("[FarmMonitor] FarmMonitorSpawnPalletsEvent received on server, spawning pallets")
+    local ok, err = pcall(FarmMonitor.cmdSpawnPallets, FarmMonitor, self.cmd)
+    if not ok then
+        print("[FarmMonitor] FarmMonitorSpawnPalletsEvent error: " .. tostring(err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
@@ -1914,10 +1959,17 @@ function FarmMonitor:buildPalletInfoCache()
     local fillTypes = g_fillTypeManager.fillTypes or {}
     for _, ft in ipairs(fillTypes) do
         if ft ~= nil and ft.index ~= nil and ft.pallets ~= nil then
-            -- Prefer VANILLA, fall back to first available environment
+            -- Prefer VANILLA key; fall back to first available environment key.
+            -- Store the actual key (not hardcoded "VANILLA") so ReceiveSpawnEvent
+            -- can look up the correct filename via currentFillType.pallets[key].
+            local palletKey  = "VANILLA"
             local palletFile = ft.pallets["VANILLA"]
             if palletFile == nil then
-                for _, f in pairs(ft.pallets) do palletFile = f; break end
+                for k, f in pairs(ft.pallets) do
+                    palletKey  = k
+                    palletFile = f
+                    break
+                end
             end
             if palletFile ~= nil then
                 local ok, xmlFile = pcall(XMLFile.load, "PSC_PalletCache_" .. ft.index, palletFile, Vehicle.xmlSchema)
@@ -1931,7 +1983,7 @@ function FarmMonitor:buildPalletInfoCache()
                             width             = (size and size.width)  or 1,
                             height            = (size and size.height) or 1,
                             length            = (size and size.length) or 1,
-                            customEnvironment = ft.pallets["VANILLA"] ~= nil and "VANILLA" or "VANILLA",
+                            customEnvironment = palletKey,
                         }
                     end
                 end
@@ -3544,6 +3596,18 @@ function FarmMonitor:cmdSpawnPallets(cmd)
         error("FS25_ProductionStorageControl not loaded")
     end
 
+    -- Pure MP-client: forward to server via FarmMonitorSpawnPalletsEvent.
+    -- productionStorageControl_EventSpawn lives in PSC's Lua sandbox and is
+    -- not accessible from FarmMonitor's environment.
+    if g_server == nil and g_client ~= nil then
+        local conn = g_client:getServerConnection()
+        if conn then
+            conn:sendEvent(FarmMonitorSpawnPalletsEvent.new(cmd))
+            print("[FarmMonitor] production.spawnPallets forwarded to server via FarmMonitorSpawnPalletsEvent")
+        end
+        return
+    end
+
     local placeable = g_currentMission.placeableSystem:getPlaceableByUniqueId(cmd.uniqueId)
     if placeable == nil or placeable.spec_productionPoint == nil then
         error("Production not found: " .. tostring(cmd.uniqueId))
@@ -3566,27 +3630,20 @@ function FarmMonitor:cmdSpawnPallets(cmd)
     amount = math.min(amount, maxP)
     if amount <= 0 then error("Nothing to spawn for fillType: " .. tostring(cmd.fillType)) end
 
-    local farmId       = g_currentMission:getFarmId()
+    local farmId        = g_currentMission:getFarmId()
     local pendingLiters = info.capacity * amount
 
-    if g_currentMission.isServer then
-        -- Server (listen-server host): autoritativer Direktaufruf
-        pp:ReceiveSpawnEvent(
-            farmId, ft.index, pendingLiters,
-            info.width, info.height, info.length,
-            info.capacity, 1, info.customEnvironment,
-            nil, amount, 0, 0, 0
-        )
-    else
-        -- Remote-Client: PSC-Netzwerkevent an Server senden
-        -- (ReceiveSpawnEvent direkt aufzurufen erzeugt nur eine lokale Palette ohne Server-Sync)
-        productionStorageControl_EventSpawn.sendEvent(
-            pp, farmId, ft.index, pendingLiters,
-            info.width, info.height, info.length,
-            info.capacity, 1, info.customEnvironment,
-            nil, amount, 0, 0, 0
-        )
-    end
+    local palletFilename = ft.pallets and ft.pallets[info.customEnvironment]
+    print(string.format("[FarmMonitor] spawnPallets: ft=%s env=%s file=%s amount=%d pendingL=%.0f",
+        cmd.fillType, tostring(info.customEnvironment), tostring(palletFilename), amount, pendingLiters))
+
+    pp:ReceiveSpawnEvent(
+        farmId, ft.index, pendingLiters,
+        info.width, info.height, info.length,
+        info.capacity, 1, info.customEnvironment,
+        nil, amount, 0, 0, 0
+    )
+    print("[FarmMonitor] spawnPallets: ReceiveSpawnEvent called, spawnQueue=" .. tostring(pp.palletSpawner and #pp.palletSpawner.spawnQueue or "nil"))
 end
 
 
