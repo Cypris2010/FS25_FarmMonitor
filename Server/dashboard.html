@@ -7121,6 +7121,7 @@ function _preloadAdSettingIcons() {
   icons.forEach(name => { const img = new Image(); img.src = '/api/ad-icons/' + name; });
 }
 
+
 // Optimistic debounce for numeric adjustments (speed/loop)
 // Pending values are read by _renderAdPanel so the display feels instant.
 const _adNumPending = {}; // key = "vid:field" → { value, timer }
@@ -8401,6 +8402,23 @@ showView('home');
 loadGlobalSettings();
 loadData();
 connect();
+
+// Bust Safari's icon cache: append ?v=<server-start-time> to all AD icon URLs
+if (window._adIconVer) {
+  const _adIconObserver = new MutationObserver(mutations => {
+    mutations.forEach(m => m.addedNodes.forEach(node => {
+      const imgs = node.querySelectorAll
+        ? [node, ...node.querySelectorAll('img')]
+        : [node];
+      imgs.forEach(el => {
+        if (el.tagName === 'IMG' && el.src && el.src.includes('/api/ad-icons/') && !el.src.includes('?v=')) {
+          el.src = el.src + '?v=' + window._adIconVer;
+        }
+      });
+    }));
+  });
+  _adIconObserver.observe(document.body, { childList: true, subtree: true });
+}
 </script>
 <div id="output-mode-backdrop"></div>
 <div id="output-mode-popover"></div>

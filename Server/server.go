@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -890,12 +891,32 @@ func (c *adIconCache) load(modsDir string) {
 	for name, rect := range slices {
 		cropped := image.NewRGBA(image.Rect(0, 0, rect.Dx(), rect.Dy()))
 		draw.Draw(cropped, cropped.Bounds(), sheet, rect.Min, draw.Src)
+		replaceADGreen(cropped)
 		var buf bytes.Buffer
 		if err := png.Encode(&buf, cropped); err == nil {
 			c.icons[name] = buf.Bytes()
 		}
 	}
 	log.Printf("[ad-icons] %d icons cached from FS25_AutoDrive.zip", len(c.icons))
+}
+
+// replaceADGreen replaces the FS25 green in AutoDrive icons with the AD brand green (#14bf6c).
+// Green-dominant pixels (G > R+25, G > B+25, G > 80) are remapped to rgb(20,191,108),
+// scaled by the original G channel to preserve brightness variation.
+func replaceADGreen(img *image.RGBA) {
+	b := img.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			c := img.RGBAAt(x, y)
+			if c.A < 10 {
+				continue
+			}
+			r, g, bv := int(c.R), int(c.G), int(c.B)
+			if g > r+25 && g > bv+25 && g > 80 {
+				img.SetRGBA(x, y, color.RGBA{R: 20, G: 191, B: 108, A: c.A})
+			}
+		}
+	}
 }
 
 func (c *adIconCache) get(name string) []byte {
@@ -912,9 +933,43 @@ func handleADIcons(cache *adIconCache) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		sum := sha256.Sum256(data)
+		etag := fmt.Sprintf(`"%x"`, sum[:8])
 		w.Header().Set("Content-Type", "image/png")
-		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("ETag", etag)
+		if r.Header.Get("If-None-Match") == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
 		w.Write(data)
+	}
+}
+
+func handleADIconsPreview(cache *adIconCache) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cache.mu.Lock()
+		names := make([]string, 0, len(cache.icons))
+		for k := range cache.icons {
+			names = append(names, k)
+		}
+		cache.mu.Unlock()
+		sort.Strings(names)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>AD Icons Preview</title>
+<style>body{background:#111;color:#eee;font-family:monospace;padding:20px}
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.item{display:flex;flex-direction:column;align-items:center;gap:4px;background:#1e1e1e;padding:8px;border-radius:6px;width:100px}
+.item img{width:48px;height:48px;image-rendering:pixelated}
+.item span{font-size:9px;color:#888;word-break:break-all;text-align:center}
+</style></head><body>
+<h2 style="color:#14bf6c">AD Icons (%d) — green replaced with #14bf6c</h2>
+<div class="grid">`, len(names))
+		ts := time.Now().Unix()
+		for _, name := range names {
+			fmt.Fprintf(w, `<div class="item"><img src="/api/ad-icons/%s?v=%d"><span>%s</span></div>`, name, ts, name)
+		}
+		fmt.Fprintf(w, `</div></body></html>`)
 	}
 }
 
@@ -1022,13 +1077,17 @@ func handleMapLayer(dataDir string) http.HandlerFunc {
 	}
 }
 
+var iconVer = fmt.Sprintf("%d", time.Now().Unix())
+
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(dashboardHTML)
+	html := strings.Replace(string(dashboardHTML), "</head>",
+		fmt.Sprintf(`<script>window._adIconVer="%s";</script></head>`, iconVer), 1)
+	w.Write([]byte(html))
 }
 
 func handleData(dataDir string) http.HandlerFunc {
@@ -1240,6 +1299,7 @@ func main() {
 	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
 	mux.HandleFunc("/api/map/layer/{name}", handleMapLayer(dataDir))
 	mux.HandleFunc("/api/ad-icons/{name}", handleADIcons(adIcons))
+	mux.HandleFunc("/api/ad-icons-preview", handleADIconsPreview(adIcons))
 	mux.HandleFunc("/api/mod-config", handleModConfig(dataDir))
 
 	fmt.Print(`
