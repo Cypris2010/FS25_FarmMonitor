@@ -6921,7 +6921,7 @@ function _renderAdPanel(id) {
       const pcl = _adNumGet(vid4, 'preCallLevel', s.preCallLevel);
       const cs  = _adNumGet(vid4, 'chaseSide',    s.chaseSide);
       const pclRocker = s.preCallLevel != null ? `
-    <div class="vd-ad-rocker sm fill-h" style="flex:4" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',event.deltaY>0?-1:1,1,12,${s.preCallLevel})" title="Früher rufen ab">
+    <div class="vd-ad-rocker sm fill-h" style="flex:4 0 15px;align-self:stretch" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',event.deltaY>0?-1:1,1,12,${s.preCallLevel})" title="Früher rufen ab">
       <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',-1,1,12,${s.preCallLevel})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
@@ -6932,7 +6932,7 @@ function _renderAdPanel(id) {
       <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',1,1,12,${s.preCallLevel})">+</button>
     </div>` : '';
       const csRocker = s.chaseSide != null ? `
-    <div class="vd-ad-rocker sm fill-h" style="flex:4" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',event.deltaY>0?-1:1,1,4,${s.chaseSide})" title="Entladeseite Häcksler">
+    <div class="vd-ad-rocker sm fill-h" style="flex:4 0 15px;align-self:stretch" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',event.deltaY>0?-1:1,1,4,${s.chaseSide})" title="Entladeseite Häcksler">
       <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',-1,1,4,${s.chaseSide})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
@@ -6953,8 +6953,8 @@ function _renderAdPanel(id) {
       if (!pclRocker && !csRocker && !su2 && !au) return '';
       return `
     <div class="vd-ad-divider"></div>
-    ${(pclRocker||su2) ? `<div style="display:flex;gap:8px;width:100%;align-items:stretch">${pclRocker}${su2}</div>` : ''}
-    ${(csRocker||au)   ? `<div style="display:flex;gap:8px;width:100%;align-items:stretch">${csRocker}${au}</div>`   : ''}`;
+    ${(pclRocker||su2) ? `<div style="display:flex;gap:5px;width:100%;align-items:center">${pclRocker}${su2}</div>` : ''}
+    ${(csRocker||au)   ? `<div style="display:flex;gap:5px;width:100%;align-items:center">${csRocker}${au}</div>`   : ''}`;
     })() : ''}
     ${(() => {
       const vid = id, nid = state.netId||'';
