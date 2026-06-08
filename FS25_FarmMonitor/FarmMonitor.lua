@@ -762,8 +762,15 @@ function FarmMonitor:exportModInfo()
         local mod = g_modManager:getModByName(modName)
         if mod ~= nil then version = mod.version or "" end
         FarmMonitor:writeJSON(FarmMonitor.paths.modInfo, FarmMonitor.obj(
-            "modName", modName,
-            "version", version
+            "modName",  modName,
+            "version",  version,
+            "detectedMods", FarmMonitor.obj(
+                "autoDrive",       g_modIsLoaded["FS25_AutoDrive"]                == true,
+                "courseplay",      g_modIsLoaded["FS25_Courseplay"]               == true,
+                "psc",             g_modIsLoaded["FS25_ProductionStorageControl"] == true,
+                "enhancedVehicle",  g_modIsLoaded["FS25_EnhancedVehicle"]          == true,
+                "vehicleInspector", g_modIsLoaded["FS25_VehicleInspector"]         == true
+            )
         ))
         print("[FarmMonitor] modInfo.json written (version=" .. version .. ")")
     end)

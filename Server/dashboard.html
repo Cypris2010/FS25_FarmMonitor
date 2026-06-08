@@ -5215,6 +5215,34 @@ function renderSettings() {
       </div>
     </div>`;
   }
+  const dm = appData?.modInfo?.detectedMods;
+  const detectedModsBlock = (() => {
+    const mods = [
+      { key: 'autoDrive',       label: 'AutoDrive',                  desc: 'Fahrzeugsteuerung, Marker-Export, IPC-Commands' },
+      { key: 'courseplay',      label: 'Courseplay',                  desc: 'Feldarbeit, Status-Export, Badges' },
+      { key: 'psc',             label: 'ProductionStorageControl',    desc: 'Paletten auslagern (spawnPallets)' },
+      { key: 'enhancedVehicle',  label: 'EnhancedVehicle',            desc: 'Differential & Traktionshilfe im Detailpanel' },
+      { key: 'vehicleInspector', label: 'VehicleInspector',           desc: 'Tempomat-Presets im Detailpanel' },
+    ];
+    const noDataHint = !dm
+      ? `<div style="font-size:12px;color:var(--muted);padding:12px 16px 0">Spiel nicht verbunden oder Mod-Version veraltet — starte ein Savegame um Mod-Status zu laden.</div>`
+      : '';
+    const rows = mods.map(m => {
+      const active = dm?.[m.key] === true;
+      const badge = active
+        ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.25);white-space:nowrap">Erkannt</span>`
+        : `<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);white-space:nowrap">Nicht geladen</span>`;
+      return `<div class="placeable-item">
+        <div class="placeable-item-info">
+          <div class="placeable-item-name">${m.label}</div>
+          <div class="placeable-item-uid">${m.desc}</div>
+        </div>
+        ${badge}
+      </div>`;
+    }).join('');
+    return `<div class="settings-section-title" style="margin-top:24px">Erkannte Mods</div><div class="placeable-list">${noDataHint}${rows}</div>`;
+  })();
+
   const modCfgBlock = `
     <div class="settings-section-title" style="margin-top:24px">Mod-Konfiguration</div>
     <div class="placeable-list" style="gap:20px;padding:16px">
@@ -5244,7 +5272,7 @@ function renderSettings() {
       <div id="mcfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
     </div>`;
 
-  el.innerHTML = serverBlock + modCfgBlock + alertBlock
+  el.innerHTML = serverBlock + detectedModsBlock + modCfgBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
     + sgInfo
     + section('Silos', silos)
