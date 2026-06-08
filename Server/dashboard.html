@@ -5266,6 +5266,24 @@ function renderSettings() {
         ${cfgRow('Auflösung', 'Pixelgröße des Rasters. Empfohlen: 128.<br>Werte: 32 / 64 / 128 / 256 / 512.', 'mcfg-soil-res', mcs.resolution ?? 128, 32, 512, 'px')}
         ${cfgRow('Zeilen pro Tick', 'Zeilen pro Spiel-Tick.<br>Höher = schnellere Aktualisierung, mehr Last. Empfohlen: 2.', 'mcfg-soil-rows', mcs.rowsPerTick ?? 2, 1, 16, 'Zeilen')}
       </div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">Diagnose</div>
+      <div class="placeable-item">
+        <div class="placeable-item-info">
+          <div class="placeable-item-name">Performance-Logging</div>
+          <div class="placeable-item-uid">Schreibt PERF-Zeilen in die log.txt. Nur für Diagnose aktivieren.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mcfg-perflog" ${modConfigCache?.perfLog ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="placeable-item">
+        <div class="placeable-item-info">
+          <div class="placeable-item-name">Perf-Export erstellen</div>
+          <div class="placeable-item-uid" id="perf-export-status">Systeminfo + Konfiguration + Messungen → perf_export.txt</div>
+        </div>
+        <button onclick="perfExport()" class="edit-mode-btn active" style="padding:6px 14px;white-space:nowrap">Exportieren</button>
+      </div>
       <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:4px">
         <button onclick="saveModConfig()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
       </div>
@@ -5292,6 +5310,19 @@ async function loadModConfig() {
   } catch(e) { console.warn('mod-config fetch failed', e); }
 }
 
+async function perfExport() {
+  const status = document.getElementById('perf-export-status');
+  if (status) status.textContent = 'Exportiere …';
+  try {
+    const res = await fetch('/api/perf-export', { method: 'POST' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    if (status) status.textContent = '✓ Exportiert: ' + data.path;
+  } catch(e) {
+    if (status) status.textContent = '✗ Fehler: ' + e.message;
+  }
+}
+
 async function saveModConfig() {
   const get = id => parseInt(document.getElementById(id)?.value ?? '0', 10);
   const cfg = {
@@ -5306,6 +5337,7 @@ async function saveModConfig() {
       resolution:  get('mcfg-soil-res'),
       rowsPerTick: get('mcfg-soil-rows'),
     },
+    perfLog: document.getElementById('mcfg-perflog')?.checked ?? false,
   };
   try {
     const res = await fetch('/api/mod-config', {

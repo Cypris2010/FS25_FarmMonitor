@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -216,6 +217,9 @@ type xmlSeconds struct {
 type xmlValue struct {
 	Value int `xml:"value,attr"`
 }
+type xmlEnabled struct {
+	Enabled string `xml:"enabled,attr"`
+}
 
 // modConfigXML is used only for XML parsing (nested attribute structs).
 type modConfigXML struct {
@@ -230,6 +234,7 @@ type modConfigXML struct {
 		Resolution  xmlValue `xml:"resolution"`
 		RowsPerTick xmlValue `xml:"rowsPerTick"`
 	} `xml:"soilMap"`
+	PerformanceLog xmlEnabled `xml:"performanceLog"`
 }
 
 // modConfig is the flat struct used for JSON and runtime logic.
@@ -245,6 +250,7 @@ type modConfig struct {
 		Resolution  int `json:"resolution"`
 		RowsPerTick int `json:"rowsPerTick"`
 	} `json:"soilMap"`
+	PerfLog bool `json:"perfLog"`
 }
 
 var modConfigDefaults = modConfig{}
@@ -276,6 +282,7 @@ func readModConfig(dataDir string) modConfig {
 	if parsed.ExportIntervals.Commands.Seconds > 0 { cfg.ExportIntervals.Commands = parsed.ExportIntervals.Commands.Seconds }
 	if parsed.SoilMap.Resolution.Value > 0         { cfg.SoilMap.Resolution = parsed.SoilMap.Resolution.Value }
 	if parsed.SoilMap.RowsPerTick.Value > 0        { cfg.SoilMap.RowsPerTick = parsed.SoilMap.RowsPerTick.Value }
+	cfg.PerfLog = parsed.PerformanceLog.Enabled == "true"
 	return cfg
 }
 
@@ -296,10 +303,175 @@ func writeModConfig(dataDir string, cfg modConfig) error {
 		fmt.Sprintf(`        <resolution value="%d"/>`, cfg.SoilMap.Resolution),
 		fmt.Sprintf(`        <rowsPerTick value="%d"/>`, cfg.SoilMap.RowsPerTick),
 		`    </soilMap>`,
+		fmt.Sprintf(`    <performanceLog enabled="%v"/>`, cfg.PerfLog),
 		`</farmMonitor>`,
 	}
 	content := strings.Join(lines, "\n") + "\n"
 	return os.WriteFile(filepath.Join(dataDir, "config.xml"), []byte(content), 0644)
+}
+
+// --- Perf Export ---
+
+func runSysCmd(name string, args ...string) string {
+	out, err := exec.Command(name, args...).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func parseWmicField(output, field string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(strings.ReplaceAll(line, "\r", ""))
+		if strings.HasPrefix(line, field+"=") {
+			return strings.TrimPrefix(line, field+"=")
+		}
+	}
+	return ""
+}
+
+type perfSysInfo struct {
+	OS    string
+	CPU   string
+	Cores string
+	RAM   string
+	GPU   string
+}
+
+func collectGPUDarwin() string {
+	out, err := exec.Command("system_profiler", "SPDisplaysDataType", "-json").Output()
+	if err != nil {
+		return ""
+	}
+	var result struct {
+		SPDisplaysDataType []map[string]interface{} `json:"SPDisplaysDataType"`
+	}
+	if err := json.Unmarshal(out, &result); err != nil || len(result.SPDisplaysDataType) == 0 {
+		return ""
+	}
+	if v, ok := result.SPDisplaysDataType[0]["spdisplays_chipset-model"].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func collectPerfSysInfo() perfSysInfo {
+	var info perfSysInfo
+	switch runtime.GOOS {
+	case "darwin":
+		ver := runSysCmd("sw_vers", "-productVersion")
+		info.OS = fmt.Sprintf("macOS %s (%s/%s)", ver, runtime.GOOS, runtime.GOARCH)
+		cpu := runSysCmd("sysctl", "-n", "machdep.cpu.brand_string")
+		if cpu == "" {
+			cpu = runSysCmd("sysctl", "-n", "hw.model")
+		}
+		info.CPU = cpu
+		phys := runSysCmd("sysctl", "-n", "hw.physicalcpu")
+		logi := runSysCmd("sysctl", "-n", "hw.logicalcpu")
+		info.Cores = fmt.Sprintf("%s physisch / %s logisch", phys, logi)
+		var ramBytes int64
+		fmt.Sscanf(runSysCmd("sysctl", "-n", "hw.memsize"), "%d", &ramBytes)
+		info.RAM = fmt.Sprintf("%.1f GB", float64(ramBytes)/(1<<30))
+		info.GPU = collectGPUDarwin()
+	case "windows":
+		cpuOut := runSysCmd("wmic", "cpu", "get", "Name,NumberOfCores,NumberOfLogicalProcessors", "/value")
+		info.CPU = parseWmicField(cpuOut, "Name")
+		info.Cores = fmt.Sprintf("%s physisch / %s logisch",
+			parseWmicField(cpuOut, "NumberOfCores"),
+			parseWmicField(cpuOut, "NumberOfLogicalProcessors"))
+		osOut := runSysCmd("wmic", "os", "get", "Caption,Version", "/value")
+		info.OS = fmt.Sprintf("%s %s (%s/%s)",
+			parseWmicField(osOut, "Caption"),
+			parseWmicField(osOut, "Version"),
+			runtime.GOOS, runtime.GOARCH)
+		var ramBytes int64
+		fmt.Sscanf(parseWmicField(runSysCmd("wmic", "computersystem", "get", "TotalPhysicalMemory", "/value"), "TotalPhysicalMemory"), "%d", &ramBytes)
+		info.RAM = fmt.Sprintf("%.1f GB", float64(ramBytes)/(1<<30))
+		info.GPU = parseWmicField(runSysCmd("wmic", "path", "win32_VideoController", "get", "Name", "/value"), "Name")
+	default:
+		info.OS = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+	return info
+}
+
+func readPerfLines(logPath string) []string {
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil
+	}
+	var lines []string
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, "[FarmMonitor] PERF") {
+			lines = append(lines, strings.TrimSpace(line))
+		}
+	}
+	return lines
+}
+
+func readModVersion(dataDir string) string {
+	data, err := os.ReadFile(filepath.Join(dataDir, "modInfo.json"))
+	if err != nil {
+		return "unknown"
+	}
+	var info struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &info); err != nil {
+		return "unknown"
+	}
+	return info.Version
+}
+
+func handlePerfExport(dataDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+
+		sys := collectPerfSysInfo()
+		cfg := readModConfig(dataDir)
+		modVersion := readModVersion(dataDir)
+		logPath := filepath.Join(filepath.Dir(filepath.Dir(dataDir)), "log.txt")
+		perfLines := readPerfLines(logPath)
+
+		var sb strings.Builder
+		sb.WriteString("=== FarmMonitor Performance Export ===\n")
+		sb.WriteString(fmt.Sprintf("Erstellt:         %s\n", time.Now().Format("2006-01-02T15:04:05")))
+		sb.WriteString(fmt.Sprintf("Server-Version:   %s\n", serverVersion))
+		sb.WriteString(fmt.Sprintf("Mod-Version:      %s\n", modVersion))
+		sb.WriteString("\n=== System ===\n")
+		sb.WriteString(fmt.Sprintf("OS:               %s\n", sys.OS))
+		sb.WriteString(fmt.Sprintf("CPU:              %s (%s)\n", sys.CPU, sys.Cores))
+		sb.WriteString(fmt.Sprintf("GPU:              %s\n", sys.GPU))
+		sb.WriteString(fmt.Sprintf("RAM:              %s\n", sys.RAM))
+		sb.WriteString("\n=== Mod-Konfiguration ===\n")
+		sb.WriteString(fmt.Sprintf("Haupt-Export:     %d s\n", cfg.ExportIntervals.Main))
+		sb.WriteString(fmt.Sprintf("Fahrzeuge:        %d s\n", cfg.ExportIntervals.Vehicles))
+		sb.WriteString(fmt.Sprintf("Felder:           %d s\n", cfg.ExportIntervals.Fields))
+		sb.WriteString(fmt.Sprintf("Wetter:           %d s\n", cfg.ExportIntervals.Weather))
+		sb.WriteString(fmt.Sprintf("IPC-Commands:     %d s\n", cfg.ExportIntervals.Commands))
+		sb.WriteString(fmt.Sprintf("Soil-Auflösung:   %d px\n", cfg.SoilMap.Resolution))
+		sb.WriteString(fmt.Sprintf("Soil-RowsPerTick: %d\n", cfg.SoilMap.RowsPerTick))
+		sb.WriteString(fmt.Sprintf("\n=== Performance-Messungen (%d Einträge) ===\n", len(perfLines)))
+		for _, line := range perfLines {
+			sb.WriteString(line + "\n")
+		}
+
+		exportPath := filepath.Join(dataDir, "perf_export.txt")
+		if err := os.WriteFile(exportPath, []byte(sb.String()), 0644); err != nil {
+			http.Error(w, "cannot write export file", http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"path": exportPath})
+	}
 }
 
 func handleModConfig(dataDir string) http.HandlerFunc {
@@ -1301,6 +1473,7 @@ func main() {
 	mux.HandleFunc("/api/ad-icons/{name}", handleADIcons(adIcons))
 	mux.HandleFunc("/api/ad-icons-preview", handleADIconsPreview(adIcons))
 	mux.HandleFunc("/api/mod-config", handleModConfig(dataDir))
+	mux.HandleFunc("/api/perf-export", handlePerfExport(dataDir))
 
 	fmt.Print(`
 ▄▖▄▖▄▖▄▖  ▄▖       ▖  ▖    ▘▗       ▄▖

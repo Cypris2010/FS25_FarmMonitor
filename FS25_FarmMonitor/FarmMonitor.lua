@@ -304,6 +304,7 @@ function FarmMonitor:loadConfig()
         commandInterval  = 1,
         soilResolution   = 128,
         soilRowsPerTick  = 2,
+        perfLogEnabled   = false,
     }
 
     local cfg = {}
@@ -322,6 +323,8 @@ function FarmMonitor:loadConfig()
             cfg.commandInterval = getInt("exportIntervals.commands#seconds", defaults.commandInterval)
             cfg.soilResolution  = getInt("soilMap.resolution#value",         defaults.soilResolution)
             cfg.soilRowsPerTick = getInt("soilMap.rowsPerTick#value",        defaults.soilRowsPerTick)
+            local perfVal = getXMLBool(xmlId, "farmMonitor.performanceLog#enabled")
+            cfg.perfLogEnabled  = perfVal == true
             delete(xmlId)
         end)
         if not ok then
@@ -348,6 +351,8 @@ function FarmMonitor:loadConfig()
             f:write('        <resolution value="'   .. defaults.soilResolution  .. '"/>\n')
             f:write('        <rowsPerTick value="'  .. defaults.soilRowsPerTick .. '"/>\n')
             f:write('    </soilMap>\n')
+            f:write('    <!-- Performance logging: writes perf.csv to modSettings folder -->\n')
+            f:write('    <performanceLog enabled="false"/>\n')
             f:write('</farmMonitor>\n')
             f:close()
             print("[FarmMonitor] Created default config.xml at: " .. path)
@@ -362,6 +367,8 @@ function FarmMonitor:loadConfig()
     FarmMonitor.commandInterval     = cfg.commandInterval * 1000
     FarmMonitor.soilResolution      = cfg.soilResolution
     FarmMonitor.soilRowsPerTick     = cfg.soilRowsPerTick
+    FarmMonitor.perfLogEnabled      = cfg.perfLogEnabled
+    FarmMonitor.perfIdleTimer       = 0
 
     print("[FarmMonitor] Config loaded:")
     print(string.format("[FarmMonitor]   Haupt-Export    : %d s", cfg.mainInterval))
@@ -371,6 +378,13 @@ function FarmMonitor:loadConfig()
     print(string.format("[FarmMonitor]   IPC-Commands    : %d s", cfg.commandInterval))
     print(string.format("[FarmMonitor]   Soil-Aufloesung : %d px", cfg.soilResolution))
     print(string.format("[FarmMonitor]   Soil-RowsPerTick: %d", cfg.soilRowsPerTick))
+    print(string.format("[FarmMonitor]   Perf-Logging    : %s", cfg.perfLogEnabled and "an" or "aus"))
+end
+
+local function appendPerfLine(fn, modMs, frameDt)
+    local ts = getDate("%Y-%m-%dT%H:%M:%S")
+    local dtStr = frameDt ~= nil and string.format(" dt=%.1fms", frameDt) or ""
+    print(string.format("[FarmMonitor] PERF %s %s: %.1fms%s", ts, fn, modMs, dtStr))
 end
 
 function FarmMonitor:deleteMap()
@@ -493,40 +507,62 @@ function FarmMonitor:update(dt)
         FarmMonitor:exportAutoDriveMarkers()
     end
 
+    local perfOn = FarmMonitor.perfLogEnabled
+    local heavyFrame = false
+    local t0
+
     FarmMonitor.timer = FarmMonitor.timer + dt
     if FarmMonitor.timer >= FarmMonitor.updateInterval then
         FarmMonitor.timer = 0
+        t0 = perfOn and getTime() or nil
         FarmMonitor:collectAndSave()
+        if perfOn then appendPerfLine("collect", getTime() - t0, dt) end
+        heavyFrame = true
     end
 
     FarmMonitor.fieldTimer = FarmMonitor.fieldTimer + dt
     if FarmMonitor.fieldTimer >= FarmMonitor.fieldInterval then
         FarmMonitor.fieldTimer = 0
+        t0 = perfOn and getTime() or nil
         FarmMonitor:collectAndSaveFields()
+        if perfOn then appendPerfLine("fields", getTime() - t0, dt) end
+        heavyFrame = true
     end
 
     FarmMonitor.vehicleTimer = FarmMonitor.vehicleTimer + dt
     if FarmMonitor.vehicleTimer >= FarmMonitor.vehicleInterval then
         FarmMonitor.vehicleTimer = 0
+        t0 = perfOn and getTime() or nil
         FarmMonitor:collectAndSaveVehicles()
+        if perfOn then appendPerfLine("vehicles", getTime() - t0, dt) end
+        heavyFrame = true
     end
 
     FarmMonitor.vehicleMetaTimer = FarmMonitor.vehicleMetaTimer + dt
     if FarmMonitor.vehicleMetaTimer >= FarmMonitor.vehicleMetaInterval then
         FarmMonitor.vehicleMetaTimer = 0
+        t0 = perfOn and getTime() or nil
         FarmMonitor:collectAndSaveVehicleMeta()
+        if perfOn then appendPerfLine("vehicleMeta", getTime() - t0, dt) end
+        heavyFrame = true
     end
 
     FarmMonitor.commandTimer = FarmMonitor.commandTimer + dt
     if FarmMonitor.commandTimer >= FarmMonitor.commandInterval then
         FarmMonitor.commandTimer = 0
+        t0 = perfOn and getTime() or nil
         FarmMonitor:processCommands()
+        if perfOn then appendPerfLine("commands", getTime() - t0, dt) end
+        heavyFrame = true
     end
 
     FarmMonitor.weatherTimer = FarmMonitor.weatherTimer + dt
     if FarmMonitor.weatherTimer >= FarmMonitor.weatherInterval then
         FarmMonitor.weatherTimer = 0
+        t0 = perfOn and getTime() or nil
         FarmMonitor:collectAndSaveWeather()
+        if perfOn then appendPerfLine("weather", getTime() - t0, dt) end
+        heavyFrame = true
     end
 
     -- Incremental soil layer export: runs every tick, samples a few rows at a time
@@ -536,6 +572,16 @@ function FarmMonitor:update(dt)
     if FarmMonitor.soilState ~= nil then
         FarmMonitor:stepSoilExport()
     end
+
+    -- Idle baseline: sample frame dt every 5 s on frames with no heavy mod work
+    if perfOn and not heavyFrame then
+        FarmMonitor.perfIdleTimer = FarmMonitor.perfIdleTimer + dt
+        if FarmMonitor.perfIdleTimer >= 5000 then
+            FarmMonitor.perfIdleTimer = 0
+            appendPerfLine("idle", 0, dt)
+        end
+    end
+
 end
 
 function FarmMonitor:draw() end
@@ -3015,9 +3061,10 @@ function FarmMonitor:initSoilState()
         cellSize    = terrainSize / res,
         half        = terrainSize / 2,
         rowsPerTick = FarmMonitor.soilRowsPerTick or 2,
-        layerIdx    = 1,          -- C: current layer in round-robin
-        currentRow  = 0,          -- A: next row to sample
-        values      = {},         -- accumulator for current layer
+        layerIdx         = 1,          -- C: current layer in round-robin
+        currentRow       = 0,          -- A: next row to sample
+        values           = {},         -- accumulator for current layer
+        layerStartTime   = getTime(),  -- for perf logging
     }
 end
 
@@ -3083,10 +3130,15 @@ function FarmMonitor:stepSoilExport()
             print("[FarmMonitor] ERROR writing layer_" .. name .. ": " .. tostring(writeErr))
         end
 
+        if FarmMonitor.perfLogEnabled then
+            appendPerfLine("soil_" .. name, getTime() - st.layerStartTime, nil)
+        end
+
         -- Advance to next layer (C: round-robin)
-        st.layerIdx   = (st.layerIdx % #st.layers) + 1
-        st.currentRow = 0
-        st.values     = {}
+        st.layerIdx       = (st.layerIdx % #st.layers) + 1
+        st.currentRow     = 0
+        st.values         = {}
+        st.layerStartTime = getTime()
     end
 end
 
