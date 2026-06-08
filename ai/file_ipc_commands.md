@@ -69,12 +69,37 @@ Lua-seitig ein einfacher Dispatcher mit Handler-Tabelle:
 
 ```lua
 local handlers = {
-    ["production.setOutputMode"] = FarmMonitor.cmdSetProductionOutputMode,
+    ["production.setOutputMode"]  = FarmMonitor.cmdSetProductionOutputMode,
+    ["production.spawnPallets"]   = FarmMonitor.cmdSpawnPallets,
     -- weitere Commands hier eintragen
 }
 ```
 
 Fehler werden per `pcall` gefangen und geloggt — ein fehlerhafter Command bricht nicht die ganze Queue ab.
+
+## Multiplayer-Architektur für Placeable-Befehle
+
+### Das Problem
+
+Commands werden vom Client-Prozess verarbeitet (Lua liest die lokale `commands.xml`). Für Befehle die Server-Autorität brauchen (z.B. Paletten spawnen), muss der Command zum Server weitergeleitet werden.
+
+`getPlaceableByUniqueId(uniqueId)` schlägt auf dem Server fehl wenn die `uniqueId` vom Client stammt — die IDs sind prozess-lokal und stimmen auf dem Dedicated Server nicht überein.
+
+### Die Lösung
+
+**Nicht** den uniqueId-String zum Server schicken und dort nachschlagen — stattdessen `pp` direkt via `NetworkUtil.writeNodeObject/readNodeObject` übertragen (gleiche Technik wie PSC's eigene Events und FarmMonitor's AutoDrive-Fahrzeug-Events).
+
+```
+SP / Listen-Server-Host:
+  commands.xml → processCommands() → cmdXxx() → Direktaufruf ✅
+
+MP-Client / Dedicated-Server-Joiner (g_server == nil, g_client ~= nil):
+  commands.xml → processCommands() → cmdXxx() →
+    pp lokal auflösen (klappt auf eigenem Prozess) →
+    FarmMonitorXxxEvent.new(pp, ...) →
+    NetworkUtil.writeNodeObject(pp) über Netz →
+    Server: NetworkUtil.readNodeObject() → Direktaufruf ✅
+```
 
 ## Implementierter Command: production.setOutputMode
 
@@ -126,8 +151,47 @@ FS25 Lua Sandbox erlaubt `io.open` nur im **Schreibmodus**. Lesen ist geblockt. 
 
 `deleteXMLFile` existiert nicht in FS25 Lua — xmlId wird einfach nicht freigegeben (vernachlässigbares Memory Leak, da Commands selten sind).
 
+## Implementierter Command: production.spawnPallets
+
+Spawnt eine oder mehrere Paletten aus dem Lager einer PSC-Produktionsanlage.
+
+**Benötigt:** Mod `FS25_ProductionStorageControl` geladen.
+
+**Parameter:**
+- `uniqueId` — Placeable-UniqueId der Produktionsanlage
+- `fillType` — Fülltyp-Name (z.B. `"WHEAT"`, `"BUTTER"`)
+- `amount` — Anzahl zu spawnender Paletten (String, wird zu Integer konvertiert)
+
+**SP / Listen-Server-Host** (`g_server ~= nil`):
+```lua
+-- pp lokal auflösen, dann direkt:
+pp:ReceiveSpawnEvent(farmId, fillTypeIndex, pendingLiters,
+    width, height, length, capacity, 1, customEnvironment,
+    nil, amount, 0, 0, 0)
+```
+
+**MP-Client / Dedicated-Server-Joiner** (`g_server == nil and g_client ~= nil`):
+```lua
+-- pp lokal auflösen (getPlaceableByUniqueId klappt auf eigenem Prozess),
+-- dann via NetworkUtil zum Server:
+conn:sendEvent(FarmMonitorSpawnPalletsEvent.new(
+    pp, farmId, fillTypeIndex, pendingLiters,
+    width, height, length, capacity, customEnvironment, amount
+))
+-- Server: NetworkUtil.readNodeObject() → pp:ReceiveSpawnEvent() direkt
+```
+
+**Warum nicht PSC's eigenes Event?**  
+`productionStorageControl_EventSpawn` liegt in PSC's Lua-`_ENV` und ist von FarmMonitor aus nicht zugänglich (Sandbox-Isolation). `pp:ReceiveSpawnEvent()` als Prototype-Methode hingegen ist sichtbar.
+
+**customEnvironment-Bug (behoben):**  
+Der PalletInfoCache muss den tatsächlichen Key aus `fillType.pallets` speichern (z.B. `"VANILLA"` oder `"FS25_SomeMod"`), nicht hardcoded `"VANILLA"`. Falscher Key → `item.filename = nil` → stiller Fehlschlag ohne Log-Ausgabe.
+
+---
+
 ## Erweiterung um neue Commands
 
 1. Handler-Funktion schreiben: `FarmMonitor:cmdMeinCommand(cmd)`
 2. In `dispatchCommand` registrieren: `["mein.command"] = FarmMonitor.cmdMeinCommand`
-3. Go-Server: `command`-Struct hat generische Felder (`UniqueID`, `FillType`, `Mode`) — für weitere Parameter ggf. erweitern
+3. Go-Server: `command`-Struct hat generische Felder (`UniqueID`, `FillType`, `Mode`, `Amount`) — für weitere Parameter ggf. erweitern
+4. Braucht der Command Server-Autorität im MP? → eigenes `FarmMonitorXxxEvent` mit `NetworkUtil.writeNodeObject/readNodeObject` implementieren (Muster: `FarmMonitorSpawnPalletsEvent`)
