@@ -183,9 +183,12 @@ end
 
 -- ---------------------------------------------------------------------------
 -- FarmMonitorSpawnPalletsEvent
--- Forwards production.spawnPallets from a pure MP-client to the server so
--- pp:ReceiveSpawnEvent() is called with server authority.  Same pattern as
--- FarmMonitorADCommandEvent — client sends, server dispatches cmdSpawnPallets.
+-- Forwards production.spawnPallets from a pure MP-client to the server.
+--
+-- Uses NetworkUtil.writeNodeObject/readNodeObject for the ProductionPoint
+-- object — the same approach as PSC's own productionStorageControl_EventSpawn.
+-- This avoids the getPlaceableByUniqueId() lookup on the server, which fails
+-- on Dedicated Servers because client-side uniqueIds don't resolve there.
 -- ---------------------------------------------------------------------------
 
 FarmMonitorSpawnPalletsEvent = {}
@@ -196,31 +199,63 @@ function FarmMonitorSpawnPalletsEvent.emptyNew()
     return Event.new(FarmMonitorSpawnPalletsEvent_mt)
 end
 
-function FarmMonitorSpawnPalletsEvent.new(cmd)
+function FarmMonitorSpawnPalletsEvent.new(pp, farmId, fillTypeIndex, pendingLiters, width, height, length, capacity, customEnvironment, amount)
     local self = FarmMonitorSpawnPalletsEvent.emptyNew()
-    self.cmd = cmd
+    self.pp               = pp
+    self.farmId           = farmId
+    self.fillTypeIndex    = fillTypeIndex
+    self.pendingLiters    = pendingLiters
+    self.width            = width
+    self.height           = height
+    self.length           = length
+    self.capacity         = capacity
+    self.customEnvironment = customEnvironment
+    self.amount           = amount
     return self
 end
 
 function FarmMonitorSpawnPalletsEvent:writeStream(streamId, connection)
-    streamWriteString(streamId, self.cmd.uniqueId or "")
-    streamWriteString(streamId, self.cmd.fillType or "")
-    streamWriteString(streamId, tostring(self.cmd.amount or "1"))
+    NetworkUtil.writeNodeObject(streamId, self.pp)
+    streamWriteInt32(streamId,   self.farmId)
+    streamWriteInt32(streamId,   self.fillTypeIndex)
+    streamWriteInt32(streamId,   math.floor(self.pendingLiters))
+    streamWriteFloat32(streamId, self.width)
+    streamWriteFloat32(streamId, self.height)
+    streamWriteFloat32(streamId, self.length)
+    streamWriteFloat32(streamId, self.capacity)
+    local hasEnv = self.customEnvironment ~= nil
+    streamWriteBool(streamId, hasEnv)
+    if hasEnv then streamWriteString(streamId, self.customEnvironment) end
+    streamWriteFloat32(streamId, self.amount)
 end
 
 function FarmMonitorSpawnPalletsEvent:readStream(streamId, connection)
-    self.cmd = {
-        cmd      = "production.spawnPallets",
-        uniqueId = streamReadString(streamId),
-        fillType = streamReadString(streamId),
-        amount   = streamReadString(streamId),
-    }
+    self.pp            = NetworkUtil.readNodeObject(streamId)
+    self.farmId        = streamReadInt32(streamId)
+    self.fillTypeIndex = streamReadInt32(streamId)
+    self.pendingLiters = streamReadInt32(streamId)
+    self.width         = streamReadFloat32(streamId)
+    self.height        = streamReadFloat32(streamId)
+    self.length        = streamReadFloat32(streamId)
+    self.capacity      = streamReadFloat32(streamId)
+    if streamReadBool(streamId) then
+        self.customEnvironment = streamReadString(streamId)
+    end
+    self.amount = streamReadFloat32(streamId)
     self:run(connection)
 end
 
 function FarmMonitorSpawnPalletsEvent:run(connection)
-    print("[FarmMonitor] FarmMonitorSpawnPalletsEvent received on server, spawning pallets")
-    local ok, err = pcall(FarmMonitor.cmdSpawnPallets, FarmMonitor, self.cmd)
+    -- pp is already resolved via NetworkUtil — no uniqueId lookup needed
+    print("[FarmMonitor] FarmMonitorSpawnPalletsEvent: spawning " .. tostring(self.amount) .. " pallet(s)")
+    local ok, err = pcall(function()
+        self.pp:ReceiveSpawnEvent(
+            self.farmId, self.fillTypeIndex, self.pendingLiters,
+            self.width, self.height, self.length,
+            self.capacity, 1, self.customEnvironment,
+            nil, self.amount, 0, 0, 0
+        )
+    end)
     if not ok then
         print("[FarmMonitor] FarmMonitorSpawnPalletsEvent error: " .. tostring(err))
     end
@@ -3596,18 +3631,8 @@ function FarmMonitor:cmdSpawnPallets(cmd)
         error("FS25_ProductionStorageControl not loaded")
     end
 
-    -- Pure MP-client: forward to server via FarmMonitorSpawnPalletsEvent.
-    -- productionStorageControl_EventSpawn lives in PSC's Lua sandbox and is
-    -- not accessible from FarmMonitor's environment.
-    if g_server == nil and g_client ~= nil then
-        local conn = g_client:getServerConnection()
-        if conn then
-            conn:sendEvent(FarmMonitorSpawnPalletsEvent.new(cmd))
-            print("[FarmMonitor] production.spawnPallets forwarded to server via FarmMonitorSpawnPalletsEvent")
-        end
-        return
-    end
-
+    -- Resolve pp on the caller's side (client or server) — getUniqueId() always
+    -- matches getPlaceableByUniqueId() on the SAME process.
     local placeable = g_currentMission.placeableSystem:getPlaceableByUniqueId(cmd.uniqueId)
     if placeable == nil or placeable.spec_productionPoint == nil then
         error("Production not found: " .. tostring(cmd.uniqueId))
@@ -3633,6 +3658,23 @@ function FarmMonitor:cmdSpawnPallets(cmd)
     local farmId        = g_currentMission:getFarmId()
     local pendingLiters = info.capacity * amount
 
+    -- Pure MP-client: forward pp via NetworkUtil.writeNodeObject — same approach
+    -- as PSC's own event. Avoids getPlaceableByUniqueId() on the server (which
+    -- fails on Dedicated Servers because client uniqueIds don't resolve there).
+    if g_server == nil and g_client ~= nil then
+        local conn = g_client:getServerConnection()
+        if conn then
+            conn:sendEvent(FarmMonitorSpawnPalletsEvent.new(
+                pp, farmId, ft.index, pendingLiters,
+                info.width, info.height, info.length,
+                info.capacity, info.customEnvironment, amount
+            ))
+            print("[FarmMonitor] production.spawnPallets forwarded to server via FarmMonitorSpawnPalletsEvent")
+        end
+        return
+    end
+
+    -- Server / SP / listen-server host: call directly
     local palletFilename = ft.pallets and ft.pallets[info.customEnvironment]
     print(string.format("[FarmMonitor] spawnPallets: ft=%s env=%s file=%s amount=%d pendingL=%.0f",
         cmd.fillType, tostring(info.customEnvironment), tostring(palletFilename), amount, pendingLiters))
