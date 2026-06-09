@@ -3097,6 +3097,34 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════
+// polylabel v1.1.0 — Pole of Inaccessibility (Mapbox, ISC License)
+// Inlined self-contained build (tinyqueue priority queue included)
+// https://github.com/mapbox/polylabel
+(function(){
+  function TinyQueue(data,cmp){this.data=data?data.slice():[]; this.cmp=cmp||function(a,b){return a<b?-1:a>b?1:0}; if(this.data.length>0)for(var i=(this.data.length>>1)-1;i>=0;i--)this._down(i);}
+  TinyQueue.prototype={push:function(i){this.data.push(i);this._up(this.data.length-1);},pop:function(){var t=this.data[0],n=this.data.pop();if(this.data.length>0){this.data[0]=n;this._down(0);}return t;},peek:function(){return this.data[0];},get length(){return this.data.length;},_up:function(i){var d=this.data,c=this.cmp;while(i>0){var p=(i-1)>>1;if(c(d[i],d[p])>=0)break;var t=d[p];d[p]=d[i];d[i]=t;i=p;}},_down:function(i){var d=this.data,n=d.length,c=this.cmp;while(true){var l=2*i+1,r=l+1,s=i;if(l<n&&c(d[l],d[s])<0)s=l;if(r<n&&c(d[r],d[s])<0)s=r;if(s===i)break;var t=d[s];d[s]=d[i];d[i]=t;i=s;}}};
+
+  function Cell(x,y,h,poly){this.x=x;this.y=y;this.h=h;this.d=ptPolyDist(x,y,poly);this.max=this.d+h*Math.SQRT2;}
+  function cmpMax(a,b){return b.max-a.max;}
+  function ptPolyDist(x,y,poly){var inside=false,minDsq=Infinity;for(var k=0;k<poly.length;k++){var ring=poly[k];for(var i=0,j=ring.length-1;i<ring.length;j=i++){var a=ring[i],b=ring[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;minDsq=Math.min(minDsq,segDistSq(x,y,a,b));}}return minDsq===0?0:(inside?1:-1)*Math.sqrt(minDsq);}
+  function segDistSq(px,py,a,b){var x=a[0],y=a[1],dx=b[0]-x,dy=b[1]-y;if(dx||dy){var t=((px-x)*dx+(py-y)*dy)/(dx*dx+dy*dy);if(t>1){x=b[0];y=b[1];}else if(t>0){x+=dx*t;y+=dy*t;}}dx=px-x;dy=py-y;return dx*dx+dy*dy;}
+  function centroidCell(poly){var area=0,x=0,y=0,pts=poly[0];for(var i=0,j=pts.length-1;i<pts.length;j=i++){var a=pts[i],b=pts[j],f=a[0]*b[1]-b[0]*a[1];x+=(a[0]+b[0])*f;y+=(a[1]+b[1])*f;area+=f*3;}return area===0?new Cell(pts[0][0],pts[0][1],0,poly):new Cell(x/area,y/area,0,poly);}
+
+  window.polylabel=function(poly,precision){
+    precision=precision||1.0;
+    var minX,minY,maxX,maxY;
+    for(var i=0;i<poly[0].length;i++){var p=poly[0][i];if(!i||p[0]<minX)minX=p[0];if(!i||p[1]<minY)minY=p[1];if(!i||p[0]>maxX)maxX=p[0];if(!i||p[1]>maxY)maxY=p[1];}
+    var w=maxX-minX,h=maxY-minY,cell=Math.min(w,h),hh=cell/2;
+    if(cell===0){var r=[minX,minY];r.distance=0;return r;}
+    var q=new TinyQueue([],cmpMax);
+    for(var x=minX;x<maxX;x+=cell)for(var y=minY;y<maxY;y+=cell)q.push(new Cell(x+hh,y+hh,hh,poly));
+    var best=centroidCell(poly),bbox=new Cell(minX+w/2,minY+h/2,0,poly);
+    if(bbox.d>best.d)best=bbox;
+    while(q.length){var c=q.pop();if(c.d>best.d)best=c;if(c.max-best.d<=precision)continue;hh=c.h/2;q.push(new Cell(c.x-hh,c.y-hh,hh,poly));q.push(new Cell(c.x+hh,c.y-hh,hh,poly));q.push(new Cell(c.x-hh,c.y+hh,hh,poly));q.push(new Cell(c.x+hh,c.y+hh,hh,poly));}
+    var res=[best.x,best.y];res.distance=best.d;return res;
+  };
+})();
+// ═══════════════════════════════════════════════════════════
 // State
 // ═══════════════════════════════════════════════════════════
 let appData          = null;
@@ -5635,9 +5663,10 @@ function renderFieldPolygons(fieldsData, terrainSize) {
     el.appendChild(title);
     layer.appendChild(el);
 
-    // Field number label at polygon centroid
-    const cx = svgPts.reduce((s, p) => s + p.x, 0) / svgPts.length;
-    const cy = svgPts.reduce((s, p) => s + p.y, 0) / svgPts.length;
+    // Field number label at pole of inaccessibility (polylabel) — guaranteed inside field
+    const _polyRing = svgPts.map(p => [p.x, p.y]);
+    const _pole = polylabel([_polyRing], 1.0);
+    const cx = _pole[0], cy = _pole[1];
     const lg = document.createElementNS('http://www.w3.org/2000/svg','g');
     lg.classList.add('field-label');
     lg.dataset.x = cx.toFixed(2);
