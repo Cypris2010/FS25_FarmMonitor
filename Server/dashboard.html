@@ -3040,6 +3040,10 @@
         <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
         <div class="legend-divider"></div>
         <div class="legend-section-title">Bodenlayer</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:0 2px">
+          <span style="font-size:11px;color:#9ca3af;flex:1">Scan:</span>
+          <button id="soil-scan-mode-btn" onclick="_toggleSoilScanMode()" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#d1d5db;cursor:pointer" title="Umschalten: nur eigene Felder / alle Felder">eigene Felder</button>
+        </div>
         <div id="soil-layer-legend" style="display:contents"></div>
       </div>
 
@@ -5889,6 +5893,24 @@ function refreshActiveSoilLayers() {
 
 // Poll soil layers independently every 30s — decoupled from SSE render cycle
 setInterval(() => { if (activeSoilLayers.size > 0) refreshActiveSoilLayers(); }, 30000);
+
+let _soilScanMode = 'owned';  // lokaler State, gespiegelt vom Mod
+
+function _toggleSoilScanMode() {
+  _soilScanMode = _soilScanMode === 'owned' ? 'all' : 'owned';
+  const btn = document.getElementById('soil-scan-mode-btn');
+  if (btn) {
+    btn.textContent = _soilScanMode === 'owned' ? 'eigene Felder' : 'alle Felder';
+    btn.style.color  = _soilScanMode === 'owned' ? '#d1d5db' : '#34d399';
+    btn.style.borderColor = _soilScanMode === 'owned' ? '#374151' : '#34d399';
+  }
+  sendCommand({ cmd: 'soilScan.setMode', mode: _soilScanMode });
+}
+
+function sendCommand(body) {
+  fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .catch(e => console.warn('sendCommand failed:', e));
+}
 
 function renderHotspotPins(hotspotsData, terrainSize) {
   const layer = document.getElementById('layer-hotspots');

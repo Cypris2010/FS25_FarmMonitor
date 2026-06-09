@@ -18,6 +18,8 @@ FarmMonitor.commandTimer      = 0
 FarmMonitor.weatherInterval   = 30000  -- milliseconds between weather exports
 FarmMonitor.weatherTimer      = 30000  -- start at max so first export fires immediately
 FarmMonitor.soilState         = nil    -- incremental soil export state machine
+FarmMonitor.soilScanMode      = "owned" -- "owned" = nur eigene Felder, "all" = alle Felder
+FarmMonitor.soilFieldMask     = nil    -- flaches Boolean-Array [zi*res+xi+1] → true wenn Feld
 FarmMonitor.paths             = {}
 FarmMonitor.modInfoExported       = false
 FarmMonitor.fillTypesExported   = false
@@ -3014,6 +3016,84 @@ function FarmMonitor:collectAndSaveVehicleMeta()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Soil Field Mask
+-- ---------------------------------------------------------------------------
+
+-- Baut ein flaches Boolean-Array (1D, index = zi*res + xi + 1).
+-- true  = Zelle liegt in mindestens einem Feld des gewählten Scan-Modus.
+-- false = überspringen, direkt 0 schreiben.
+-- Wird einmal gebaut und bei Modus-Wechsel oder Feldkauf/-verkauf neu gebaut.
+function FarmMonitor:buildSoilFieldMask(res)
+    local mission = g_currentMission
+    if mission == nil or g_farmlandManager == nil then return nil end
+
+    local terrainSize = mission.terrainSize or 2048
+    local cellSize    = terrainSize / res
+    local half        = terrainSize / 2
+    local farmId      = mission:getFarmId()
+
+    -- Punkt-in-Polygon (Ray-Casting): Strahl nach rechts, zählt Kantenschnitte
+    local function pointInPolygon(wx, wz, px, pz)
+        local inside = false
+        local j = #px
+        for i = 1, #px do
+            if ((pz[i] > wz) ~= (pz[j] > wz)) and
+               (wx < (px[j] - px[i]) * (wz - pz[i]) / (pz[j] - pz[i]) + px[i]) then
+                inside = not inside
+            end
+            j = i
+        end
+        return inside
+    end
+
+    -- Polygone aller relevanten Felder sammeln (inkl. Bounding Box als Vorfilter)
+    local polygons = {}
+    for _, farmland in pairs(g_farmlandManager.farmlands or {}) do
+        local isRelevant = (FarmMonitor.soilScanMode == "all") or (farmland.farmId == farmId)
+        if isRelevant and farmland.field ~= nil then
+            local poly = farmland.field.densityMapPolygon
+            if poly ~= nil and poly.pointsX ~= nil and #poly.pointsX >= 3 then
+                local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+                for i, px in ipairs(poly.pointsX) do
+                    local pz = poly.pointsZ[i] or 0
+                    if px < minX then minX = px end
+                    if px > maxX then maxX = px end
+                    if pz < minZ then minZ = pz end
+                    if pz > maxZ then maxZ = pz end
+                end
+                table.insert(polygons, {
+                    px = poly.pointsX, pz = poly.pointsZ,
+                    minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ,
+                })
+            end
+        end
+    end
+
+    -- Maske füllen: Bounding Box als Schnelltest, dann exaktes Punkt-in-Polygon
+    local mask = {}
+    for zi = 0, res - 1 do
+        local wz = -half + zi * cellSize + cellSize * 0.5
+        for xi = 0, res - 1 do
+            local wx = -half + xi * cellSize + cellSize * 0.5
+            local hit = false
+            for _, p in ipairs(polygons) do
+                if wx >= p.minX and wx <= p.maxX and wz >= p.minZ and wz <= p.maxZ then
+                    if pointInPolygon(wx, wz, p.px, p.pz) then
+                        hit = true
+                        break
+                    end
+                end
+            end
+            mask[zi * res + xi + 1] = hit
+        end
+    end
+
+    print(string.format("[FarmMonitor] Soil mask gebaut: %d×%d, Modus=%s, %d Felder",
+        res, res, FarmMonitor.soilScanMode, #polygons))
+    return mask
+end
+
 function FarmMonitor:initSoilState()
     if not g_currentMission or not g_currentMission.isMissionStarted then return nil end
     local mission = g_currentMission
@@ -3025,14 +3105,17 @@ function FarmMonitor:initSoilState()
     local terrainSize = mission.terrainSize or 2048
     local res = FarmMonitor.soilResolution or 128
 
+    -- noDataVal: Wert für maskierte Zellen (außerhalb von Feldern)
+    --   above:false Layer (lime/spray/plow/mulch): 255 = "optimal, kein Problem" → wird nicht als Warnung gerendert
+    --   above:true  Layer (weed/stone/roller):       0 = "kein Problem"           → wird nicht als Warnung gerendert
     local defs = {
-        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, maxVal = 9 },
-        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, maxVal = 4 },
-        { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1 },
-        { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL) },
-        { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL) },
-        { name = "mulch",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL) end,  minVal = 1 },
-        { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1 },
+        { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, maxVal = 9,                                        noDataVal = 0   },
+        { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, maxVal = 4,                                      noDataVal = 0   },
+        { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1,                                          noDataVal = 255 },
+        { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL), noDataVal = 255 },
+        { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL),  noDataVal = 255 },
+        { name = "mulch",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL) end,  minVal = 1,                                          noDataVal = 255 },
+        { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1,                                          noDataVal = 0   },
     }
 
     -- Build cached modifier/filter per layer (mapId is stable across frames)
@@ -3042,16 +3125,20 @@ function FarmMonitor:initSoilState()
         if ok and mapId ~= nil then
             local mod = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
             layers[#layers + 1] = {
-                name   = def.name,
-                mod    = mod,
-                flt    = DensityMapFilter.new(mod),
-                maxVal = def.maxVal,
-                minVal = def.minVal or 1,
+                name      = def.name,
+                mod       = mod,
+                flt       = DensityMapFilter.new(mod),
+                maxVal    = def.maxVal,
+                minVal    = def.minVal or 1,
+                noDataVal = def.noDataVal or 0,
             }
         end
     end
 
     if #layers == 0 then return nil end
+
+    -- Feldmaske aufbauen (überspringt Zellen außerhalb von Feldern)
+    FarmMonitor.soilFieldMask = FarmMonitor:buildSoilFieldMask(res)
 
     return {
         layers      = layers,
@@ -3065,6 +3152,7 @@ function FarmMonitor:initSoilState()
         currentRow       = 0,          -- A: next row to sample
         values           = {},         -- accumulator for current layer
         layerStartTime   = getTime(),  -- for perf logging
+        lastLayerData    = {},         -- cache: last written data string per layer name
     }
 end
 
@@ -3081,34 +3169,40 @@ function FarmMonitor:stepSoilExport()
     local cellSize = st.cellSize
     local half     = st.half
     local endRow   = math.min(st.currentRow + st.rowsPerTick - 1, res - 1)
+    local mask     = FarmMonitor.soilFieldMask  -- nil → kein Filter, alles scannen
 
     for zi = st.currentRow, endRow do
         for xi = 0, res - 1 do
-            local wx = -half + xi * cellSize
-            local wz = -half + zi * cellSize
-            mod:setParallelogramWorldCoords(
-                wx, wz, wx + cellSize, wz, wx, wz + cellSize,
-                DensityCoordType.POINT_POINT_POINT)
+            -- Zelle außerhalb aller Felder → noDataVal, kein executeGet
+            if mask ~= nil and not mask[zi * res + xi + 1] then
+                st.values[#st.values + 1] = layer.noDataVal
+            else
+                local wx = -half + xi * cellSize
+                local wz = -half + zi * cellSize
+                mod:setParallelogramWorldCoords(
+                    wx, wz, wx + cellSize, wz, wx, wz + cellSize,
+                    DensityCoordType.POINT_POINT_POINT)
 
-            local v = 0
-            if maxVal then
-                for lv = maxVal, 1, -1 do
-                    flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
-                    local _, area, _ = mod:executeGet(flt)
-                    if area > 0 then
-                        v = math.floor(lv / maxVal * 255)
-                        break
+                local v = 0
+                if maxVal then
+                    for lv = maxVal, 1, -1 do
+                        flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
+                        local _, area, _ = mod:executeGet(flt)
+                        if area > 0 then
+                            v = math.floor(lv / maxVal * 255)
+                            break
+                        end
+                    end
+                else
+                    -- EQUAL-only scan: GREATER_OR_EQUAL not available in mod sandbox
+                    for lv = 7, minVal, -1 do
+                        flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
+                        local _, area, _ = mod:executeGet(flt)
+                        if area > 0 then v = 255; break end
                     end
                 end
-            else
-                -- EQUAL-only scan: GREATER_OR_EQUAL not available in mod sandbox
-                for lv = 7, minVal, -1 do
-                    flt:setValueCompareParams(DensityValueCompareType.EQUAL, lv)
-                    local _, area, _ = mod:executeGet(flt)
-                    if area > 0 then v = 255; break end
-                end
+                st.values[#st.values + 1] = v
             end
-            st.values[#st.values + 1] = v
         end
     end
 
@@ -3562,6 +3656,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.pipeOffset"]          = FarmMonitor.cmdAutoDrivePipeOffset,
         ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
         ["autodrive.unloadFillLevel"]     = FarmMonitor.cmdAutoDriveUnloadFillLevel,
+        ["soilScan.setMode"]              = FarmMonitor.cmdSoilScanSetMode,
         ["autodrive.cornerSpeed"]         = FarmMonitor.cmdAutoDriveCornerSpeed,
         ["autodrive.preCallLevel"]        = FarmMonitor.cmdAutoDrivePreCallLevel,
         ["autodrive.chaseSide"]           = FarmMonitor.cmdAutoDriveChaseSide,
@@ -3572,6 +3667,22 @@ function FarmMonitor:dispatchCommand(cmd)
     else
         print("[FarmMonitor] Unknown command: " .. tostring(cmd.cmd))
     end
+end
+
+function FarmMonitor:cmdSoilScanSetMode(cmd)
+    local newMode = cmd.mode  -- "owned" oder "all"
+    if newMode ~= "owned" and newMode ~= "all" then
+        print("[FarmMonitor] soilScan.setMode: ungültiger Modus '" .. tostring(newMode) .. "'")
+        return
+    end
+    if newMode == FarmMonitor.soilScanMode then return end  -- keine Änderung
+    FarmMonitor.soilScanMode = newMode
+    -- Maske neu bauen (res aus aktuellem State oder Default)
+    local res = (FarmMonitor.soilState and FarmMonitor.soilState.res) or FarmMonitor.soilResolution or 128
+    FarmMonitor.soilFieldMask = FarmMonitor:buildSoilFieldMask(res)
+    -- Laufenden Scan-Zyklus neu starten damit neue Maske sofort greift
+    FarmMonitor.soilState = nil
+    print("[FarmMonitor] Soil-Scan Modus gesetzt: " .. newMode)
 end
 
 function FarmMonitor:cmdSetProductionOutputMode(cmd)
