@@ -5965,10 +5965,13 @@ function renderHotspotPins(hotspotsData, terrainSize) {
       g.style.cursor = 'pointer';
       addTapListener(g, () => openMapDetail('hotspot', hsIdx));
     }
-    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx', '0');
-    c.setAttribute('cy', '0');
-    c.setAttribute('r', '7');
+    const c = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    c.setAttribute('x', '-7');
+    c.setAttribute('y', '-7');
+    c.setAttribute('width', '14');
+    c.setAttribute('height', '14');
+    c.setAttribute('rx', '3');
+    c.setAttribute('ry', '3');
     c.setAttribute('fill', color);
     c.setAttribute('stroke', 'rgba(0,0,0,0.5)');
     c.setAttribute('stroke-width', '1');
