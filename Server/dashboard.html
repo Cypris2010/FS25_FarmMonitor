@@ -5966,18 +5966,33 @@ function renderHotspotPins(hotspotsData, terrainSize) {
       addTapListener(g, () => openMapDetail('hotspot', hsIdx));
     }
     const c = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    c.setAttribute('x', '-7');
-    c.setAttribute('y', '-7');
-    c.setAttribute('width', '14');
-    c.setAttribute('height', '14');
-    c.setAttribute('rx', '3');
-    c.setAttribute('ry', '3');
+    c.setAttribute('x', '-14');
+    c.setAttribute('y', '-14');
+    c.setAttribute('width', '28');
+    c.setAttribute('height', '28');
+    c.setAttribute('rx', '5');
+    c.setAttribute('ry', '5');
     c.setAttribute('fill', color);
     c.setAttribute('stroke', 'rgba(0,0,0,0.5)');
     c.setAttribute('stroke-width', '1');
     const t = document.createElementNS('http://www.w3.org/2000/svg','title');
     t.textContent = `${hs.name} (${hs.type})`;
-    g.appendChild(c); g.appendChild(t);
+    g.appendChild(c);
+    // Icon overlay for specific types
+    if (hs.type === 'PRODUCTION_POINT') {
+      const ic = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      ic.setAttribute('x', '-12'); ic.setAttribute('y', '-12');
+      ic.setAttribute('width', '24'); ic.setAttribute('height', '24');
+      ic.setAttribute('viewBox', '0 0 24 24');
+      ic.setAttribute('fill', 'none');
+      ic.setAttribute('stroke', 'rgba(255,255,255,0.9)');
+      ic.setAttribute('stroke-width', '2');
+      ic.setAttribute('stroke-linecap', 'round');
+      ic.setAttribute('stroke-linejoin', 'round');
+      ic.innerHTML = '<path d="M3 21h18"/><path d="M5 21v-12l5 4v-4l5 4h4"/><path d="M19 21v-8l-1.436-9.574a.5.5 0 0 0-.495-.426h-1.145a.5.5 0 0 0-.494.418l-1.43 8.582"/><path d="M9 17h1"/><path d="M14 17h1"/>';
+      g.appendChild(ic);
+    }
+    g.appendChild(t);
     layer.appendChild(g);
   });
 }
