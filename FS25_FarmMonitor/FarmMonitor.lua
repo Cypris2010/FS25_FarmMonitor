@@ -3111,10 +3111,10 @@ function FarmMonitor:initSoilState()
     local defs = {
         { name = "weed",   getMap = function() return mission.weedSystem and mission.weedSystem:getDensityMapData() end, maxVal = 9,                                        noDataVal = 0   },
         { name = "stone",  getMap = function() return mission.stoneSystem and mission.stoneSystem:getDensityMapData() end, maxVal = 4,                                      noDataVal = 0   },
-        { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1,                                          noDataVal = 255 },
-        { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL), noDataVal = 255 },
-        { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL),  noDataVal = 255 },
-        { name = "mulch",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL) end,  minVal = 1,                                          noDataVal = 255 },
+        { name = "plow",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.PLOW_LEVEL) end,           minVal = 1,                                          noDataVal = 254 },
+        { name = "spray",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL) end,          maxVal = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL), noDataVal = 254 },
+        { name = "lime",   getMap = function() return fgs:getDensityMapData(FieldDensityMap.LIME_LEVEL) end,           maxVal = fgs:getMaxValue(FieldDensityMap.LIME_LEVEL),  noDataVal = 254 },
+        { name = "mulch",  getMap = function() return fgs:getDensityMapData(FieldDensityMap.STUBBLE_SHRED_LEVEL) end,  minVal = 1,                                          noDataVal = 254 },
         { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1,                                          noDataVal = 0   },
     }
 

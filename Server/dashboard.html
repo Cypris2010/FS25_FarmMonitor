@@ -5830,7 +5830,11 @@ function renderSoilLayerData(name, layerData) {
   }
 
   bands.forEach((band, i) => {
-    const loops = _marchingSquares(values, res, band.t, band.above, cellSize, ox, oy);
+    // above:false layers use noDataVal=254 (distinct from real max 255) so edge
+    // interpolation can snap to the exact cell boundary instead of bleeding into
+    // non-field cells (roads, industrial areas).
+    const noDataVal = band.above ? undefined : 254;
+    const loops = _marchingSquares(values, res, band.t, band.above, cellSize, ox, oy, noDataVal);
     const d = loops.map(loop =>
       loop.map((p, j) => (j === 0 ? `M${p.x.toFixed(1)},${p.y.toFixed(1)}` : `L${p.x.toFixed(1)},${p.y.toFixed(1)}`)).join('') + 'Z'
     ).join(' ');
@@ -5843,21 +5847,29 @@ function renderSoilLayerData(name, layerData) {
 // Marching Squares: traces closed contour loops from a flat res×res value grid.
 // above=true → fill cells where value > threshold; above=false → fill where value < threshold.
 // Returns array of loops, each loop an array of {x,y} SVG points.
-function _marchingSquares(data, res, threshold, above, cellSize, ox, oy) {
+function _marchingSquares(data, res, threshold, above, cellSize, ox, oy, noDataVal) {
   function val(r, c) {
     if (r < 0 || r >= res || c < 0 || c >= res) return above ? 0 : 255;
     return data[r * res + c];
   }
   function inside(r, c) { const v = val(r, c); return above ? v > threshold : v < threshold; }
 
+  // Snap to exact cell boundary (t=1) when one neighbor is the non-field sentinel
+  // (noDataVal). Without snapping, linear interpolation bleeds the fill into
+  // adjacent non-field cells (roads, industrial areas).
+  function interpT(v0, v1) {
+    if (noDataVal !== undefined && (v0 === noDataVal) !== (v1 === noDataVal))
+      return 1;
+    return (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+  }
   function hEdge(r, c) {
     const v0 = val(r, c), v1 = val(r, c + 1);
-    const t = (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+    const t = interpT(v0, v1);
     return { key: `h${r}_${c}`, x: ox + (c + t) * cellSize, y: oy + r * cellSize };
   }
   function vEdge(r, c) {
     const v0 = val(r, c), v1 = val(r + 1, c);
-    const t = (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
+    const t = interpT(v0, v1);
     return { key: `v${r}_${c}`, x: ox + c * cellSize, y: oy + (r + t) * cellSize };
   }
 
