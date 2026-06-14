@@ -345,6 +345,9 @@ The full technical breakdown of both command paths (singleplayer, listen-server,
 | [game-icons.net](https://game-icons.net) — "Thrust Bend" by [Delapouite](https://delapouite.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Vehicle type icon |
 | [game-icons.net](https://game-icons.net) — "Gas Pump" by [Delapouite](https://delapouite.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Fuel icon |
 | [game-icons.net](https://game-icons.net) — "Auto Repair" by [Lorc](https://lorcblog.blogspot.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Vehicle repair icon |
+| [game-icons.net](https://game-icons.net) — "Cow", "Sheep", "Chicken", "Horse Head", "Goose", "Rabbit" by [Delapouite](https://delapouite.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Animal icons in husbandry view and map hotspot pins |
+| [game-icons.net](https://game-icons.net) — "Pig" by [Skoll](https://game-icons.net/about.html#authors) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Pig icon in husbandry view and map hotspot pins |
+| [game-icons.net](https://game-icons.net) — "Sell Card" by [Delapouite](https://delapouite.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Selling station icon on map |
 | [polylabel](https://github.com/mapbox/polylabel) by Mapbox | [ISC](https://github.com/mapbox/polylabel/blob/master/LICENSE) © 2016 Mapbox | Pole of inaccessibility for field number placement on map |
 
 Full license texts are listed in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
