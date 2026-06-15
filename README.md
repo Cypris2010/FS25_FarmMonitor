@@ -23,17 +23,42 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 
 ## Features
 
-- **Live JSON export** — silos, productions, animal husbandries, goods, fields, fill types, fruit types and animal food recipes written to the modSettings folder every 10 s
-- **Unique placeable IDs** — every silo, production point and husbandry carries a persistent `uniqueId` (from the savegame) and a `savegameId` (`mapId + creationDate`) for reliable cross-session identification
-- **Web dashboard** — dark FS25-themed SPA with sidebar navigation, auto-refresh via Server-Sent Events and responsive layout
-- **Views:** Overview (KPI tiles + active alerts), Silos, Productions, Tierställe, Warenübersicht, Felder, Alerts, Settings
-- **Tierställe** — per-stall cards with occupancy, food groups, water, straw, outputs and computed status (OK / Watch / Warning / Critical); smart alerts weighted by consumption share (`eatWeight`)
-- **Warenübersicht** — aggregated stock across all storage types per fill type, with current and maximum prices, price trend indicators (rising / falling / high demand), best selling month and colour-coded value rating
-- **Felder** — per-field cards with fruit type, growth stage, harvest-readiness badge, projected yield, soil condition bars (plough, fertiliser, lime, mulch, roller, weeds, stones), seed requirement calculator and material need estimates (lime, fertiliser, herbicide)
-- **Seed calculator** — interactive fruit type selector per field card; shows seed requirement in L/ha and total litres; selection persists in the browser
-- **Configurable alert thresholds** — warn and critical levels for inputs (food/water/straw), outputs and occupancy are adjustable in the Settings view and stored globally
-- **Per-savegame visibility settings** — hide individual placeables from the dashboard via the edit mode button; settings are persisted per savegame on the server
-- **Multiplayer** — every player runs the mod locally; each sees their own farm's data written to their own modSettings folder
+The dashboard updates automatically every few seconds — no refresh needed. All views are accessible via the sidebar.
+
+### Overview
+A quick summary of your entire farm: KPI tiles showing active silos, running productions, stall count and open alerts. A prioritised alert list lets you spot problems at a glance without switching views.
+
+### Silos & Storage
+Fill-level bars for every silo, silo extension, bunker silo (with fermentation progress), bale and pallet storage, and manure heap — all in one view with filter buttons by storage type.
+
+### Productions
+Input and output bars for every production chain, colour-coded by fill level. See at a glance which chains are running, idle or stopped, and click any input ingredient to jump straight to its stock in the Goods view.
+
+### Animals
+Per-stall cards showing occupancy, food groups (with smart weighting for parallel feeders like pigs), water, straw, health and outputs (milk, manure, eggs, …). Alert status is colour-coded: OK / Watch / Warning / Critical.
+
+### Goods
+Your total stock across all storages, aggregated per commodity. Each row shows the current price at the best available station, the seasonal maximum price, the best month to sell, and a price trend indicator (rising / falling / high demand).
+
+### Fields
+Per-field cards with fruit type, current growth stage, harvest-readiness badge and projected yield bonus. Soil condition bars cover ploughing, fertilising, liming, mulching, rolling, weeds and stones. An interactive seed calculator lets you pick any crop and shows how much seed, lime, fertiliser and herbicide you need in total.
+
+### Fleet
+Cards for every vehicle on your farm: current speed, fuel / AdBlue / battery level, damage, driver and operating hours. Tap a card to open the detail panel with attached implements, purchase price and working width. Supports filtering by category, free-text search and a "last moved" sort mode.
+
+**AutoDrive** status is shown directly on each fleet card — mode, destination, remaining time and detailed badges for every state (loading, unloading, waiting for combine, blocked, driving to refuel, …). You can configure and start/stop AutoDrive routes from the vehicle detail panel without leaving the dashboard.
+
+**Courseplay** job type, waypoint progress and remaining time are shown alongside AutoDrive when both mods are active.
+
+### Map
+An interactive map overlay on the farm's overview image. Shows field outlines with field numbers, all hotspots (selling stations, productions, fuel, shop, …) as colour-coded pins, and live vehicle positions with direction arrows — updated every two seconds. Supports zoom, pan and pinch-to-zoom on touch devices.
+
+### Alerts & Settings
+The Alerts view consolidates every active warning and critical state across all categories. In Settings you can adjust warn and critical thresholds for food, water, straw, outputs and occupancy, and hide individual placeables per savegame.
+
+---
+
+**Multiplayer:** every player runs the mod locally and sees their own farm's data. Singleplayer and player-hosted multiplayer are fully supported.
 
 ## What it exports
 
@@ -112,11 +137,13 @@ Open **http://localhost:8080** in a browser.
 | View | Description |
 |---|---|
 | Overview | KPI tiles (silo count, active productions, stall count, open alerts) and a prioritised alert list |
-| Silos | Fill-level bars for every silo and silo extension, grouped by placeable |
-| Productions | Input/output bars and chain status (running / inactive / stopped) per production point with quicknav |
-| Tierställe | Per-stall cards with occupancy, food groups (weighted), water, straw, outputs and computed alert status |
-| Warenübersicht | Stock per fill type with current and max price, total value, price trend indicator, best selling month and colour-coded rating |
-| Felder | Per-field cards: growth bar, projected yield, soil condition bars (split into soil quality and nuisances), seed calculator dropdown, and material need estimates for lime / fertiliser / herbicide |
+| Silos | Fill-level bars for every silo, silo extension, bunker silo, bale/pallet storage and manure heap; filterable by type |
+| Productions | Input/output bars and chain status (running / inactive / stopped) per production point; click inputs to jump to Goods |
+| Animals | Per-stall cards with occupancy, food groups (smart-weighted), water, straw, health and outputs |
+| Goods | Stock per fill type across all storages, with current and max prices, price trend indicator and best selling month |
+| Fields | Per-field growth bar, projected yield, soil condition bars, interactive seed calculator, and material need estimates |
+| Fleet | Fleet cards with speed, fuel, damage and driver; detail panel with implements and AutoDrive / Courseplay control |
+| Map | Interactive map with field outlines, hotspot pins and live vehicle positions; zoom, pan and touch support |
 | Alerts | Consolidated list of all active warnings and critical states across all categories |
 | Settings | Configure alert thresholds for inputs, outputs and occupancy; toggle placeable visibility per savegame |
 
