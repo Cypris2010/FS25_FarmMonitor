@@ -26,35 +26,43 @@ FS25 FarmMonitor gives your Farming Simulator 25 game a second screen. A lightwe
 The dashboard updates automatically every few seconds — no refresh needed. All views are accessible via the sidebar.
 
 ### Overview
-A quick summary of your entire farm: KPI tiles showing active silos, running productions, stall count and open alerts. A prioritised alert list lets you spot problems at a glance without switching views.
+A quick summary of your entire farm at a glance: KPI tiles show how many silos are active, how many production chains are running, how many animal stalls need attention, and how many alerts are currently open. Below the tiles sits a prioritised alert list that surfaces the most urgent issues across all categories — so you always know what needs attention first without having to browse through individual views.
 
 ### Silos & Storage
-Fill-level bars for every silo, silo extension, bunker silo (with fermentation progress), bale and pallet storage, and manure heap — all in one view with filter buttons by storage type.
+Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left.
 
 ### Productions
-Input and output bars for every production chain, colour-coded by fill level. See at a glance which chains are running, idle or stopped, and click any input ingredient to jump straight to its stock in the Goods view.
+Input and output bars for every production chain on your farm, colour-coded by fill level so you can spot bottlenecks instantly. Each card shows whether the chain is currently running, idle or stopped, and lists all ingredients and products with their current stock and capacity. Clicking any input ingredient takes you directly to that commodity in the Goods view.
+
+Beyond monitoring, you can control your productions directly from the dashboard: change the output mode for any product (auto-store, direct sale, or pallet output) without opening the game, and trigger the immediate ejection of a full pallet for any output — right from the browser. This works for any production building that supports pallet output, including mod productions.
 
 ### Animals
-Per-stall cards showing occupancy, food groups (with smart weighting for parallel feeders like pigs), water, straw, health and outputs (milk, manure, eggs, …). Alert status is colour-coded: OK / Watch / Warning / Critical.
+Per-stall cards showing current and maximum occupancy, all food groups with fill levels (with smart weighting for parallel feeders like pigs, where not every group is equally important), water and straw levels, average animal health and all outputs like milk, manure or eggs. Alert status is colour-coded — OK, Watch, Warning or Critical — and thresholds are fully configurable per resource type in the Settings view.
 
 ### Goods
-Your total stock across all storages, aggregated per commodity. Each row shows the current price at the best available station, the seasonal maximum price, the best month to sell, and a price trend indicator (rising / falling / high demand).
+An aggregated overview of everything you own, sorted by commodity. Each row shows your total stock across all storage types on the farm, the current best selling price available at any station on the map, the seasonal maximum price and the best month to sell, the current trend (rising, falling or high demand), and a colour-coded rating of how the current price compares to the seasonal peak.
+
+From the Goods view you can also act directly: for any commodity that is produced by one or more of your production buildings, you can change the output mode or trigger a pallet ejection across all relevant productions at once — without having to visit each production card individually.
 
 ### Fields
-Per-field cards with fruit type, current growth stage, harvest-readiness badge and projected yield bonus. Soil condition bars cover ploughing, fertilising, liming, mulching, rolling, weeds and stones. An interactive seed calculator lets you pick any crop and shows how much seed, lime, fertiliser and herbicide you need in total.
+Per-field cards covering everything you need to plan your next farm run. Each card shows the current crop, growth stage with a visual progress bar, a harvest-ready badge when the time has come, and an estimated yield bonus based on your soil conditions. Seven soil condition bars — ploughing, fertilising, liming, mulching, rolling, weed coverage and stone coverage — give you a complete picture of field health at a glance.
+
+An interactive seed calculator lets you select any crop per field and instantly shows you the required seed quantity in litres per hectare and as a total for that field. The same calculator covers lime, fertiliser and herbicide so you can plan your refill runs before you even get on the tractor. Your crop selection is saved in the browser so you don't lose it when switching views.
 
 ### Fleet
-Cards for every vehicle on your farm: current speed, fuel / AdBlue / battery level, damage, driver and operating hours. Tap a card to open the detail panel with attached implements, purchase price and working width. Supports filtering by category, free-text search and a "last moved" sort mode.
+Cards for every vehicle on your farm showing current speed, fuel, AdBlue and battery levels, damage status, assigned driver and total operating hours. Clicking a card opens the detail panel with a full breakdown of all tanks, attached implements, purchase price, working width and vehicle colour. The fleet view supports filtering by shop category, free-text search by name, status filters and a "last moved" sort mode that puts recently active vehicles at the top.
 
-**AutoDrive** status is shown directly on each fleet card — mode, destination, remaining time and detailed badges for every state (loading, unloading, waiting for combine, blocked, driving to refuel, …). You can configure and start/stop AutoDrive routes from the vehicle detail panel without leaving the dashboard.
+**AutoDrive** status is shown directly on each fleet card — current mode, destination, remaining drive time and detailed state badges for every situation (loading, unloading, waiting for combine, driving to refuel or park, blocked, error, …). The vehicle detail panel includes a full AutoDrive control tab where you can set the operating mode, assign departure and destination markers, select the commodity to transport, and start or stop the route — all from the browser, without switching back to the game.
 
-**Courseplay** job type, waypoint progress and remaining time are shown alongside AutoDrive when both mods are active.
+**Courseplay** job type, current waypoint progress and estimated remaining time are displayed on the fleet card and in the detail panel alongside AutoDrive whenever both mods are active.
 
 ### Map
-An interactive map overlay on the farm's overview image. Shows field outlines with field numbers, all hotspots (selling stations, productions, fuel, shop, …) as colour-coded pins, and live vehicle positions with direction arrows — updated every two seconds. Supports zoom, pan and pinch-to-zoom on touch devices.
+An interactive map built on the farm's overview image. Field outlines are drawn as accurate polygons with field numbers placed at the centre of each field. All map hotspots — selling stations, production buildings, fuel stations, the shop, animal pastures and more — appear as colour-coded pins with tooltips. Live vehicle positions are updated every two seconds with smooth movement and direction arrows so you can follow your fleet in real time.
+
+The map supports mouse wheel zoom, click-and-drag panning and pinch-to-zoom on touch devices. You can click any vehicle or hotspot pin to jump directly to the corresponding entry in the Fleet or Productions view.
 
 ### Alerts & Settings
-The Alerts view consolidates every active warning and critical state across all categories. In Settings you can adjust warn and critical thresholds for food, water, straw, outputs and occupancy, and hide individual placeables per savegame.
+The Alerts view consolidates every active warning and critical state across all categories — animals, productions, silos and fields — in one place, sorted by severity. In Settings you can adjust the warn and critical thresholds for food, water, straw, storage outputs and stall occupancy to match how you run your farm. You can also hide individual placeables from the dashboard per savegame, keeping the views clean when you have buildings you don't actively manage.
 
 ---
 
