@@ -100,20 +100,57 @@ IPC commands (AutoDrive control, production output mode changes, pallet ejection
 
 ## What it exports
 
-| File | Content | Updated |
-|---|---|---|
-| `silos.json` | All silo and silo extension fill levels | every 10 s |
-| `productions.json` | Production point inputs, outputs and chain status | every 10 s |
-| `husbandries.json` | Animal counts, food/water/straw levels, health and outputs (milk, manure, …) | every 10 s |
-| `goods.json` | Aggregated fill levels per fill type across all storages, with current and max prices, price trends and best selling month | every 10 s |
-| `fields.json` | Per-field fruit type, growth stage, harvest readiness, projected yield, soil conditions and material need estimates | every 60 s |
-| `fillTypes.json` | All fill type names, titles and HUD icon paths | once on map load |
-| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, yield per m² and seed usage per m² | once on map load |
-| `animalFood.json` | Food group recipes per animal type (consumption type, fill types, production and eat weights) | once on map load |
-
 All files are written to the modSettings directory:
 - **macOS:** `~/Library/Application Support/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
 - **Windows:** `Documents/My Games/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
+
+**Every 2 seconds**
+
+| File | Content |
+|---|---|
+| `vehicles.json` | All farm vehicles: position, heading, speed, fuel/AdBlue/battery/methane levels, damage, operating hours, assigned driver, engine state, attached implements, AutoDrive status (mode, destination, remaining time, state flags), Courseplay status (job type, waypoint progress, remaining time) |
+
+**Every 10 seconds**
+
+| File | Content |
+|---|---|
+| `silos.json` | Fill levels for all storage locations: silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, manure heaps |
+| `productions.json` | Input and output stock for every production chain: current fill levels, capacities, chain status (running / idle / stopped), cycles per month |
+| `husbandries.json` | Per-stall animal count and capacity, all food groups with fill levels and weights, water and straw levels, average animal health, all output fill levels |
+| `goods.json` | Aggregated stock per commodity across all storage types, current best selling price per station, seasonal maximum price and best selling month, price trend (rising / falling / high demand) |
+| `vehicleMeta.json` | Static vehicle metadata that rarely changes: brand, shop category, purchase price, ownership type (owned / leased), age, engine power (kW), working width, vehicle colours |
+
+**Every 30 seconds**
+
+| File | Content |
+|---|---|
+| `weather.json` | Current weather (type, temperature, wind speed and direction, rain intensity, ground wetness), 6-hour hourly forecast and 7-day daily forecast, in-game time and season period |
+
+**Every 60 seconds**
+
+| File | Content |
+|---|---|
+| `fields.json` | Per-field crop type, growth stage, harvest readiness, projected yield bonus, seven soil condition values (ploughing, fertilising, liming, mulching, rolling, weed coverage, stone coverage), seed and material need estimates |
+| `autoDriveMarkers.json` | All AutoDrive markers with name, group and marker index; incremental — only re-exported when new markers are detected |
+
+**Continuously (incremental, a few rows per frame)**
+
+| File | Content |
+|---|---|
+| `layer_*.json` | Full-map soil density grids (one file per layer: weed, stone, plow, spray, lime, mulch, roller) used for the map overlay in the Map view |
+
+**Once on map load**
+
+| File | Content |
+|---|---|
+| `fillTypes.json` | All fill type names, display titles and HUD icon paths |
+| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, forage stages, yield per m² and seed usage per m² |
+| `animalFood.json` | Food group recipes per animal type: consumption type (serial / parallel), fill types accepted per group, production weight and eat weight |
+| `mapMeta.json` | Map name, terrain size, path to the overview DDS image and savegame directory — used by the server to locate and decode the map background image |
+| `fieldMeta.json` | Maximum values for all soil density map layers (used to normalise soil readings in the Map view) |
+| `hotspots.json` | All map hotspots with name, type (selling station, production, fuel, shop, beehive, animal husbandry, …) and world coordinates |
+| `vehicleCategories.json` | All shop vehicle categories with display name and sort order — used to populate the category filter in the Fleet view |
+| `modInfo.json` | FarmMonitor version and savegame ID — used by the server to detect version mismatches |
 
 ## Dashboard
 
