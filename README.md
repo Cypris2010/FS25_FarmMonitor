@@ -29,15 +29,15 @@ The dashboard updates automatically every few seconds — no refresh needed. All
 A quick summary of your entire farm at a glance: KPI tiles show how many silos are active, how many production chains are running, how many animal stalls need attention, and how many alerts are currently open. Below the tiles sits a prioritised alert list that surfaces the most urgent issues across all categories — so you always know what needs attention first without having to browse through individual views.
 
 ### Silos & Storage
-Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left.
+Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left. Individual storage entries can be hidden via the Edit view button; visibility is saved per savegame so hiding a building on one map does not affect other saves.
 
 ### Productions
 Input and output bars for every production chain on your farm, colour-coded by fill level so you can spot bottlenecks instantly. Each card shows whether the chain is currently running, idle or stopped, and lists all ingredients and products with their current stock and capacity. Clicking any input ingredient takes you directly to that commodity in the Goods view.
 
-Beyond monitoring, you can control your productions directly from the dashboard: change the output mode for any product (auto-store, direct sale, or pallet output) without opening the game, and trigger the immediate ejection of a full pallet for any output — right from the browser. This works for any production building that supports pallet output, including mod productions.
+Beyond monitoring, you can control your productions directly from the dashboard: change the output mode for any product (auto-store, direct sale, or pallet output) without opening the game, and trigger the immediate ejection of a full pallet for any output — right from the browser. This works for any production building that supports pallet output, including mod productions. Individual production buildings can be hidden via the Edit view button; visibility is saved per savegame.
 
 ### Animals
-Per-stall cards showing current and maximum occupancy, all food groups with fill levels (with smart weighting for parallel feeders like pigs, where not every group is equally important), water and straw levels, average animal health and all outputs like milk, manure or eggs. Alert status is colour-coded — OK, Watch, Warning or Critical — and thresholds are fully configurable per resource type in the Settings view.
+Per-stall cards showing current and maximum occupancy, all food groups with fill levels (with smart weighting for parallel feeders like pigs, where not every group is equally important), water and straw levels, average animal health and all outputs like milk, manure or eggs. Alert status is colour-coded — OK, Watch, Warning or Critical — and thresholds are fully configurable per resource type in the Settings view. Individual stalls can be hidden via the Edit view button; visibility is saved per savegame.
 
 ### Goods
 An aggregated overview of everything you own, sorted by commodity. Each row shows your total stock across all storage types on the farm, the current best selling price available at any station on the map, the seasonal maximum price and the best month to sell, the current trend (rising, falling or high demand), and a colour-coded rating of how the current price compares to the seasonal peak.
@@ -520,16 +520,6 @@ Open **http://localhost:8080** in a browser.
 ./farmmonitor -host 0.0.0.0 -port 9000
 ./farmmonitor -data /custom/path/to/json/files
 ```
-
-### Editing the dashboard view
-
-Each section (Silos, Productions, Animals) has an **"Edit view"** button in the top-right corner of the section header.
-
-- **Normal mode** — hidden placeables are not shown
-- **Edit mode** — all placeables are shown; a green eye means visible, a grey crossed-out eye means hidden; hidden cards are dimmed
-- Clicking the eye icon on any card toggles its visibility immediately and saves the setting to the server
-
-Settings are stored per savegame (identified by `savegameId`) so hiding a silo on one map does not affect other savegames.
 
 ## Credits
 
