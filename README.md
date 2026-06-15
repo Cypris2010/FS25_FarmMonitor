@@ -114,11 +114,63 @@ Platform config directories:
 
 Global settings include alert thresholds for all resource types. Placeable visibility is stored per savegame (identified by `savegameId`) so hiding a building on one map does not affect other saves.
 
-### JSON reference
+## Exported files
+
+All files are written to:
+- **macOS:** `~/Library/Application Support/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
+- **Windows:** `Documents/My Games/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
 
 All JSON files include a `savegameId` field composed of `mapId + "_" + creationDate` (e.g. `MapUS_2026-02-15`). This uniquely identifies the active savegame and is used by the server to scope per-save settings.
 
-#### silos.json
+### Every 2 seconds
+
+#### `vehicles.json`
+
+All farm vehicles: position, heading, speed, fuel/AdBlue/battery/methane levels, damage, operating hours, assigned driver, engine state, attached implements, AutoDrive status (mode, destination, remaining time, state flags), Courseplay status (job type, waypoint progress, remaining time).
+
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegameId": "MapUS_2026-02-15",
+  "vehicles": [ { "...": "see field reference below" } ],
+  "players":  [ { "name": "Farmer", "x": 312.5, "z": 198.0 } ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | number | `vehicle.rootNode` handle — process-local, use for display only |
+| `netId` | string | `NetworkUtil` object ID — consistent across all clients in multiplayer, used for IPC commands |
+| `name` | string | Vehicle name |
+| `type` | string | Detected type: `tractor`, `harvester`, `truck`, `trailer`, `implement`, `pallet`, `other` |
+| `category` | string | Shop category name (e.g. `tractors`, `harvesters`) |
+| `speed` | number | Current speed in km/h |
+| `x` / `z` / `rot` | number | World position and Y-axis rotation in radians |
+| `motorRunning` | bool | Engine is running |
+| `isEntered` | bool | A player is currently driving this vehicle |
+| `damage` | number | Damage level 0–1 (across vehicle and all attached implements) |
+| `operatingTime` | number | Total operating hours |
+| `driver` | string\|null | Username of the player currently driving, or `null` |
+| `fuel` / `adblue` / `electric` / `methane` | object\|null | `{ level, capacity }` for each tank type present; `null` if not applicable |
+| `implements` | array | Attached implements, each with `name`, `damage`, `type` and fill units |
+| `adActive` | bool | AutoDrive is active and steering the vehicle |
+| `adMode` | number\|null | AutoDrive mode (1=DriveTO, 2=PickupAndDeliver, 3=DeliverTo, 4=Load, 5=CombineUnloader) |
+| `adDestination` / `adDestination2` | string\|null | AutoDrive marker names for target 1 and 2 |
+| `adRemainingTime` | number\|null | Estimated remaining drive time in seconds |
+| `adBlocked` / `adError` / `adOnRouteToRefuel` / `adOnRouteToPark` / `adIsLoading` / `adIsUnloading` | bool | AutoDrive state flags — only present when `true` |
+| `adModeState` | string\|null | CombineUnloader sub-state: `waitToBeCalled`, `driveToCombine`, `followCombine`, `driveToUnload`, `driveToStart`, `reverseFromBadLocation` |
+| `cpActive` | bool | Courseplay is active |
+| `cpStatus` / `cpJobType` | string\|null | Courseplay status text and job type |
+| `cpWaypointCurrent` / `cpWaypointTotal` | number\|null | Courseplay waypoint progress |
+| `cpRemainingTime` | number\|null | Estimated remaining Courseplay time in seconds |
+
+### Every 10 seconds
+
+#### `silos.json`
+
+Fill levels for all storage locations: silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, manure heaps.
+
 ```json
 {
   "timestamp": "2026-05-03T22:49:23",
@@ -141,7 +193,10 @@ All JSON files include a `savegameId` field composed of `mapId + "_" + creationD
 
 `type` is one of `silo`, `siloExtension`, `bunkerSilo`, `objectStorage`, `objectStorageMod`, `manureHeap`. Bunker silos additionally carry `fermentingPercent`, `compactedPercent` and `state` (`fill` / `closed` / `drain` / `fermented`).
 
-#### productions.json
+#### `productions.json`
+
+Input and output stock for every production chain: current fill levels, capacities, chain status (running / idle / stopped), cycles per month.
+
 ```json
 {
   "timestamp": "2026-05-03T22:49:23",
@@ -164,7 +219,10 @@ All JSON files include a `savegameId` field composed of `mapId + "_" + creationD
 
 `status` is one of `running`, `inactive`, `stopped`. `outputs` also carry `outputMode` (`auto` / `sell` / `pallet`) and `palletFillType` when pallet output is active.
 
-#### husbandries.json
+#### `husbandries.json`
+
+Per-stall animal count and capacity, all food groups with fill levels and weights, water and straw levels, average animal health, all output fill levels.
+
 ```json
 {
   "timestamp": "2026-05-03T22:49:23",
@@ -204,7 +262,10 @@ All JSON files include a `savegameId` field composed of `mapId + "_" + creationD
 | `health` | number\|null | Average animal health 0–100 — `null` if no animals present |
 | `outputs` | array | Output storage entries with `fillType`, `title`, `level` and `capacity` |
 
-#### goods.json
+#### `goods.json`
+
+Aggregated stock per commodity across all storage types, current best selling price per station, seasonal maximum price and best selling month, price trend (rising / falling / high demand).
+
 ```json
 {
   "timestamp": "2026-05-03T22:49:23",
@@ -233,45 +294,16 @@ All JSON files include a `savegameId` field composed of `mapId + "_" + creationD
 
 `trend` is one of `CLIMBING`, `FALLING`, `GREAT_DEMAND` or `null`. `bestMonth` is a season period index (1–12). `totalLevel` is the sum across all storage types on the farm (silos, bales, pallets, husbandry outputs, production outputs).
 
-#### vehicles.json
-```json
-{
-  "timestamp": "2026-05-03T22:49:23",
-  "farmId": 1,
-  "savegameId": "MapUS_2026-02-15",
-  "vehicles": [ { "...": "see field reference below" } ],
-  "players":  [ { "name": "Farmer", "x": 312.5, "z": 198.0 } ]
-}
-```
+#### `vehicleMeta.json`
 
-| Field | Type | Description |
-|---|---|---|
-| `id` | number | `vehicle.rootNode` handle — process-local, use for display only |
-| `netId` | string | `NetworkUtil` object ID — consistent across all clients in multiplayer, used for IPC commands |
-| `name` | string | Vehicle name |
-| `type` | string | Detected type: `tractor`, `harvester`, `truck`, `trailer`, `implement`, `pallet`, `other` |
-| `category` | string | Shop category name (e.g. `tractors`, `harvesters`) |
-| `speed` | number | Current speed in km/h |
-| `x` / `z` / `rot` | number | World position and Y-axis rotation in radians |
-| `motorRunning` | bool | Engine is running |
-| `isEntered` | bool | A player is currently driving this vehicle |
-| `damage` | number | Damage level 0–1 (across vehicle and all attached implements) |
-| `operatingTime` | number | Total operating hours |
-| `driver` | string\|null | Username of the player currently driving, or `null` |
-| `fuel` / `adblue` / `electric` / `methane` | object\|null | `{ level, capacity }` for each tank type present; `null` if not applicable |
-| `implements` | array | Attached implements, each with `name`, `damage`, `type` and fill units |
-| `adActive` | bool | AutoDrive is active and steering the vehicle |
-| `adMode` | number\|null | AutoDrive mode (1=DriveTO, 2=PickupAndDeliver, 3=DeliverTo, 4=Load, 5=CombineUnloader) |
-| `adDestination` / `adDestination2` | string\|null | AutoDrive marker names for target 1 and 2 |
-| `adRemainingTime` | number\|null | Estimated remaining drive time in seconds |
-| `adBlocked` / `adError` / `adOnRouteToRefuel` / `adOnRouteToPark` / `adIsLoading` / `adIsUnloading` | bool | AutoDrive state flags — only present when `true` |
-| `adModeState` | string\|null | CombineUnloader sub-state: `waitToBeCalled`, `driveToCombine`, `followCombine`, `driveToUnload`, `driveToStart`, `reverseFromBadLocation` |
-| `cpActive` | bool | Courseplay is active |
-| `cpStatus` / `cpJobType` | string\|null | Courseplay status text and job type |
-| `cpWaypointCurrent` / `cpWaypointTotal` | number\|null | Courseplay waypoint progress |
-| `cpRemainingTime` | number\|null | Estimated remaining Courseplay time in seconds |
+Static vehicle metadata that rarely changes: brand, shop category, purchase price, ownership type (owned / leased), age, engine power (kW), working width, vehicle colours (hex).
 
-#### weather.json
+### Every 30 seconds
+
+#### `weather.json`
+
+Current weather (type, temperature, wind speed and direction, rain intensity, ground wetness), 6-hour hourly forecast and 7-day daily forecast, in-game time and season period.
+
 ```json
 {
   "timestamp": "2026-05-03T22:49:23",
@@ -298,7 +330,12 @@ All JSON files include a `savegameId` field composed of `mapId + "_" + creationD
 
 `type` is one of `SUN`, `PARTIALLY_CLOUDY`, `CLOUDY`, `RAIN`, `THUNDER`, `SNOW`, `HAIL`, `TWISTER`. `rainScale` and `groundWet` are 0–100. `hourly` covers the next 6 hours, `daily` the next 7 in-game days.
 
-#### fields.json
+### Every 60 seconds
+
+#### `fields.json`
+
+Per-field crop type, growth stage, harvest readiness, projected yield bonus, seven soil condition values (ploughing, fertilising, liming, mulching, rolling, weed coverage, stone coverage), seed and material need estimates.
+
 ```json
 {
   "timestamp": "2026-05-03T22:49:23",
@@ -333,7 +370,10 @@ All JSON files include a `savegameId` field composed of `mapId + "_" + creationD
 
 Unowned fields only carry `id`, `farmlandId`, `owned: false`, `cx`, `cz`, `polygon` and `area`.
 
-#### autoDriveMarkers.json
+#### `autoDriveMarkers.json`
+
+All AutoDrive markers with name, group and marker index. Only present when AutoDrive is installed. Updated incrementally — only re-exported when new markers are detected.
+
 ```json
 {
   "savegameId": "MapUS_2026-02-15",
@@ -345,9 +385,20 @@ Unowned fields only carry `id`, `farmlandId`, `owned: false`, `cx`, `cz`, `polyg
 }
 ```
 
-`id` is the `markerIndex` that AutoDrive's `setFirstMarker()` accepts. Only present when AutoDrive is installed. Updated incrementally every 60 s — only re-exported when new markers are detected.
+`id` is the `markerIndex` that AutoDrive's `setFirstMarker()` accepts.
 
-#### fillTypes.json
+### Continuously (incremental, a few rows per frame)
+
+#### `layer_*.json`
+
+Full-map soil density grids (one file per layer: `weed`, `stone`, `plow`, `spray`, `lime`, `mulch`, `roller`) used for the soil overlay in the Map view. Written incrementally to avoid frame spikes.
+
+### Once on map load
+
+#### `fillTypes.json`
+
+All fill type names, display titles and HUD icon paths.
+
 ```json
 {
   "savegameId": "MapUS_2026-02-15",
@@ -363,7 +414,10 @@ Unowned fields only carry `id`, `farmlandId`, `owned: false`, `cx`, `cz`, `polyg
 
 Icon paths use two formats: base-game icons are relative to the FS25 installation directory (`dataS/…`); mod icons are absolute paths to the mod folder.
 
-#### animalFood.json
+#### `animalFood.json`
+
+Food group recipes per animal type: consumption type (serial / parallel), fill types accepted per group, production weight and eat weight.
+
 ```json
 {
   "savegameId": "MapUS_2026-02-15",
@@ -396,72 +450,14 @@ Icon paths use two formats: base-game icons are relative to the FS25 installatio
 | `eatWeight` | Consumption share for `PARALLEL` animals (0–1, all groups sum to 1). Used to scale alert thresholds so minor components don't trigger false alarms |
 | `fillTypes` | Fill type identifiers accepted by this group |
 
-#### Metadata files
-
-These files are written once per session and contain static data that does not change while a map is loaded.
+#### Static metadata
 
 | File | Content |
 |---|---|
 | `mapMeta.json` | Map name, terrain size in metres, path to the overview DDS image and savegame directory — used by the server to locate and decode the map background |
 | `fieldMeta.json` | Maximum density map values for all soil layers (`sprayLevelMax`, `limeLevelMax`, `plowLevelMax`, …) — used to normalise soil readings in the Map view |
-| `hotspots.json` | All map hotspots with name, type and world coordinates (`x`, `z`) |
-| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, forage stages, yield per m² and seed usage per m² |
-| `vehicleCategories.json` | Shop vehicle categories with display name and sort order — used to populate the category filter in the Fleet view |
-| `vehicleMeta.json` | Static vehicle metadata updated every 10 s: brand, shop category, purchase price, ownership type (owned / leased), age, engine power (kW), working width, vehicle colours (hex) |
-| `modInfo.json` | FarmMonitor version and savegame ID — used by the server to detect version mismatches |
-| `layer_*.json` | Full-map soil density grids written incrementally (a few rows per frame). One file per layer: `weed`, `stone`, `plow`, `spray`, `lime`, `mulch`, `roller` — used for the soil overlay in the Map view |
-
-## What it exports
-
-All files are written to the modSettings directory:
-- **macOS:** `~/Library/Application Support/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
-- **Windows:** `Documents/My Games/FarmingSimulator2025/modSettings/FS25_FarmMonitor/`
-
-**Every 2 seconds**
-
-| File | Content |
-|---|---|
-| `vehicles.json` | All farm vehicles: position, heading, speed, fuel/AdBlue/battery/methane levels, damage, operating hours, assigned driver, engine state, attached implements, AutoDrive status (mode, destination, remaining time, state flags), Courseplay status (job type, waypoint progress, remaining time) |
-
-**Every 10 seconds**
-
-| File | Content |
-|---|---|
-| `silos.json` | Fill levels for all storage locations: silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, manure heaps |
-| `productions.json` | Input and output stock for every production chain: current fill levels, capacities, chain status (running / idle / stopped), cycles per month |
-| `husbandries.json` | Per-stall animal count and capacity, all food groups with fill levels and weights, water and straw levels, average animal health, all output fill levels |
-| `goods.json` | Aggregated stock per commodity across all storage types, current best selling price per station, seasonal maximum price and best selling month, price trend (rising / falling / high demand) |
-| `vehicleMeta.json` | Static vehicle metadata that rarely changes: brand, shop category, purchase price, ownership type (owned / leased), age, engine power (kW), working width, vehicle colours |
-
-**Every 30 seconds**
-
-| File | Content |
-|---|---|
-| `weather.json` | Current weather (type, temperature, wind speed and direction, rain intensity, ground wetness), 6-hour hourly forecast and 7-day daily forecast, in-game time and season period |
-
-**Every 60 seconds**
-
-| File | Content |
-|---|---|
-| `fields.json` | Per-field crop type, growth stage, harvest readiness, projected yield bonus, seven soil condition values (ploughing, fertilising, liming, mulching, rolling, weed coverage, stone coverage), seed and material need estimates |
-| `autoDriveMarkers.json` | All AutoDrive markers with name, group and marker index; incremental — only re-exported when new markers are detected |
-
-**Continuously (incremental, a few rows per frame)**
-
-| File | Content |
-|---|---|
-| `layer_*.json` | Full-map soil density grids (one file per layer: weed, stone, plow, spray, lime, mulch, roller) used for the map overlay in the Map view |
-
-**Once on map load**
-
-| File | Content |
-|---|---|
-| `fillTypes.json` | All fill type names, display titles and HUD icon paths |
-| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, forage stages, yield per m² and seed usage per m² |
-| `animalFood.json` | Food group recipes per animal type: consumption type (serial / parallel), fill types accepted per group, production weight and eat weight |
-| `mapMeta.json` | Map name, terrain size, path to the overview DDS image and savegame directory — used by the server to locate and decode the map background image |
-| `fieldMeta.json` | Maximum values for all soil density map layers (used to normalise soil readings in the Map view) |
 | `hotspots.json` | All map hotspots with name, type (selling station, production, fuel, shop, beehive, animal husbandry, …) and world coordinates |
+| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, forage stages, yield per m² and seed usage per m² |
 | `vehicleCategories.json` | All shop vehicle categories with display name and sort order — used to populate the category filter in the Fleet view |
 | `modInfo.json` | FarmMonitor version and savegame ID — used by the server to detect version mismatches |
 
