@@ -68,6 +68,36 @@ The Alerts view consolidates every active warning and critical state across all 
 
 **Multiplayer:** every player runs the mod locally and sees their own farm's data. Singleplayer and player-hosted multiplayer are fully supported.
 
+## How it works
+
+FarmMonitor has two independent parts that communicate through plain JSON files on disk — no network connection between them is required.
+
+**Inside the game (Lua mod)**
+A lightweight Lua mod runs inside Farming Simulator 25 and hooks into the game's `update()` loop. Every 10 seconds it reads live data from the game's internal APIs — silo fill levels, production chains, animal stalls, vehicle states, field conditions — and writes everything out as JSON files to the FS25 modSettings directory. Some data that rarely changes (fill type definitions, fruit type growth stages, animal food recipes) is written only once when the map is loaded. Field soil conditions are sampled every 60 seconds via low-level density map queries.
+
+The mod never reads from or writes to the internet, never opens any ports, and never modifies any game state on its own.
+
+**Outside the game (Go server)**
+A small Go binary (`farmmonitor`) watches the JSON files for changes using a file watcher. Whenever a file is updated the server parses it and immediately pushes the new data to all connected browser clients via Server-Sent Events (SSE). The dashboard HTML and all assets are embedded directly in the binary — there is no separate install step and no internet dependency.
+
+**In the browser (dashboard)**
+The dashboard is a single-page app that opens a persistent SSE connection to the server and re-renders any section that received new data. Because SSE is a one-way push channel, the browser never has to poll — updates appear automatically as soon as the mod writes them.
+
+```
+FS25 (game process)
+  └── FarmMonitor.lua          ← reads game APIs every 10 s
+        └── writes JSON files  ← modSettings folder on disk
+
+farmmonitor (Go binary)
+  └── watches JSON files       ← file watcher, no polling delay
+        └── pushes SSE events  ← to all open browser tabs
+
+Browser (dashboard)
+  └── SSE connection           ← persistent, automatic updates
+```
+
+IPC commands (AutoDrive control, production output mode changes, pallet ejection, player teleport) travel the same path in reverse: the dashboard sends an HTTP request to the Go server, which writes an XML command file to the modSettings folder, and the Lua mod reads and executes it on the next update tick.
+
 ## What it exports
 
 | File | Content | Updated |
