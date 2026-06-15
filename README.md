@@ -463,7 +463,7 @@ Food group recipes per animal type: consumption type (serial / parallel), fill t
 
 ## Installation
 
-1. Copy the `FS25_FarmMonitor` folder into your FS25 mods directory:
+1. Download `FS25_FarmMonitor.zip` from the [Releases page](https://github.com/Cypris2010/FS25_FarmMonitor/releases) and copy it into your FS25 mods directory — **do not unzip it**:
    - **macOS:** `~/Library/Application Support/FarmingSimulator2025/mods/`
    - **Windows:** `Documents/My Games/FarmingSimulator2025/mods/`
 2. Enable the mod in the in-game mod manager.
