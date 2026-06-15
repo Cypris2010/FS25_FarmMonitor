@@ -78,7 +78,7 @@ A lightweight Lua mod runs inside Farming Simulator 25 and hooks into the game's
 The mod never reads from or writes to the internet, never opens any ports, and never modifies any game state on its own.
 
 **Outside the game (Go server)**
-A small Go binary (`farmmonitor`) watches the JSON files for changes using a file watcher. Whenever a file is updated the server parses it and immediately pushes the new data to all connected browser clients via Server-Sent Events (SSE). The dashboard HTML and all assets are embedded directly in the binary — there is no separate install step and no internet dependency.
+A small Go binary (`farmmonitor`) watches the JSON files for changes using a file watcher. Whenever a file is updated the server parses it and immediately pushes the new data to all connected browser clients via Server-Sent Events (SSE). The dashboard HTML and all assets are embedded directly in the binary — there is no separate install step and no internet dependency. The server automatically detects the modSettings data directory — no configuration needed unless you want to override it.
 
 **In the browser (dashboard)**
 The dashboard is a single-page app that opens a persistent SSE connection to the server and re-renders any section that received new data. Because SSE is a one-way push channel, the browser never has to poll — updates appear automatically as soon as the mod writes them.
@@ -97,6 +97,319 @@ Browser (dashboard)
 ```
 
 IPC commands (AutoDrive control, production output mode changes, pallet ejection, player teleport) travel the same path in reverse: the dashboard sends an HTTP request to the Go server, which writes an XML command file to the modSettings folder, and the Lua mod reads and executes it on the next update tick.
+
+### Settings persistence
+
+The server persists two kinds of settings as plain JSON files in the platform config directory — no database required:
+
+| Kind | API | File location |
+|---|---|---|
+| Global dashboard settings | `GET/PUT /api/settings` | `<configDir>/FS25_FarmMonitor/settings.json` |
+| Per-savegame placeable visibility | `GET/PUT /api/savegame/{savegameId}` | `<configDir>/FS25_FarmMonitor/savegames/<hash>.json` |
+
+Platform config directories:
+- **macOS:** `~/Library/Application Support/`
+- **Windows:** `%APPDATA%\`
+- **Linux:** `~/.config/`
+
+Global settings include alert thresholds for all resource types. Placeable visibility is stored per savegame (identified by `savegameId`) so hiding a building on one map does not affect other saves.
+
+### JSON reference
+
+All JSON files include a `savegameId` field composed of `mapId + "_" + creationDate` (e.g. `MapUS_2026-02-15`). This uniquely identifies the active savegame and is used by the server to scope per-save settings.
+
+#### silos.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
+  "silos": [
+    {
+      "uniqueId": "abc-123",
+      "name": "Grosses Silo",
+      "type": "silo",
+      "capacity": 200000,
+      "contents": [
+        { "fillType": "WHEAT", "title": "Weizen", "level": 45000 }
+      ]
+    }
+  ]
+}
+```
+
+`type` is one of `silo`, `siloExtension`, `bunkerSilo`, `objectStorage`, `objectStorageMod`, `manureHeap`. Bunker silos additionally carry `fermentingPercent`, `compactedPercent` and `state` (`fill` / `closed` / `drain` / `fermented`).
+
+#### productions.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
+  "productions": [
+    {
+      "uniqueId": "def-456",
+      "name": "Bäckerei",
+      "inputs":  [ { "fillType": "WHEAT", "title": "Weizen", "level": 1200, "capacity": 5000 } ],
+      "outputs": [ { "fillType": "BREAD", "title": "Brot",   "level":  300, "capacity": 1000 } ],
+      "productions": [
+        { "id": "bread", "name": "Brot backen", "status": "running", "cyclesPerMonth": 12 }
+      ]
+    }
+  ]
+}
+```
+
+`status` is one of `running`, `inactive`, `stopped`. `outputs` also carry `outputMode` (`auto` / `sell` / `pallet`) and `palletFillType` when pallet output is active.
+
+#### husbandries.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
+  "husbandries": [
+    {
+      "uniqueId": "ghi-789",
+      "name": "Kuhstall",
+      "animalType": "COW",
+      "numAnimals": 24,
+      "maxAnimals": 30,
+      "food":      [ { "title": "Mischration", "value": 800, "capacity": 1000 } ],
+      "foodTotal": { "value": 800, "capacity": 1000, "ratio": 0.8 },
+      "water":     { "value": 600, "capacity": 1000 },
+      "straw":     { "value": 400, "capacity": 1000 },
+      "health":    92,
+      "outputs": [
+        { "fillType": "MILK",   "title": "Milch", "level": 4200, "capacity": 10000 },
+        { "fillType": "MANURE", "title": "Mist",  "level":  800, "capacity":  5000 }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `uniqueId` | string | Persistent placeable ID from the savegame |
+| `animalType` | string | Animal type identifier (e.g. `COW`, `PIG`) or `"unknown"` |
+| `numAnimals` / `maxAnimals` | number | Current count and maximum capacity |
+| `food` | array | Food trough entries with `title`, `value` and `capacity` per group |
+| `foodTotal` | object\|null | Combined food level `{ value, capacity, ratio }` — `null` if no food trough |
+| `water` | object\|null | Water level `{ value, capacity }` — `null` if no water trough |
+| `straw` | object\|null | Straw bedding level `{ value, capacity }` — `null` if no straw trough |
+| `health` | number\|null | Average animal health 0–100 — `null` if no animals present |
+| `outputs` | array | Output storage entries with `fillType`, `title`, `level` and `capacity` |
+
+#### goods.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegame": "Mein Hof",
+  "savegameId": "MapUS_2026-02-15",
+  "goods": [
+    {
+      "fillType": "WHEAT",
+      "title": "Weizen",
+      "totalLevel": 45000,
+      "bestPrice": 1.42,
+      "bestStation": "Getreidemühle",
+      "maxPrice": 1.89,
+      "bestMonth": 3,
+      "trend": "CLIMBING",
+      "greatDemand": false,
+      "stations": [
+        { "name": "Getreidemühle", "price": 1.42, "trend": "CLIMBING", "greatDemand": false },
+        { "name": "Hafen",        "price": 1.18, "trend": "FALLING",  "greatDemand": false }
+      ]
+    }
+  ]
+}
+```
+
+`trend` is one of `CLIMBING`, `FALLING`, `GREAT_DEMAND` or `null`. `bestMonth` is a season period index (1–12). `totalLevel` is the sum across all storage types on the farm (silos, bales, pallets, husbandry outputs, production outputs).
+
+#### vehicles.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegameId": "MapUS_2026-02-15",
+  "vehicles": [ { "...": "see field reference below" } ],
+  "players":  [ { "name": "Farmer", "x": 312.5, "z": 198.0 } ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | number | `vehicle.rootNode` handle — process-local, use for display only |
+| `netId` | string | `NetworkUtil` object ID — consistent across all clients in multiplayer, used for IPC commands |
+| `name` | string | Vehicle name |
+| `type` | string | Detected type: `tractor`, `harvester`, `truck`, `trailer`, `implement`, `pallet`, `other` |
+| `category` | string | Shop category name (e.g. `tractors`, `harvesters`) |
+| `speed` | number | Current speed in km/h |
+| `x` / `z` / `rot` | number | World position and Y-axis rotation in radians |
+| `motorRunning` | bool | Engine is running |
+| `isEntered` | bool | A player is currently driving this vehicle |
+| `damage` | number | Damage level 0–1 (across vehicle and all attached implements) |
+| `operatingTime` | number | Total operating hours |
+| `driver` | string\|null | Username of the player currently driving, or `null` |
+| `fuel` / `adblue` / `electric` / `methane` | object\|null | `{ level, capacity }` for each tank type present; `null` if not applicable |
+| `implements` | array | Attached implements, each with `name`, `damage`, `type` and fill units |
+| `adActive` | bool | AutoDrive is active and steering the vehicle |
+| `adMode` | number\|null | AutoDrive mode (1=DriveTO, 2=PickupAndDeliver, 3=DeliverTo, 4=Load, 5=CombineUnloader) |
+| `adDestination` / `adDestination2` | string\|null | AutoDrive marker names for target 1 and 2 |
+| `adRemainingTime` | number\|null | Estimated remaining drive time in seconds |
+| `adBlocked` / `adError` / `adOnRouteToRefuel` / `adOnRouteToPark` / `adIsLoading` / `adIsUnloading` | bool | AutoDrive state flags — only present when `true` |
+| `adModeState` | string\|null | CombineUnloader sub-state: `waitToBeCalled`, `driveToCombine`, `followCombine`, `driveToUnload`, `driveToStart`, `reverseFromBadLocation` |
+| `cpActive` | bool | Courseplay is active |
+| `cpStatus` / `cpJobType` | string\|null | Courseplay status text and job type |
+| `cpWaypointCurrent` / `cpWaypointTotal` | number\|null | Courseplay waypoint progress |
+| `cpRemainingTime` | number\|null | Estimated remaining Courseplay time in seconds |
+
+#### weather.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "current": {
+    "type": "RAIN",
+    "temperature": 14,
+    "windSpeed": 22,
+    "windDir": 270,
+    "windCardinal": "W",
+    "isRaining": true,
+    "rainScale": 65,
+    "groundWet": 80
+  },
+  "hourly": [
+    { "type": "RAIN",  "temperature": 14, "windSpeed": 22, "windDir": 270, "time": "14:00" },
+    { "type": "CLOUDY","temperature": 13, "windSpeed": 18, "windDir": 265, "time": "15:00" }
+  ],
+  "daily": [
+    { "type": "CLOUDY", "high": 16, "low": 9, "windSpeed": 20, "windDir": 260, "day": 4, "dayInPeriod": 1, "period": 3, "label": "Montag, Früh-Sommer" }
+  ],
+  "gameTime": { "hour": 14, "minute": 23, "isDay": true, "period": 3, "dayInPeriod": 1 }
+}
+```
+
+`type` is one of `SUN`, `PARTIALLY_CLOUDY`, `CLOUDY`, `RAIN`, `THUNDER`, `SNOW`, `HAIL`, `TWISTER`. `rainScale` and `groundWet` are 0–100. `hourly` covers the next 6 hours, `daily` the next 7 in-game days.
+
+#### fields.json
+```json
+{
+  "timestamp": "2026-05-03T22:49:23",
+  "farmId": 1,
+  "savegameId": "MapUS_2026-02-15",
+  "fields": [ { "...": "see field reference below" } ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Field number (from farmland name) |
+| `farmlandId` | number | Farmland ID |
+| `owned` | bool | Belongs to the player's farm |
+| `cx` / `cz` | number | Field centre in world coordinates |
+| `polygon` | object | `{ x: [...], z: [...] }` — field outline in world coordinates |
+| `area` | number | Total farmland area in ha (including road edges) |
+| `fieldArea` | number | Cultivable field area in ha (owned fields only) |
+| `fruitType` | string | Internal crop identifier (e.g. `WHEAT`) |
+| `fruitTitle` | string | Localised crop name (e.g. `Weizen`) |
+| `growthStage` | number | Current growth stage index |
+| `harvestReady` | bool | Crop is ready to harvest |
+| `needsPreparation` | bool | Crop requires a preparation step before harvest (e.g. rolling oilseed rape) |
+| `withered` | bool | Crop has withered |
+| `cut` | bool | Field has been harvested or mown |
+| `yieldBonusPct` | number\|null | Projected yield bonus in % based on current soil conditions |
+| `mulchPct` / `plowPct` / `needsRollingPct` / `fertPct` / `limePct` / `weedPct` / `stonePct` | number | Soil condition values 0–100 |
+| `seedLph` / `seedTotal` | number\|null | Seed requirement in l/ha and total litres |
+| `matLimeLph` / `matLimeTotal` | number\|null | Lime requirement in l/ha and total litres |
+| `matFertLph` / `matFertTotal` | number\|null | Fertiliser requirement in l/ha and total litres |
+| `matHerbLph` / `matHerbTotal` | number\|null | Herbicide requirement in l/ha and total litres |
+
+Unowned fields only carry `id`, `farmlandId`, `owned: false`, `cx`, `cz`, `polygon` and `area`.
+
+#### autoDriveMarkers.json
+```json
+{
+  "savegameId": "MapUS_2026-02-15",
+  "markers": [
+    { "id": 22, "name": "Wald 107", "group": "Wälder" },
+    { "id":  1, "name": "Haupthof", "group": "Höfe" }
+  ],
+  "groups": ["Alle", "Höfe", "Wälder"]
+}
+```
+
+`id` is the `markerIndex` that AutoDrive's `setFirstMarker()` accepts. Only present when AutoDrive is installed. Updated incrementally every 60 s — only re-exported when new markers are detected.
+
+#### fillTypes.json
+```json
+{
+  "savegameId": "MapUS_2026-02-15",
+  "fillTypes": [
+    {
+      "name": "WHEAT",
+      "title": "Weizen",
+      "hudOverlayFilename": "dataS/menu/hud/fillTypes/hud_fill_wheat.png"
+    }
+  ]
+}
+```
+
+Icon paths use two formats: base-game icons are relative to the FS25 installation directory (`dataS/…`); mod icons are absolute paths to the mod folder.
+
+#### animalFood.json
+```json
+{
+  "savegameId": "MapUS_2026-02-15",
+  "animalFood": {
+    "PIG": {
+      "consumptionType": "PARALLEL",
+      "groups": [
+        { "title": "Mais Sorghum",                 "productionWeight": 0.5,  "eatWeight": 0.5,  "fillTypes": ["CORN", "SORGHUM"] },
+        { "title": "Weizen Gerste Hafer",          "productionWeight": 0.25, "eatWeight": 0.25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
+        { "title": "Sojabohnen Raps Sonnenblumen", "productionWeight": 0.2,  "eatWeight": 0.2,  "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
+        { "title": "Kartoffeln Zuckerrüben …",     "productionWeight": 0.05, "eatWeight": 0.05, "fillTypes": ["POTATO", "SUGARBEET"] }
+      ]
+    },
+    "COW": {
+      "consumptionType": "SERIAL",
+      "groups": [
+        { "title": "TMR",  "productionWeight": 1.0, "eatWeight": 1.0, "fillTypes": ["FORAGE_MIXING"] },
+        { "title": "Heu",  "productionWeight": 0.8, "eatWeight": 1.0, "fillTypes": ["DRYGRASS_WINDROW"] },
+        { "title": "Gras", "productionWeight": 0.4, "eatWeight": 1.0, "fillTypes": ["GRASS_WINDROW"] }
+      ]
+    }
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `consumptionType` | `PARALLEL` — all groups consumed simultaneously (e.g. pigs); `SERIAL` — groups are alternatives, best available is used (e.g. cows) |
+| `productionWeight` | Productivity factor this group provides (0–1). For `PARALLEL` types: also the share of total consumption |
+| `eatWeight` | Consumption share for `PARALLEL` animals (0–1, all groups sum to 1). Used to scale alert thresholds so minor components don't trigger false alarms |
+| `fillTypes` | Fill type identifiers accepted by this group |
+
+#### Metadata files
+
+These files are written once per session and contain static data that does not change while a map is loaded.
+
+| File | Content |
+|---|---|
+| `mapMeta.json` | Map name, terrain size in metres, path to the overview DDS image and savegame directory — used by the server to locate and decode the map background |
+| `fieldMeta.json` | Maximum density map values for all soil layers (`sprayLevelMax`, `limeLevelMax`, `plowLevelMax`, …) — used to normalise soil readings in the Map view |
+| `hotspots.json` | All map hotspots with name, type and world coordinates (`x`, `z`) |
+| `fruitTypes.json` | All fruit types with growth stage definitions, harvest stages, forage stages, yield per m² and seed usage per m² |
+| `vehicleCategories.json` | Shop vehicle categories with display name and sort order — used to populate the category filter in the Fleet view |
+| `vehicleMeta.json` | Static vehicle metadata updated every 10 s: brand, shop category, purchase price, ownership type (owned / leased), age, engine power (kW), working width, vehicle colours (hex) |
+| `modInfo.json` | FarmMonitor version and savegame ID — used by the server to detect version mismatches |
+| `layer_*.json` | Full-map soil density grids written incrementally (a few rows per frame). One file per layer: `weed`, `stone`, `plow`, `spray`, `lime`, `mulch`, `roller` — used for the soil overlay in the Map view |
 
 ## What it exports
 
@@ -152,13 +465,18 @@ All files are written to the modSettings directory:
 | `vehicleCategories.json` | All shop vehicle categories with display name and sort order — used to populate the category filter in the Fleet view |
 | `modInfo.json` | FarmMonitor version and savegame ID — used by the server to detect version mismatches |
 
+## Installation
+
+1. Copy the `FS25_FarmMonitor` folder into your FS25 mods directory:
+   - **macOS:** `~/Library/Application Support/FarmingSimulator2025/mods/`
+   - **Windows:** `Documents/My Games/FarmingSimulator2025/mods/`
+2. Enable the mod in the in-game mod manager.
+3. Load a savegame — the JSON files appear in the modSettings folder within the first few seconds.
+4. Download and start the dashboard server (see below).
+
 ## Dashboard
 
-The dashboard is a single-page app served by a small Go binary (`farmmonitor`). It connects to the server via Server-Sent Events and re-renders automatically whenever the mod writes new data (~every 10 s).
-
-The server automatically detects the JSON data directory from the FS25 modSettings folder — no need to run it from a specific location.
-
-### Start — Download (empfohlen)
+### Start — Download (recommended)
 
 Download the latest binary for your OS from the [Releases page](https://github.com/Cypris2010/FS25_FarmMonitor/releases):
 
@@ -207,206 +525,15 @@ Open **http://localhost:8080** in a browser.
 ./farmmonitor -data /custom/path/to/json/files
 ```
 
-### Navigation
-
-| View | Description |
-|---|---|
-| Overview | KPI tiles (silo count, active productions, stall count, open alerts) and a prioritised alert list |
-| Silos | Fill-level bars for every silo, silo extension, bunker silo, bale/pallet storage and manure heap; filterable by type |
-| Productions | Input/output bars and chain status (running / inactive / stopped) per production point; click inputs to jump to Goods |
-| Animals | Per-stall cards with occupancy, food groups (smart-weighted), water, straw, health and outputs |
-| Goods | Stock per fill type across all storages, with current and max prices, price trend indicator and best selling month |
-| Fields | Per-field growth bar, projected yield, soil condition bars, interactive seed calculator, and material need estimates |
-| Fleet | Fleet cards with speed, fuel, damage and driver; detail panel with implements and AutoDrive / Courseplay control |
-| Map | Interactive map with field outlines, hotspot pins and live vehicle positions; zoom, pan and touch support |
-| Alerts | Consolidated list of all active warnings and critical states across all categories |
-| Settings | Configure alert thresholds for inputs, outputs and occupancy; toggle placeable visibility per savegame |
-
 ### Editing the dashboard view
 
-Each section (Silos, Productions, Tierställe) has an **„Ansicht bearbeiten"** button in the top-right corner of the section header.
+Each section (Silos, Productions, Animals) has an **"Edit view"** button in the top-right corner of the section header.
 
 - **Normal mode** — hidden placeables are not shown
 - **Edit mode** — all placeables are shown; a green eye means visible, a grey crossed-out eye means hidden; hidden cards are dimmed
 - Clicking the eye icon on any card toggles its visibility immediately and saves the setting to the server
 
 Settings are stored per savegame (identified by `savegameId`) so hiding a silo on one map does not affect other savegames.
-
-## Server settings storage
-
-The server persists two kinds of settings using the platform config directory:
-
-| Kind | API | File location |
-|---|---|---|
-| Global dashboard settings | `GET/PUT /api/settings` | `<configDir>/FS25_FarmMonitor/settings.json` |
-| Per-savegame placeable visibility | `GET/PUT /api/savegame/{savegameId}` | `<configDir>/FS25_FarmMonitor/savegames/<hash>.json` |
-
-Platform config directories:
-- **macOS:** `~/Library/Application Support/`
-- **Windows:** `%APPDATA%\`
-- **Linux:** `~/.config/`
-
-## Installation
-
-1. Copy the `FS25_FarmMonitor` folder into your FS25 mods directory:
-   - **macOS:** `~/Library/Application Support/FarmingSimulator2025/mods/`
-   - **Windows:** `Documents/My Games/FarmingSimulator2025/mods/`
-2. Enable the mod in the in-game mod manager.
-3. Load a savegame — the JSON files appear in the modSettings folder within the first few seconds.
-4. Build and start the dashboard server from the `Server` folder (see above).
-
-## JSON structure
-
-### silos.json
-```json
-{
-  "timestamp": "2026-05-03T22:49:23",
-  "farmId": 1,
-  "savegame": "Mein Hof",
-  "savegameId": "MapUS_2026-02-15",
-  "silos": [
-    {
-      "uniqueId": "abc-123",
-      "name": "Grosses Silo",
-      "type": "silo",
-      "capacity": 200000,
-      "contents": [
-        { "fillType": "WHEAT", "title": "Weizen", "level": 45000 }
-      ]
-    }
-  ]
-}
-```
-
-### productions.json
-```json
-{
-  "timestamp": "2026-05-03T22:49:23",
-  "farmId": 1,
-  "savegame": "Mein Hof",
-  "savegameId": "MapUS_2026-02-15",
-  "productions": [
-    {
-      "uniqueId": "def-456",
-      "name": "Bäckerei",
-      "inputs":  [ { "fillType": "WHEAT", "title": "Weizen", "level": 1200, "capacity": 5000 } ],
-      "outputs": [ { "fillType": "BREAD", "title": "Brot",   "level":  300, "capacity": 1000 } ],
-      "productions": [
-        { "id": "bread", "name": "Brot backen", "status": "running", "cyclesPerMonth": 12 }
-      ]
-    }
-  ]
-}
-```
-
-### husbandries.json
-```json
-{
-  "timestamp": "2026-05-03T22:49:23",
-  "farmId": 1,
-  "savegame": "Mein Hof",
-  "savegameId": "MapUS_2026-02-15",
-  "husbandries": [
-    {
-      "uniqueId": "ghi-789",
-      "name": "Kuhstall",
-      "animalType": "COW",
-      "numAnimals": 24,
-      "maxAnimals": 30,
-      "food":      [ { "title": "Mischration", "value": 800, "capacity": 1000 } ],
-      "foodTotal": { "value": 800, "capacity": 1000, "ratio": 0.8 },
-      "water":     { "value": 600, "capacity": 1000 },
-      "straw":     { "value": 400, "capacity": 1000 },
-      "health":    92,
-      "outputs": [
-        { "fillType": "MILK",   "title": "Milch", "level": 4200, "capacity": 10000 },
-        { "fillType": "MANURE", "title": "Mist",  "level":  800, "capacity":  5000 }
-      ]
-    }
-  ]
-}
-```
-
-Field reference:
-
-| Field | Type | Description |
-|---|---|---|
-| `uniqueId` | string | Persistent placeable ID from the savegame |
-| `name` | string | Placeable name set by the player |
-| `animalType` | string | Animal type identifier (e.g. `COW`, `PIG`) or `"unknown"` |
-| `numAnimals` | number | Current animal count |
-| `maxAnimals` | number | Maximum capacity |
-| `food` | array | Food trough entries with `title`, `value` and `capacity` per group |
-| `foodTotal` | object\|null | Combined food level `{ value, capacity, ratio }` — `null` if stall has no food trough |
-| `water` | object\|null | Water level `{ value, capacity }` — `null` if stall has no water trough |
-| `straw` | object\|null | Straw bedding level `{ value, capacity }` — `null` if stall uses no straw |
-| `health` | number\|null | Average animal health 0–100 — `null` if no animals are present |
-| `outputs` | array | Output storage entries with `fillType`, `title`, `level` and `capacity` |
-
-### fillTypes.json
-```json
-{
-  "savegameId": "MapUS_2026-02-15",
-  "fillTypes": [
-    {
-      "name": "WHEAT",
-      "title": "Weizen",
-      "hudOverlayFilename": "dataS/menu/hud/fillTypes/hud_fill_wheat.png"
-    }
-  ]
-}
-```
-
-Icon paths use two formats depending on their origin:
-- **Base game:** `dataS/menu/hud/fillTypes/...` — relative to the FS25 installation directory
-- **Mods:** absolute path to the mod folder
-
-### animalFood.json
-```json
-{
-  "savegameId": "MapUS_2026-02-15",
-  "animalFood": {
-    "PIG": {
-      "consumptionType": "PARALLEL",
-      "groups": [
-        { "title": "Mais Sorghum",                 "productionWeight": 0.5,  "eatWeight": 0.5,  "fillTypes": ["CORN", "SORGHUM"] },
-        { "title": "Weizen Gerste Hafer",          "productionWeight": 0.25, "eatWeight": 0.25, "fillTypes": ["WHEAT", "BARLEY", "OAT"] },
-        { "title": "Sojabohnen Raps Sonnenblumen", "productionWeight": 0.2,  "eatWeight": 0.2,  "fillTypes": ["SOYBEAN", "CANOLA", "SUNFLOWER"] },
-        { "title": "Kartoffeln Zuckerrüben …",     "productionWeight": 0.05, "eatWeight": 0.05, "fillTypes": ["POTATO", "SUGARBEET"] }
-      ]
-    },
-    "COW": {
-      "consumptionType": "SERIAL",
-      "groups": [
-        { "title": "TMR",  "productionWeight": 1.0, "eatWeight": 1.0, "fillTypes": ["FORAGE_MIXING"] },
-        { "title": "Heu",  "productionWeight": 0.8, "eatWeight": 1.0, "fillTypes": ["DRYGRASS_WINDROW"] },
-        { "title": "Gras", "productionWeight": 0.4, "eatWeight": 1.0, "fillTypes": ["GRASS_WINDROW"] }
-      ]
-    }
-  }
-}
-```
-
-One entry per animal type.
-
-| Field | Description |
-|---|---|
-| `consumptionType` | `PARALLEL` — all groups consumed simultaneously (e.g. pigs); `SERIAL` — groups are alternatives, best available is used (e.g. cows) |
-| `productionWeight` | Productivity factor this group provides (0–1). For `PARALLEL`: also the share of total consumption |
-| `eatWeight` | Consumption share for `PARALLEL` animals (0–1, all groups sum to 1). Used to scale alert thresholds so minor components don't trigger false alarms |
-| `fillTypes` | Fill type identifiers accepted by this group |
-
-### savegameId
-
-All five JSON files include a `savegameId` field composed of `mapId + "_" + creationDate` (e.g. `MapUS_2026-02-15`). This uniquely identifies the active savegame and is used by the dashboard server to scope visibility settings per save.
-
-## Notes
-
-- Multiplayer is supported — each player runs the mod locally and sees their own farm's data. Dedicated servers (no local player) are not supported.
-- The JSON files are gitignored and not part of this repository — they are generated at runtime.
-- `fillTypes.json` and `animalFood.json` are written once per session since their definitions do not change while a map is loaded.
-- Lua serialises empty arrays as `{}` (empty object) rather than `[]`. The dashboard handles this transparently.
-- The dashboard server can be started from any directory — it automatically locates the JSON files in the modSettings folder. Use `-data` to override the path manually.
 
 ## Credits
 
