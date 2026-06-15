@@ -472,7 +472,7 @@ Food group recipes per animal type: consumption type (serial / parallel), fill t
 
 ## Dashboard
 
-### Start — Download (recommended)
+### Download
 
 Download the latest binary for your OS from the [Releases page](https://github.com/Cypris2010/FS25_FarmMonitor/releases):
 
@@ -482,31 +482,27 @@ Download the latest binary for your OS from the [Releases page](https://github.c
 | macOS (Intel) | `farmmonitor-macos-intel` |
 | Windows | `farmmonitor-windows.exe` |
 
-**macOS:** Make the file executable before running:
+### Run on macOS
+
+Make the file executable, then start it:
+
 ```bash
 chmod +x farmmonitor-macos-apple
 ./farmmonitor-macos-apple
 ```
 
-> **Note:** macOS may block the binary on first launch. Go to **System Settings → Privacy & Security** and click **Allow Anyway**, or run:
+> **macOS security warning:** Because the binary is not signed with an Apple developer certificate, macOS will block it on first launch with a message like *"farmmonitor-macos-apple cannot be opened because it is from an unidentified developer."*
+>
+> To allow it, open **System Settings → Privacy & Security**, scroll down to the blocked app and click **Allow Anyway**. Alternatively, remove the quarantine flag from the terminal:
 > ```bash
 > xattr -d com.apple.quarantine farmmonitor-macos-apple
 > ```
 
-**Windows:** Double-click `farmmonitor-windows.exe` or run it from the terminal.
+### Run on Windows
 
-### Start — Build from source (optional)
+Double-click `farmmonitor-windows.exe` or run it from a terminal.
 
-Requires [Go 1.22+](https://go.dev/dl/) to be installed.
-
-```bash
-cd path/to/FS25_FarmMonitor/Server
-go build -o farmmonitor      # macOS / Linux
-go build -o farmmonitor.exe  # Windows
-./farmmonitor
-```
-
-Open **http://localhost:8080** in a browser.
+> **Windows security warning:** Windows SmartScreen may block the binary on first launch with a message like *"Windows protected your PC."* Click **More info** and then **Run anyway** to proceed.
 
 ### Options
 
@@ -519,6 +515,19 @@ Open **http://localhost:8080** in a browser.
 ```bash
 ./farmmonitor -host 0.0.0.0 -port 9000
 ./farmmonitor -data /custom/path/to/json/files
+```
+
+Open **http://localhost:8080** in a browser.
+
+### Build from source (optional)
+
+If you prefer to compile the binary yourself, you need [Go 1.22+](https://go.dev/dl/) installed.
+
+```bash
+cd path/to/FS25_FarmMonitor/Server
+go build -o farmmonitor      # macOS / Linux
+go build -o farmmonitor.exe  # Windows
+./farmmonitor
 ```
 
 ## Credits
