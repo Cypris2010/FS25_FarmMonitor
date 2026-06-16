@@ -1,13 +1,16 @@
 {
   "nav": {
-    "silos": "Silos",
-    "productions": "Produktionen",
-    "husbandries": "Tierhaltung",
-    "goods": "Waren",
-    "fields": "Felder",
+    "mainNav": "Hauptnavigation",
+    "mobileNav": "Mobile Navigation",
+    "home": "Übersicht",
     "fleet": "Fahrzeuge",
     "map": "Karte",
-    "alerts": "Alerts",
+    "fields": "Felder",
+    "productions": "Produktionen",
+    "husbandries": "Tierställe",
+    "goods": "Warenübersicht",
+    "silos": "Silos",
+    "alerts": "Warnungen",
     "settings": "Einstellungen"
   },
   "settings": {

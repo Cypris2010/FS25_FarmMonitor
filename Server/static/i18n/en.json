@@ -1,12 +1,15 @@
 {
   "nav": {
-    "silos": "Silos",
+    "mainNav": "Main Navigation",
+    "mobileNav": "Mobile Navigation",
+    "home": "Overview",
+    "fleet": "Fleet",
+    "map": "Map",
+    "fields": "Fields",
     "productions": "Productions",
     "husbandries": "Livestock",
     "goods": "Goods",
-    "fields": "Fields",
-    "fleet": "Fleet",
-    "map": "Map",
+    "silos": "Silos",
     "alerts": "Alerts",
     "settings": "Settings"
   },
