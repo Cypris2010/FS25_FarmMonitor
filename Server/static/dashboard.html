@@ -2732,7 +2732,7 @@
             <button class="filter-btn" data-silo-filter="pallets">Paletten</button>
             <button class="edit-mode-btn" id="edit-btn-silos" onclick="toggleEditMode()" aria-pressed="false">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
-              Ansicht bearbeiten
+              <span data-i18n-text="common.editView">Ansicht bearbeiten</span>
             </button>
           </div>
         </div>
@@ -2760,7 +2760,7 @@
           </div>
           <button class="edit-mode-btn" id="edit-btn-productions" onclick="toggleEditMode()" aria-pressed="false">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
-            Ansicht bearbeiten
+            <span data-i18n-text="common.editView">Ansicht bearbeiten</span>
           </button>
         </div>
         <div class="prod-layout">
@@ -2781,20 +2781,20 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Tierställe</h2>
-              <p>Versorgung, Belegung und Outputs deiner Ställe</p>
+              <h2 data-i18n-text="nav.husbandries">Tierställe</h2>
+              <p data-i18n-text="husbandries.subtitle">Versorgung, Belegung und Outputs deiner Ställe</p>
             </div>
           </div>
           <div class="filters" role="group" aria-label="Filter">
-            <button class="filter-btn active" data-filter="all">Alle</button>
-            <button class="filter-btn" data-filter="crit">Kritisch</button>
-            <button class="filter-btn" data-filter="warn">Warnungen</button>
-            <select class="filter-btn" id="animal-type-filter" aria-label="Nach Tierart filtern">
-              <option value="all">Alle Tierarten ▾</option>
+            <button class="filter-btn active" data-filter="all" data-i18n-text="husbandries.filterAll">Alle</button>
+            <button class="filter-btn" data-filter="crit" data-i18n-text="husbandries.filterCrit">Kritisch</button>
+            <button class="filter-btn" data-filter="warn" data-i18n-text="husbandries.filterWarn">Warnungen</button>
+            <select class="filter-btn" id="animal-type-filter" data-i18n-label="husbandries.filterByType" aria-label="Nach Tierart filtern">
+              <option value="all" data-i18n-text="husbandries.allTypes">Alle Tierarten ▾</option>
             </select>
             <button class="edit-mode-btn" id="edit-btn-husbandries" onclick="toggleEditMode()" aria-pressed="false">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
-              Ansicht bearbeiten
+              <span data-i18n-text="common.editView">Ansicht bearbeiten</span>
             </button>
           </div>
         </div>
@@ -2808,7 +2808,7 @@
           <div class="animal-grid" id="husbandries-content">
             <div class="state-box" style="grid-column:1/-1">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
-              <strong>Lade Tierställe …</strong>
+              <strong data-i18n-text="husbandries.loading">Lade Tierställe …</strong>
             </div>
           </div>
         </div>
@@ -2908,7 +2908,7 @@
             </div>
             <button class="edit-mode-btn" id="edit-btn-fields" onclick="toggleEditMode()" aria-pressed="false">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
-              <span data-i18n-text="fields.editView">Ansicht bearbeiten</span>
+              <span data-i18n-text="common.editView">Ansicht bearbeiten</span>
             </button>
           </div>
         </div>
@@ -2951,7 +2951,7 @@
                   <option value="fuel20">Kraftstoff &lt;20%</option>
                   <option value="fuel40">Kraftstoff &lt;40%</option>
                 </select>
-                <button class="fleet-settings-btn" onclick="openFleetSettings()" title="Anzeigeoptionen">
+                <button class="fleet-settings-btn" onclick="openFleetSettings()" data-i18n-title="common.displayOptions" title="Anzeigeoptionen">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                   Anzeige
                 </button>
@@ -3021,9 +3021,9 @@
       </div>
 
       <div class="map-controls">
-        <button class="map-btn" id="map-zoom-in"  title="Rein">+</button>
-        <button class="map-btn" id="map-zoom-out" title="Raus">−</button>
-        <button class="map-btn" id="map-center"   title="Zentrieren">⌖</button>
+        <button class="map-btn" id="map-zoom-in"  data-i18n-title="map.zoomIn" title="Rein">+</button>
+        <button class="map-btn" id="map-zoom-out" data-i18n-title="map.zoomOut" title="Raus">−</button>
+        <button class="map-btn" id="map-center"   data-i18n-title="map.center" title="Zentrieren">⌖</button>
       </div>
       <div class="map-legend">
         <label class="legend-section-title"><input type="checkbox" checked onchange="document.getElementById('layer-fields').classList.toggle('no-fill',!this.checked)"> Felder</label>
@@ -3042,7 +3042,7 @@
         <div class="legend-section-title">Bodenlayer</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:0 2px">
           <span style="font-size:11px;color:#9ca3af;flex:1">Scan:</span>
-          <button id="soil-scan-mode-btn" onclick="_toggleSoilScanMode()" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#d1d5db;cursor:pointer" title="Umschalten: nur eigene Felder / alle Felder">eigene Felder</button>
+          <button id="soil-scan-mode-btn" onclick="_toggleSoilScanMode()" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#d1d5db;cursor:pointer" data-i18n-title="map.toggleScanMode" title="Umschalten: nur eigene Felder / alle Felder">eigene Felder</button>
         </div>
         <div id="soil-layer-legend" style="display:contents"></div>
       </div>
@@ -3052,7 +3052,7 @@
       <div id="map-detail-panel" class="mdp">
         <div class="mdp-header">
           <span class="mdp-title" id="mdp-title">—</span>
-          <button class="mdp-close" onclick="closeMapDetail()" title="Schließen">×</button>
+          <button class="mdp-close" onclick="closeMapDetail()" data-i18n-title="common.close" title="Schließen">×</button>
         </div>
         <div class="mdp-body" id="mdp-body"></div>
       </div>
@@ -3177,6 +3177,11 @@ function applyI18nLabels() {
     const val = t(key);
     if (val && val !== key) el.textContent = val;
   });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const val = t(key);
+    if (val && val !== key) el.setAttribute('title', val);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3241,7 +3246,7 @@ function barClass(p, isOutput, w = 1) {
 function metricRow(label, val, cap, colorClass, goodFillType, badge = '') {
   const p = pct(val, cap);
   const labelEl = goodFillType
-    ? `<span class="metric-good-link" onclick="goToGood('${goodFillType}')" title="In Warenübersicht anzeigen">${label}</span>`
+    ? `<span class="metric-good-link" onclick="goToGood('${goodFillType}')" title="${t('common.showInGoods')}">${label}</span>`
     : `<span>${label}</span>`;
   return `
     <div class="metric${badge ? ' has-badge' : ''}">
@@ -3303,7 +3308,7 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
       <button class="spawn-btn" onclick="spawnPallets('${ppUniqueId}','${fillType}',${spawnOpts.max})">${t('productions.outputModeKeep')}</button>
     </div>` : '';
   pop.innerHTML = `
-    <div class="pop-header">${ftTitle}<button class="pop-close" onclick="_popoverClose && _popoverClose()" title="Schließen">✕</button></div>
+    <div class="pop-header">${ftTitle}<button class="pop-close" onclick="_popoverClose && _popoverClose()" title="${t('common.close')}">✕</button></div>
     <div class="pop-columns">
       <div class="pop-body">
         <div class="pop-col-label">Ausgangsmodus</div>
@@ -3485,7 +3490,7 @@ function openOutputModeModal(fillType, title) {
 
   // Checkboxes
   document.getElementById('omm-productions').innerHTML = prodLocs.map(l => {
-    const modeIcon = `<span class="output-mode-badge ${OUTPUT_MODE_COLOR[l.outputMode] ?? ''}" title="${OUTPUT_MODE_LABEL[l.outputMode] ?? l.outputMode}" style="font-size:14px"><i class="ti ${OUTPUT_MODE_ICON[l.outputMode] ?? ''}"></i></span>`;
+    const modeIcon = `<span class="output-mode-badge ${OUTPUT_MODE_COLOR[l.outputMode] ?? ''}" title="${outputModeLabel(l.outputMode)}" style="font-size:14px"><i class="ti ${OUTPUT_MODE_ICON[l.outputMode] ?? ''}"></i></span>`;
     const uid = (l.ppUniqueId || '').replace(/'/g, "\\'");
     const ft  = (l.fillType  || '').replace(/'/g, "\\'");
     return `<label class="omm-check-row">
@@ -3545,18 +3550,10 @@ async function confirmOutputModes() {
   }
 }
 
-const ANIMAL_NAMES = {
-  COW:     'Kühe',
-  PIG:     'Schweine',
-  CHICKEN: 'Hühner',
-  SHEEP:   'Schafe',
-  HORSE:   'Pferde',
-  GOAT:    'Ziegen',
-  BUFFALO: 'Büffel',
-};
-
 function animalName(type) {
-  return ANIMAL_NAMES[type] || type;
+  const key = `husbandries.animalTypes.${type}`;
+  const val = t(key);
+  return (val && val !== key) ? val : (type || '');
 }
 
 // Animal silhouette icons (game-icons.net, delapouite, CC BY 3.0), viewBox 0 0 512 512
@@ -3666,17 +3663,17 @@ function visBtn(uniqueId) {
   const visible = isVisible(uniqueId);
   const eyeOn  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const eyeOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-  return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleVisibility('${uniqueId}')" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
+  return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleVisibility('${uniqueId}')" title="${visible ? t('common.hide') : t('common.show')}">${visible ? eyeOn : eyeOff}</button>`;
 }
 
 const _tpIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>`;
 
 function teleportBtn(uniqueId, x, y, z) {
   if (x != null) {
-    return `<button class="tp-btn" onclick="sendTeleport(null,${x},${y},${z})" title="Teleportieren">${_tpIcon}</button>`;
+    return `<button class="tp-btn" onclick="sendTeleport(null,${x},${y},${z})" title="${t('common.teleport')}">${_tpIcon}</button>`;
   }
   if (!uniqueId) return '';
-  return `<button class="tp-btn" onclick="sendTeleport('${uniqueId}')" title="Teleportieren">${_tpIcon}</button>`;
+  return `<button class="tp-btn" onclick="sendTeleport('${uniqueId}')" title="${t('common.teleport')}">${_tpIcon}</button>`;
 }
 
 async function sendTeleport(uniqueId, x, y, z) {
@@ -3701,7 +3698,7 @@ function visFieldBtn(farmlandId) {
   const visible = isFieldVisible(farmlandId);
   const eyeOn  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const eyeOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-  return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleFieldVisibility(${farmlandId})" title="${visible ? 'Ausblenden' : 'Einblenden'}">${visible ? eyeOn : eyeOff}</button>`;
+  return `<button class="vis-btn ${visible ? 'is-visible' : 'is-hidden'}" onclick="toggleFieldVisibility(${farmlandId})" title="${visible ? t('common.hide') : t('common.show')}">${visible ? eyeOn : eyeOff}</button>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3723,8 +3720,8 @@ function husStatus(h) {
 
     if (h.water && h.water.capacity > 0) {
       const p = pct(h.water.value, h.water.capacity);
-      if (p < crit) { escalate('crit'); hints.push('Wasser kritisch'); }
-      else if (p < warn) { escalate('warn'); hints.push('Wasser niedrig'); }
+      if (p < crit) { escalate('crit'); hints.push(t('husbandries.waterCrit')); }
+      else if (p < warn) { escalate('warn'); hints.push(t('husbandries.waterLow')); }
     }
 
     const animalFoodDef = appData.animalFood?.animalFood?.[h.animalType];
@@ -3733,14 +3730,14 @@ function husStatus(h) {
       if (!f.capacity) return;
       const p = pct(f.value, f.capacity);
       const w = (isParallel && animalFoodDef?.groups?.[i]?.eatWeight) || 1;
-      if (p < crit * w) { escalate('crit'); hints.push('Futter kritisch'); }
-      else if (p < warn * w) { escalate('warn'); hints.push('Futter niedrig'); }
+      if (p < crit * w) { escalate('crit'); hints.push(t('husbandries.foodCrit')); }
+      else if (p < warn * w) { escalate('warn'); hints.push(t('husbandries.foodLow')); }
     });
 
     if (h.straw && h.straw.capacity > 0) {
       const p = pct(h.straw.value, h.straw.capacity);
-      if (p < crit) { escalate('crit'); hints.push('Stroh kritisch'); }
-      else if (p < warn) { escalate('warn'); hints.push('Stroh niedrig'); }
+      if (p < crit) { escalate('crit'); hints.push(t('husbandries.strawCrit')); }
+      else if (p < warn) { escalate('warn'); hints.push(t('husbandries.strawLow')); }
     }
   }
 
@@ -3751,15 +3748,15 @@ function husStatus(h) {
     if (!o.capacity) return;
     const p = pct(o.level, o.capacity);
     const name = o.title || o.fillType;
-    if (p >= outCrit) { escalate('crit'); hints.push(`${name} voll`); }
-    else if (p >= outWarn) { escalate('warn'); hints.push(`${name} fast voll`); }
+    if (p >= outCrit) { escalate('crit'); hints.push(t('husbandries.outputFull', { name })); }
+    else if (p >= outWarn) { escalate('warn'); hints.push(t('husbandries.outputNearFull', { name })); }
   });
 
   // Occupancy
   if (h.maxAnimals > 0) {
     const p = pct(h.numAnimals, h.maxAnimals);
-    if (p >= occWarn) { escalate('warn'); hints.push('Stall voll'); }
-    else if (p >= occWatch) { escalate('watch'); hints.push('Stall fast voll'); }
+    if (p >= occWarn) { escalate('warn'); hints.push(t('husbandries.stallFull')); }
+    else if (p >= occWatch) { escalate('watch'); hints.push(t('husbandries.stallNearFull')); }
   }
 
   const unique = [...new Set(hints)];
@@ -3768,13 +3765,13 @@ function husStatus(h) {
 
 function statusBadge(level) {
   const map = {
-    ok:    { cls: 'green',  label: '✓ OK' },
-    watch: { cls: 'yellow', label: '◉ Beobachten' },
-    warn:  { cls: 'orange', label: '⚠ Warnung' },
-    crit:  { cls: 'red',    label: '⚠ Kritisch' },
+    ok:    { cls: 'green',  key: 'husbandries.statusOk' },
+    watch: { cls: 'yellow', key: 'husbandries.statusWatch' },
+    warn:  { cls: 'orange', key: 'husbandries.statusWarn' },
+    crit:  { cls: 'red',    key: 'husbandries.statusCrit' },
   };
-  const { cls, label } = map[level] || map.ok;
-  return `<span class="badge ${cls}" role="status">${label}</span>`;
+  const { cls, key } = map[level] || map.ok;
+  return `<span class="badge ${cls}" role="status">${t(key)}</span>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3791,42 +3788,42 @@ function renderHusbandryCard(h, idx) {
   if (Array.isArray(h.food) && h.food.length > 0) {
     const animalFoodDef = appData.animalFood?.animalFood?.[h.animalType];
     const isParallel = animalFoodDef?.consumptionType === 'PARALLEL';
-    food = '<div class="sub-label">Futter</div>' +
+    food = `<div class="sub-label">${t('husbandries.food')}</div>` +
       h.food.map((f, i) => {
         const p = pct(f.value, f.capacity);
         const w = (isParallel && animalFoodDef?.groups?.[i]?.eatWeight) || 1;
-        return metricRow(f.title || 'Futter', f.value, f.capacity, barClass(p, false, w));
+        return metricRow(f.title || t('husbandries.food'), f.value, f.capacity, barClass(p, false, w));
       }).join('');
   } else {
-    food = '<div class="sub-label">Futter</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Futterdaten</p>';
+    food = `<div class="sub-label">${t('husbandries.food')}</div><p style="font-size:12px;color:var(--muted);margin:6px 0">${t('husbandries.noFoodData')}</p>`;
   }
 
   let water = '';
   if (h.water) {
     const wp = pct(h.water.value, h.water.capacity);
-    water = '<div class="sub-label">Wasser</div>' +
-      metricRow('Wasser', h.water.value, h.water.capacity, wp < crit ? 'red' : wp < warn ? 'orange' : 'blue');
+    water = `<div class="sub-label">${t('husbandries.water')}</div>` +
+      metricRow(t('husbandries.water'), h.water.value, h.water.capacity, wp < crit ? 'red' : wp < warn ? 'orange' : 'blue');
   } else {
-    water = '<div class="sub-label">Wasser</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Wasserdaten</p>';
+    water = `<div class="sub-label">${t('husbandries.water')}</div><p style="font-size:12px;color:var(--muted);margin:6px 0">${t('husbandries.noWaterData')}</p>`;
   }
 
   let straw = '';
   if (h.straw) {
     const sp = pct(h.straw.value, h.straw.capacity);
-    straw = '<div class="sub-label">Stroh</div>' +
-      metricRow('Stroh', h.straw.value, h.straw.capacity, sp < crit ? 'red' : sp < warn ? 'orange' : 'green');
+    straw = `<div class="sub-label">${t('husbandries.straw')}</div>` +
+      metricRow(t('husbandries.straw'), h.straw.value, h.straw.capacity, sp < crit ? 'red' : sp < warn ? 'orange' : 'green');
   }
 
   let outputs = '';
   if (Array.isArray(h.outputs) && h.outputs.length > 0) {
-    outputs = '<div class="sub-label">Erzeugnisse</div>' +
+    outputs = `<div class="sub-label">${t('husbandries.outputs')}</div>` +
       h.outputs.map(o => {
         const p = pct(o.level, o.capacity);
         const cls = p >= outCrit ? 'red' : p >= outWarn ? 'orange' : 'purple';
         return metricRow(o.title || o.fillType, o.level, o.capacity, cls);
       }).join('');
   } else {
-    outputs = '<div class="sub-label">Erzeugnisse</div><p style="font-size:12px;color:var(--muted);margin:6px 0">Keine Outputs</p>';
+    outputs = `<div class="sub-label">${t('husbandries.outputs')}</div><p style="font-size:12px;color:var(--muted);margin:6px 0">${t('husbandries.noOutputs')}</p>`;
   }
 
   const hintsHtml = hints.length > 0
@@ -3835,15 +3832,15 @@ function renderHusbandryCard(h, idx) {
 
   const occHtml = occPct != null
     ? `<div class="metric" style="margin-bottom:14px">
-         <span>Belegung</span>
+         <span>${t('husbandries.occupancy')}</span>
          <div class="bar ${occColor}"><i style="width:${occPct}%"></i></div>
          <span class="metric-val">${h.numAnimals}/${h.maxAnimals} <small>${occPct}%</small></span>
        </div>`
-    : `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">${h.numAnimals} Tiere</p>`;
+    : `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">${t('husbandries.animalCount', { count: h.numAnimals })}</p>`;
 
   const healthHtml = h.health != null
     ? `<div class="metric" style="margin-bottom:14px">
-         <span>Gesundheit</span>
+         <span>${t('husbandries.health')}</span>
          <div class="bar ${h.health >= 80 ? 'green' : h.health >= 50 ? 'orange' : 'red'}"><i style="width:${h.health}%"></i></div>
          <span class="metric-val">${h.health}%</span>
        </div>`
@@ -3884,8 +3881,8 @@ function renderHusbandries(data) {
   if (!data || !data.husbandries) {
     grid.innerHTML = `<div class="state-box" style="grid-column:1/-1">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
-      <strong>Tierstall-Daten konnten nicht geladen werden</strong>
-      <span>Bitte prüfe, ob der FarmMonitor läuft.</span>
+      <strong>${t('husbandries.noData')}</strong>
+      <span>${t('husbandries.noDataHint')}</span>
     </div>`;
     alertBox.innerHTML = '';
     return;
@@ -3896,8 +3893,8 @@ function renderHusbandries(data) {
   if (all.length === 0) {
     grid.innerHTML = `<div class="state-box" style="grid-column:1/-1">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/></svg>
-      <strong>Keine Tierställe gefunden</strong>
-      <span>Es sind keine Tierställe auf dieser Farm vorhanden.</span>
+      <strong>${t('husbandries.noStalls')}</strong>
+      <span>${t('husbandries.noStallsHint')}</span>
     </div>`;
     alertBox.innerHTML = '';
     return;
@@ -3940,7 +3937,7 @@ function renderHusbandries(data) {
   }
 
   grid.innerHTML = filtered.length === 0
-    ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Tierställe entsprechen dem Filter.</span></div>`
+    ? `<div class="state-box" style="grid-column:1/-1"><span>${t('husbandries.noMatch')}</span></div>`
     : filtered.map((h, idx) => renderHusbandryCard(h, idx)).join('');
 
   // Warning band — based on ALL husbandries, not filtered
@@ -3960,7 +3957,7 @@ function renderHusbandries(data) {
       <div class="warn-band" style="margin-bottom:16px" role="alert">
         <div class="warn-band-title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
-          Aktive Hinweise
+          ${t('husbandries.activeHints')}
         </div>
         ${warnings.map(w => `
           <div class="warn-item">
@@ -3972,7 +3969,7 @@ function renderHusbandries(data) {
     alertBox.innerHTML = `
       <div class="ok-band" style="margin-bottom:16px" role="status">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-        Alle Tierställe sind im grünen Bereich.
+        ${t('husbandries.allOk')}
       </div>`;
   }
 }
@@ -4867,11 +4864,11 @@ function renderGoodCard(g) {
   const locsHtml = locs.length > 0
     ? locs.map(l => {
         const modeIcon = l.sourceType === 'production'
-          ? `<span class="good-loc-mode output-mode-badge ${OUTPUT_MODE_COLOR[l.outputMode] ?? ''}" title="${OUTPUT_MODE_LABEL[l.outputMode] ?? l.outputMode}" data-loc-uid="${l.ppUniqueId}" data-loc-ft="${l.fillType}"><i class="ti ${OUTPUT_MODE_ICON[l.outputMode] ?? ''}"></i></span>`
+          ? `<span class="good-loc-mode output-mode-badge ${OUTPUT_MODE_COLOR[l.outputMode] ?? ''}" title="${outputModeLabel(l.outputMode)}" data-loc-uid="${l.ppUniqueId}" data-loc-ft="${l.fillType}"><i class="ti ${OUTPUT_MODE_ICON[l.outputMode] ?? ''}"></i></span>`
           : '';
         return `
         <div class="good-loc-row">
-          <span class="good-loc-name metric-good-link" onclick="goToStorageLocation('${(l.uniqueId || '').replace(/'/g, "\\'")}')" title="Zum Lagerort navigieren">${l.name}</span>
+          <span class="good-loc-name metric-good-link" onclick="goToStorageLocation('${(l.uniqueId || '').replace(/'/g, "\\'")}')" title="${t('common.navigateToStorage')}">${l.name}</span>
           <span class="good-loc-liters">${fmtLiters(l.liters)}</span>
           ${modeIcon}
         </div>`;
@@ -7687,7 +7684,7 @@ function _renderVehicleDetail(id) {
       ${(statusBadge || nearTag) ? `<div class="vd-status-row">${statusBadge}${nearTag}</div>` : ''}
     </div>
     ${colorSwatch}
-    <button class="vd-close" onclick="closeVehicleDetail()" title="Schließen">✕</button>
+    <button class="vd-close" onclick="closeVehicleDetail()" title="${t('common.close')}">✕</button>
   `;
 
   // ── AutoDrive banner (below header) ─────────────────────────────
@@ -8292,11 +8289,11 @@ function renderVehicleFleet(appData) {
     const isAttached = state && state.rootId && state.rootId !== id;
     let actionBtn = '';
     if (isMotorized) {
-      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleEnter('${id}')" title="Einsteigen">
+      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleEnter('${id}')" title="${t('common.boardVehicle')}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
       </button>`;
     } else if (!isAttached) {
-      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleTeleport('${id}')" title="Hinfahren">
+      actionBtn = `<button class="tp-btn" onclick="event.stopPropagation();sendVehicleTeleport('${id}')" title="${t('common.driveToVehicle')}">
         ${_tpIcon}
       </button>`;
     }
@@ -8708,7 +8705,7 @@ if (window._adIconVer) {
 <div id="output-mode-popover"></div>
 <div id="eject-backdrop"></div>
 <div id="eject-popover">
-  <div class="ep-header"><span id="eject-popover-title" data-i18n-text="productions.outputModeKeep">Auslagern</span><button class="ep-close" onclick="_ejectClose && _ejectClose()" title="Schließen">✕</button></div>
+  <div class="ep-header"><span id="eject-popover-title" data-i18n-text="productions.outputModeKeep">Auslagern</span><button class="ep-close" onclick="_ejectClose && _ejectClose()" data-i18n-title="common.close" title="Schließen">✕</button></div>
   <div class="ep-body">
     <div class="ep-sub" id="eject-popover-sub"></div>
     <div class="ep-controls">
@@ -8725,7 +8722,7 @@ if (window._adIconVer) {
 <div id="omm-modal">
   <div class="omm-header">
     <span class="omm-header-title" id="omm-title"></span>
-    <button class="omm-close" onclick="closeOutputModeModal()" title="Schließen"><i class="ti ti-x"></i></button>
+    <button class="omm-close" onclick="closeOutputModeModal()" data-i18n-title="common.close" title="Schließen"><i class="ti ti-x"></i></button>
   </div>
   <div class="omm-body">
     <div>
