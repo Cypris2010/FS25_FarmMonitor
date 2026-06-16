@@ -25,7 +25,7 @@ Input and output bars for every production chain on your farm, colour-coded by f
 
 Beyond monitoring, you can control your productions directly from the dashboard: change the output mode for any product (auto-store, direct sale, or pallet output) without opening the game, and trigger the immediate ejection of a full pallet for any output — right from the browser. This works for any production building that supports pallet output, including mod productions. Individual production buildings can be hidden via the Edit view button; visibility is saved per savegame.
 
-### Husbandries (Tierställe)
+### Husbandries
 Per-stall cards showing current and maximum occupancy, all food groups with fill levels (with smart weighting for parallel feeders like pigs, where not every group is equally important), water and straw levels, average animal health and all outputs like milk, manure or eggs. Alert status is colour-coded — OK, Watch, Warning or Critical — and thresholds are fully configurable per resource type in the Settings view. Individual stalls can be hidden via the Edit view button; visibility is saved per savegame.
 
 ### Goods
