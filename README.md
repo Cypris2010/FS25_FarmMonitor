@@ -13,6 +13,8 @@ The dashboard updates automatically every few seconds — no refresh needed. All
 ### Overview
 A quick summary of your entire farm at a glance: KPI tiles show how many silos are active, how many production chains are running, how many animal stalls need attention, and how many alerts are currently open. Below the tiles sits a prioritised alert list that surfaces the most urgent issues across all categories — so you always know what needs attention first without having to browse through individual views.
 
+A weather widget shows the current in-game conditions — weather type, temperature, wind speed and direction, rain intensity and ground wetness — alongside an hourly forecast for the next 6 hours and a 7-day daily outlook. The current in-game time and season period are displayed as well.
+
 ### Silos & Storage
 Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left. Individual storage entries can be hidden via the Edit view button; visibility is saved per savegame so hiding a building on one map does not affect other saves.
 
