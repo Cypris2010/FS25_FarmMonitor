@@ -16,5 +16,49 @@
   "settings": {
     "language": "Language",
     "visibility": "Visibility"
+  },
+  "home": {
+    "weatherAria": "Weather",
+    "kpisAria": "Overview",
+    "alertsAria": "Alerts",
+    "storageBuildings": "Storage Buildings",
+    "chainsActive": "Chains Active",
+    "animalCount_one": "{{count}} animal",
+    "animalCount_other": "{{count}} animals",
+    "harvestReady_one": "{{count}} ready",
+    "harvestReady_other": "{{count}} ready",
+    "critical_one": "{{count}} critical",
+    "critical_other": "{{count}} critical",
+    "activeAlerts": "Active Alerts",
+    "badgeCrit": "Critical",
+    "badgeWarn": "Warning"
+  },
+  "weather": {
+    "next6h": "Next 6 Hours",
+    "forecast7d": "7-Day Forecast",
+    "noData": "No Data",
+    "day": "Day {{day}}",
+    "groundMoist": "Ground {{pct}}%",
+    "tomorrow": "Tomorrow",
+    "dayAfterTomorrow": "Day after tomorrow",
+    "inDays_one": "+{{count}} day",
+    "inDays_other": "+{{count}} days",
+    "types": {
+      "SUN": "Sunny",
+      "PARTIALLY_CLOUDY": "Partly Cloudy",
+      "CLOUDY": "Overcast",
+      "RAIN": "Rain",
+      "SNOW": "Snow",
+      "HAIL": "Hail",
+      "THUNDER": "Thunderstorm",
+      "TWISTER": "Tornado"
+    },
+    "months": ["March","April","May","June","July","August","September","October","November","December","January","February"],
+    "seasons": ["Spring","Spring","Summer","Summer","Autumn","Autumn","Winter","Winter"]
+  },
+  "units": {
+    "millionL": "M l",
+    "thousandL": "K l",
+    "liter": "l"
   }
 }

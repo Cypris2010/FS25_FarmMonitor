@@ -2706,9 +2706,9 @@
 
     <!-- View: Home -->
     <div id="view-home" class="view" style="display:none; flex-direction:column; gap:18px;">
-      <section class="panel weather-panel" id="home-weather" aria-label="Wetter" style="display:none"></section>
-      <section class="kpi-row" id="home-kpis" aria-label="Übersicht"></section>
-      <section class="panel alerts-panel" id="home-alerts" aria-label="Warnungen"></section>
+      <section class="panel weather-panel" id="home-weather" aria-label="Wetter" data-i18n-label="home.weatherAria" style="display:none"></section>
+      <section class="kpi-row" id="home-kpis" aria-label="Übersicht" data-i18n-label="home.kpisAria"></section>
+      <section class="panel alerts-panel" id="home-alerts" aria-label="Warnungen" data-i18n-label="home.alertsAria"></section>
     </div>
 
     <!-- View: Silos -->
@@ -4507,13 +4507,14 @@ function weatherDailyNav(dir) {
   renderWeather(appData?.weather);
 }
 
-const WEATHER_LABELS = {
-  SUN: 'Sonnig', PARTIALLY_CLOUDY: 'Leicht bewölkt', CLOUDY: 'Bedeckt',
-  RAIN: 'Regen', SNOW: 'Schnee', HAIL: 'Hagel', THUNDER: 'Gewitter', TWISTER: 'Tornado',
-};
+function weatherTypeLabel(type) {
+  const k = `weather.types.${type}`;
+  const v = t(k);
+  return (v && v !== k) ? v : (type ?? '');
+}
 
-const PERIOD_LABELS = ['Frühling', 'Frühling', 'Sommer', 'Sommer', 'Herbst', 'Herbst', 'Winter', 'Winter'];
-const PERIOD_MONTHS = ['März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember','Januar','Februar'];
+function getPeriodMonths() { return t('weather.months', { returnObjects: true }); }
+function getPeriodSeasons() { return t('weather.seasons', { returnObjects: true }); }
 
 function weatherIcon(type, extraClass = '') {
   const cls = {
@@ -4551,9 +4552,9 @@ function renderWeather(weather) {
   const hourly = Array.isArray(weather.hourly) ? weather.hourly : [];
   const daily  = Array.isArray(weather.daily)  ? weather.daily  : [];
 
-  const periodLabel = gt.period != null ? (PERIOD_MONTHS[gt.period - 1] ?? '') : '';
-  const dayLabel    = gt.dayInPeriod != null ? `Tag ${gt.dayInPeriod}` : '';
-  const timeLabel   = gt.hour != null ? `${String(gt.hour).padStart(2,'0')}:${String(gt.minute ?? 0).padStart(2,'0')} Uhr` : '';
+  const periodLabel = gt.period != null ? (getPeriodMonths()[gt.period - 1] ?? '') : '';
+  const dayLabel    = gt.dayInPeriod != null ? t('weather.day', { day: gt.dayInPeriod }) : '';
+  const timeLabel   = gt.hour != null ? `${String(gt.hour).padStart(2,'0')}:${String(gt.minute ?? 0).padStart(2,'0')}` : '';
 
   const windArrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${cur.windDir ?? 0}deg)"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
   const rainIcon  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="12" y1="21" x2="12" y2="23"/></svg>`;
@@ -4567,11 +4568,11 @@ function renderWeather(weather) {
         <div class="weather-big-icon">${weatherIcon(cur.type)}</div>
         <div class="weather-temp-main">${cur.temperature ?? '–'}°</div>
       </div>
-      <div class="weather-type-label">${WEATHER_LABELS[cur.type] ?? cur.type}</div>
+      <div class="weather-type-label">${weatherTypeLabel(cur.type)}</div>
       <div class="weather-meta-row">
         <span class="weather-meta-item">${windArrow} ${cur.windSpeed ?? '–'} km/h ${cur.windCardinal ?? ''}</span>
         ${cur.isRaining ? `<span class="weather-meta-item">${rainIcon} ${cur.rainScale ?? 0}%</span>` : ''}
-        ${(cur.groundWet ?? 0) > 10 ? `<span class="weather-meta-item">${dropIcon} Boden ${cur.groundWet}%</span>` : ''}
+        ${(cur.groundWet ?? 0) > 10 ? `<span class="weather-meta-item">${dropIcon} ${t('weather.groundMoist', { pct: cur.groundWet })}</span>` : ''}
       </div>
     </div>`;
 
@@ -4585,18 +4586,18 @@ function renderWeather(weather) {
     </div>`).join('');
   const hourlyHtml = `
     <div class="weather-zone">
-      <div class="weather-zone-label">Nächste 6 Stunden</div>
-      <div class="weather-hourly-list">${hourlyItems || '<span style="color:var(--muted);font-size:13px">Keine Daten</span>'}</div>
+      <div class="weather-zone-label">${t('weather.next6h')}</div>
+      <div class="weather-hourly-list">${hourlyItems || `<span style="color:var(--muted);font-size:13px">${t('weather.noData')}</span>`}</div>
     </div>`;
 
   // daily zone — carousel (3 sichtbar, 7 gesamt)
   const DAILY_VISIBLE = 3;
   const dailyOffset = weatherDailyOffset;
-  const REL_LABELS = ['Morgen', 'Übermorgen'];
+  const REL_LABELS = [t('weather.tomorrow'), t('weather.dayAfterTomorrow')];
   const dailyItems = daily.slice(1 + dailyOffset, 1 + dailyOffset + DAILY_VISIBLE).map((d, i) => {
     const absIdx = dailyOffset + i;
-    const relLabel = absIdx < REL_LABELS.length ? REL_LABELS[absIdx] : `+${absIdx + 2} Tage`;
-    const month = d.period != null ? (PERIOD_MONTHS[d.period - 1] ?? '') : '';
+    const relLabel = absIdx < REL_LABELS.length ? REL_LABELS[absIdx] : t('weather.inDays', { count: absIdx + 2 });
+    const month = d.period != null ? (getPeriodMonths()[d.period - 1] ?? '') : '';
     return `
     <div class="weather-daily-item">
       ${weatherIcon(d.type)}
@@ -4613,10 +4614,10 @@ function renderWeather(weather) {
 
   const dailyHtml = `
     <div class="weather-zone">
-      <div class="weather-zone-label">7-Tage-Vorhersage</div>
+      <div class="weather-zone-label">${t('weather.forecast7d')}</div>
       <div class="weather-daily-nav">
         <button class="weather-nav-btn" onclick="weatherDailyNav(-1)" ${canPrev ? '' : 'disabled'}>${chevL}</button>
-        <div class="weather-daily-list">${dailyItems || '<span style="color:var(--muted);font-size:13px">Keine Daten</span>'}</div>
+        <div class="weather-daily-list">${dailyItems || `<span style="color:var(--muted);font-size:13px">${t('weather.noData')}</span>`}</div>
         <button class="weather-nav-btn" onclick="weatherDailyNav(1)" ${canNext ? '' : 'disabled'}>${chevR}</button>
       </div>
     </div>`;
@@ -4645,35 +4646,35 @@ function renderHome(data) {
   kpiEl.innerHTML = `
     <article class="card kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 21V8.5c0-3 2-5.5 5-5.5s5 2.5 5 5.5V21"/><path d="M7 9h10M7 13h10M7 17h10"/><path d="M5 21h14"/></svg></div>
-      <div><div class="kpi-label">Silos</div><div class="kpi-value">${siloCount}</div><div class="kpi-sub">Lagergebäude</div></div>
+      <div><div class="kpi-label">${t('nav.silos')}</div><div class="kpi-value">${siloCount}</div><div class="kpi-sub">${t('home.storageBuildings')}</div></div>
     </article>
     <article class="card kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 21V10l5 3v-3l5 3V7h7v14"/><path d="M6 17h3M12 17h3M18 17h1"/><path d="M16 7V3h3v4"/></svg></div>
-      <div><div class="kpi-label">Produktionen</div><div class="kpi-value">${prodCount}</div><div class="kpi-sub">Ketten aktiv</div></div>
+      <div><div class="kpi-label">${t('nav.productions')}</div><div class="kpi-value">${prodCount}</div><div class="kpi-sub">${t('home.chainsActive')}</div></div>
     </article>
     <article class="card kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 21V9.5L12 3l8 6.5V21"/><path d="M8 21v-7h8v7"/><path d="M9 7.5h6"/><path d="m8 14 8 7M16 14l-8 7"/></svg></div>
-      <div><div class="kpi-label">Tierställe</div><div class="kpi-value">${husCount}</div><div class="kpi-sub">${animals} Tiere</div></div>
+      <div><div class="kpi-label">${t('nav.husbandries')}</div><div class="kpi-value">${husCount}</div><div class="kpi-sub">${t('home.animalCount', { count: animals })}</div></div>
     </article>
     <article class="card kpi-card ${harvestCount > 0 ? 'warning' : ''}">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg></div>
-      <div><div class="kpi-label">Felder</div><div class="kpi-value">${fieldCount}</div><div class="kpi-sub">${harvestCount} erntereif</div></div>
+      <div><div class="kpi-label">${t('nav.fields')}</div><div class="kpi-value">${fieldCount}</div><div class="kpi-sub">${t('home.harvestReady', { count: harvestCount })}</div></div>
     </article>
     <article class="card kpi-card ${alertCount > 0 ? 'warning' : ''}">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg></div>
-      <div><div class="kpi-label">Warnungen</div><div class="kpi-value">${alertCount}</div><div class="kpi-sub">${critCount} kritisch</div></div>
+      <div><div class="kpi-label">${t('nav.alerts')}</div><div class="kpi-value">${alertCount}</div><div class="kpi-sub">${t('home.critical', { count: critCount })}</div></div>
     </article>`;
 
   if (allAlerts.length > 0) {
     alertEl.style.display = '';
     alertEl.innerHTML = `
-      <h2>Aktive Warnungen</h2>
+      <h2>${t('home.activeAlerts')}</h2>
       <div class="alert-list" role="list">
         ${allAlerts.slice(0, 6).map(a => {
           const dot = a.level === 'crit' ? 'red' : 'orange';
           const badge = a.level === 'crit'
-            ? '<span class="badge red alert-badge">Kritisch</span>'
-            : '<span class="badge orange alert-badge">Warnung</span>';
+            ? `<span class="badge red alert-badge">${t('home.badgeCrit')}</span>`
+            : `<span class="badge orange alert-badge">${t('home.badgeWarn')}</span>`;
           return `
             <div class="alert-row">
               <span class="alert-dot ${dot}" aria-hidden="true"></span>
@@ -4700,18 +4701,18 @@ let goodsExpandedSet = new Set();
 let prodInactiveExpanded = new Set();
 let prodChainExpanded = new Set();
 
-const PERIOD_NAMES = [
-  '', 'März', 'April', 'Mai',
-  'Juni', 'Juli', 'August',
-  'September', 'Oktober', 'November',
-  'Dezember', 'Januar', 'Februar'
-];
+function getPeriodName(period) {
+  if (!period) return '';
+  const months = getPeriodMonths();
+  return (Array.isArray(months) ? months[period - 1] : '') ?? '';
+}
 
 function fmtLiters(n) {
   if (n == null) return '—';
-  if (n >= 1e6) return (n / 1e6).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' Mio l';
-  if (n >= 1e3) return (n / 1e3).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + ' Tsd l';
-  return n.toLocaleString('de-DE') + ' l';
+  const locale = getCurrentLang() === 'de' ? 'de-DE' : 'en-US';
+  if (n >= 1e6) return (n / 1e6).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' ' + t('units.millionL');
+  if (n >= 1e3) return (n / 1e3).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + ' ' + t('units.thousandL');
+  return n.toLocaleString(locale) + ' ' + t('units.liter');
 }
 
 function fmtEur(n) {
@@ -4876,7 +4877,7 @@ function renderGoodCard(g) {
       <div class="bar ${pBarCls}"><i style="width:${Math.min(pricePct,100)}%"></i></div>
       <span class="good-pct-label">${pricePct}%</span>
     </div>
-    <div class="good-max-line">Max: ${fmtPrice(g.maxPrice)} · ${PERIOD_NAMES[g.bestPeriod] || '—'}</div>
+    <div class="good-max-line">Max: ${fmtPrice(g.maxPrice)} · ${getPeriodName(g.bestPeriod) || '—'}</div>
   ` : '';
 
   return `
@@ -4884,7 +4885,7 @@ function renderGoodCard(g) {
       id="good-${g.fillType}" aria-label="${g.title}">
       <div class="good-name">
         <span>${g.title}</span>
-        <span class="good-period-hint">${PERIOD_NAMES[g.bestPeriod] || ''}</span>
+        <span class="good-period-hint">${getPeriodName(g.bestPeriod) || ''}</span>
       </div>
       <div class="good-amount">${fmtLiters(g.totalLiters)}</div>
       ${best ? `
