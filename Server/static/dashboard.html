@@ -2895,27 +2895,27 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M3 6c.6 0 1.5.4 2.5.4S8 6 9 6s2 .4 3 .4S14 6 15 6s2 .4 3 .4S20.4 6 21 6"/><path d="M3 12c.6 0 1.5.4 2.5.4S8 12 9 12s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 18c.6 0 1.5.4 2.5.4S8 18 9 18s2 .4 3 .4 2-.4 3-.4 2 .4 3 .4 2.4-.4 3-.4"/><path d="M3 3v18"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Felder</h2>
-              <p>Zustand, Bewuchs und Bodenpflege deiner Felder</p>
+              <h2 data-i18n-text="nav.fields">Felder</h2>
+              <p data-i18n-text="fields.subtitle">Zustand, Bewuchs und Bodenpflege deiner Felder</p>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
             <div class="filters" role="group" aria-label="Filter">
-              <button class="filter-btn active" data-field-filter="all">Alle</button>
-              <button class="filter-btn" data-field-filter="harvest">Erntereif</button>
-              <button class="filter-btn" data-field-filter="attention">Handlungsbedarf</button>
-              <button class="filter-btn" data-field-filter="empty">Leer</button>
+              <button class="filter-btn active" data-field-filter="all" data-i18n-text="fields.filterAll">Alle</button>
+              <button class="filter-btn" data-field-filter="harvest" data-i18n-text="fields.filterHarvest">Erntereif</button>
+              <button class="filter-btn" data-field-filter="attention" data-i18n-text="fields.filterAttention">Handlungsbedarf</button>
+              <button class="filter-btn" data-field-filter="empty" data-i18n-text="fields.filterEmpty">Leer</button>
             </div>
             <button class="edit-mode-btn" id="edit-btn-fields" onclick="toggleEditMode()" aria-pressed="false">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
-              Ansicht bearbeiten
+              <span data-i18n-text="fields.editView">Ansicht bearbeiten</span>
             </button>
           </div>
         </div>
         <div class="fields-layout">
           <div class="fields-quicknav" id="fields-quicknav"></div>
           <div class="fields-grid" id="fields-content">
-            <div class="state-box" style="grid-column:1/-1"><span>Lade Felder …</span></div>
+            <div class="state-box" style="grid-column:1/-1"><span data-i18n-text="fields.loading">Lade Felder …</span></div>
           </div>
         </div>
       </section>
@@ -3171,6 +3171,11 @@ function applyI18nLabels() {
     const key = el.getAttribute('data-i18n-label');
     const val = t(key);
     if (val && val !== key) el.setAttribute('aria-label', val);
+  });
+  document.querySelectorAll('[data-i18n-text]').forEach(el => {
+    const key = el.getAttribute('data-i18n-text');
+    const val = t(key);
+    if (val && val !== key) el.textContent = val;
   });
 }
 
@@ -4188,10 +4193,11 @@ function updateSeedResult(select, fieldId, fieldAreaHa) {
   if (!ft || !ft.seedUsagePerSqm) { el.innerHTML = ''; return; }
   const lph   = ft.seedUsagePerSqm * 10000;
   const total = Math.round(lph * fieldAreaHa);
+  const _sl = getCurrentLang() === 'de' ? 'de-DE' : 'en-US';
   el.innerHTML = `<div class="need-row">
-    <span class="need-label">Saatgut</span>
-    <span class="need-lph">${lph.toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha</span>
-    <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
+    <span class="need-label">${t('fields.needSeed')}</span>
+    <span class="need-lph">${lph.toLocaleString(_sl, {maximumFractionDigits:1})} L/ha</span>
+    <span class="need-total">~${total.toLocaleString(_sl)} L</span>
   </div>`;
 }
 
@@ -4210,7 +4216,7 @@ function renderFields(data) {
   const fields = Array.isArray(data?.fields) ? data.fields : [];
 
   if (fields.length === 0) {
-    el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Keine eigenen Felder gefunden</span></div>';
+    el.innerHTML  = `<div class="state-box" style="grid-column:1/-1"><span>${t('fields.noFields')}</span></div>`;
     nav.innerHTML = '';
     return;
   }
@@ -4225,7 +4231,7 @@ function renderFields(data) {
   });
 
   if (filtered.length === 0) {
-    el.innerHTML  = '<div class="state-box" style="grid-column:1/-1"><span>Kein Feld passt zum Filter</span></div>';
+    el.innerHTML  = `<div class="state-box" style="grid-column:1/-1"><span>${t('fields.noMatch')}</span></div>`;
     nav.innerHTML = '';
     return;
   }
@@ -4257,7 +4263,7 @@ function renderFields(data) {
                  :                'climbing';
     return `<button class="qnav-item" data-idx="${idx}" onclick="scrollToField(${idx})">
       <span class="qnav-dot ${dotClass}"></span>
-      <span>Feld ${f.id}</span>
+      <span>${t('fields.fieldNum', { id: f.id })}</span>
     </button>`;
   }).join('');
 
@@ -4279,10 +4285,10 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
   const _idx = idx ?? f.id;
     // Header badges
     let badges = '';
-    if (f.harvestReady)       badges += '<span class="badge green">Erntereif!</span>';
-    if (f.needsPreparation)   badges += '<span class="badge green">Erntevorbereitung</span>';
-    if (f.withered)           badges += '<span class="badge red">Vertrocknet</span>';
-    if (f.cut)                badges += '<span class="badge gray">Abgeerntet</span>';
+    if (f.harvestReady)       badges += `<span class="badge green">${t('fields.badgeHarvest')}</span>`;
+    if (f.needsPreparation)   badges += `<span class="badge green">${t('fields.badgePrep')}</span>`;
+    if (f.withered)           badges += `<span class="badge red">${t('fields.badgeWithered')}</span>`;
+    if (f.cut)                badges += `<span class="badge gray">${t('fields.badgeCut')}</span>`;
 
     // Growth bar — use minHarvest/maxHarvest for progress
     let cropSection = '';
@@ -4297,20 +4303,21 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
                      : f.cut               ? 'var(--muted)'
                      : barPct > 60         ? 'var(--yellow)'
                      :                       'var(--blue)';
-      const stageLabel = f.harvestReady       ? 'Erntereif'
-                       : f.needsPreparation   ? 'Erntevorbereitung'
-                       : f.withered           ? 'Vertrocknet'
-                       : f.cut                ? 'Abgeerntet'
+      const stageLabel = f.harvestReady       ? t('fields.badgeHarvest')
+                       : f.needsPreparation   ? t('fields.badgePrep')
+                       : f.withered           ? t('fields.badgeWithered')
+                       : f.cut                ? t('fields.badgeCut')
                        : f.growthStage === 0  ? '—'
-                       : `Stufe ${f.growthStage}/${f.maxHarvest}`;
+                       : t('fields.stageLabel', { stage: f.growthStage, max: f.maxHarvest });
       const ft = fruitTypeLookup[f.fruitType];
       const literPerSqm = ft?.literPerSqm ?? 0;
       const fieldAreaM2 = (f.fieldArea || f.area || 0) * 10000;
       const multiplier  = 1 + (f.yieldBonusPct ?? 0) / 100;
       const projLiters  = literPerSqm > 0 ? Math.round(literPerSqm * fieldAreaM2 * multiplier) : null;
 
+      const _locale = getCurrentLang() === 'de' ? 'de-DE' : 'en-US';
       const yieldLine = f.yieldBonusPct != null || projLiters != null
-        ? `<div class="field-yield">${projLiters != null ? `~${projLiters.toLocaleString('de-DE')} L` : ''}${f.yieldBonusPct != null ? `<span style="margin-left:6px;opacity:.7">${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}% Bonus</span>` : ''}</div>`
+        ? `<div class="field-yield">${projLiters != null ? `~${projLiters.toLocaleString(_locale)} L` : ''}${f.yieldBonusPct != null ? `<span style="margin-left:6px;opacity:.7">${f.yieldBonusPct >= 0 ? '+' : ''}${f.yieldBonusPct.toFixed(1)}% ${t('fields.yieldBonus')}</span>` : ''}</div>`
         : '';
       cropSection = `
         <div class="field-crop-row">
@@ -4322,7 +4329,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
         </div>
         ${yieldLine}`;
     } else {
-      cropSection = '<div class="field-crop-row"><span class="field-crop-name" style="color:var(--muted)">Kein Anbau</span></div>';
+      cropSection = `<div class="field-crop-row"><span class="field-crop-name" style="color:var(--muted)">${t('fields.noPlanting')}</span></div>`;
     }
 
     // Soil bars — thin colored bars per soil metric
@@ -4343,30 +4350,31 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
       const done = Math.min(100, Math.max(0, 100 - v));
       const color = done >= 90 ? 'var(--green)' : done >= 50 ? 'var(--yellow)' : 'var(--red)';
       return `<div class="soil-bar-row">
-        <span class="soil-bar-label">Walze</span>
+        <span class="soil-bar-label">${t('fields.soilRoller')}</span>
         <div class="soil-bar-track"><div class="soil-bar-fill" style="width:${done}%;background:${color}"></div></div>
         <span class="soil-bar-pct">${done.toFixed(0)}%</span>
       </div>`;
     }
-    const t = alertThresholds();
+    const thr = alertThresholds();
     const chipsMain = [
-      soilBar('Pflug',  f.plowPct  ?? 0, false, t.fieldPlowWarn,  t.fieldPlowCrit),
-      soilBar('Dünger', f.fertPct  ?? 0, false, t.fieldFertWarn,  t.fieldFertCrit),
-      soilBar('Kalk',   f.limePct  ?? 0, false, t.fieldLimeWarn,  t.fieldLimeCrit),
-      soilBar('Mulch',  f.mulchPct ?? 0, false, t.fieldMulchWarn, t.fieldMulchCrit),
+      soilBar(t('fields.soilPlow'),  f.plowPct  ?? 0, false, thr.fieldPlowWarn,  thr.fieldPlowCrit),
+      soilBar(t('fields.soilFert'),  f.fertPct  ?? 0, false, thr.fieldFertWarn,  thr.fieldFertCrit),
+      soilBar(t('fields.soilLime'),  f.limePct  ?? 0, false, thr.fieldLimeWarn,  thr.fieldLimeCrit),
+      soilBar(t('fields.soilMulch'), f.mulchPct ?? 0, false, thr.fieldMulchWarn, thr.fieldMulchCrit),
       rollBar(),
     ].join('');
     const chipsExtra = [
-      soilBar('Unkraut', f.weedPct  ?? 0, true, t.fieldWeedWarn,  t.fieldWeedCrit),
-      soilBar('Steine',  f.stonePct ?? 0, true, t.fieldStoneWarn, t.fieldStoneCrit),
+      soilBar(t('fields.soilWeed'),  f.weedPct  ?? 0, true, thr.fieldWeedWarn,  thr.fieldWeedCrit),
+      soilBar(t('fields.soilStone'), f.stonePct ?? 0, true, thr.fieldStoneWarn, thr.fieldStoneCrit),
     ].join('');
 
     // Need section: seed selector + missing soil treatments
+    const _needLocale = getCurrentLang() === 'de' ? 'de-DE' : 'en-US';
     function needRow(label, lph, total) {
       return `<div class="need-row">
         <span class="need-label">${label}</span>
-        <span class="need-lph">${lph.toLocaleString('de-DE')} L/ha</span>
-        <span class="need-total">~${total.toLocaleString('de-DE')} L</span>
+        <span class="need-lph">${lph.toLocaleString(_needLocale)} L/ha</span>
+        <span class="need-total">~${total.toLocaleString(_needLocale)} L</span>
       </div>`;
     }
 
@@ -4379,19 +4387,19 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
     const savedSeed = localStorage.getItem(seedKey);
     // localStorage > current fruit on field > empty
     const activeSeed = savedSeed !== null ? savedSeed : (f.fruitType || '');
-    const selectOpts = [`<option value="">Frucht wählen …</option>`]
+    const selectOpts = [`<option value="">${t('fields.needSeedPick')}</option>`]
       .concat(seedableFruits.map(ft =>
         `<option value="${ft.name}" ${ft.name === activeSeed ? 'selected' : ''}>${ft.title || ft.name}</option>`
       )).join('');
     const activeFt = seedableFruits.find(ft => ft.name === activeSeed);
     const savedResultHtml = activeFt
-      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString('de-DE', {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString('de-DE')} L</span>`
+      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString(_needLocale, {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString(_needLocale)} L</span>`
       : '';
     const activeSeedResultHtml = activeFt
-      ? needRow('Saatgut', activeFt.seedUsagePerSqm * 10000, Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa))
+      ? needRow(t('fields.needSeed'), activeFt.seedUsagePerSqm * 10000, Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa))
       : '';
     const seedSelector = `
-      <div class="need-title" style="margin-top:0">Saatgut</div>
+      <div class="need-title" style="margin-top:0">${t('fields.needSeed')}</div>
       <div class="seed-row">
         <select class="seed-select" style="grid-column:1/-1" onchange="updateSeedResult(this,'${f.id}',${fieldAreaHa})">
           ${selectOpts}
@@ -4400,14 +4408,14 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
       <div id="seed-result-${f.id}" style="margin-bottom:6px">${activeSeedResultHtml}</div>`;
 
     const needRows = [];
-    if ((f.limePct ?? 0) < t.fieldLimeWarn && f.matLimeLph != null)
-      needRows.push(needRow('Kalk', f.matLimeLph, f.matLimeTotal));
-    if ((f.fertPct ?? 0) < t.fieldFertWarn && f.matFertLph != null)
-      needRows.push(needRow('Dünger', f.matFertLph, f.matFertTotal));
-    if ((f.weedPct ?? 0) >= t.fieldWeedWarn && f.matHerbLph != null)
-      needRows.push(needRow('Herbizid', f.matHerbLph, f.matHerbTotal));
+    if ((f.limePct ?? 0) < thr.fieldLimeWarn && f.matLimeLph != null)
+      needRows.push(needRow(t('fields.needLime'), f.matLimeLph, f.matLimeTotal));
+    if ((f.fertPct ?? 0) < thr.fieldFertWarn && f.matFertLph != null)
+      needRows.push(needRow(t('fields.needFert'), f.matFertLph, f.matFertTotal));
+    if ((f.weedPct ?? 0) >= thr.fieldWeedWarn && f.matHerbLph != null)
+      needRows.push(needRow(t('fields.needHerb'), f.matHerbLph, f.matHerbTotal));
     const bodenbedarfSection = needRows.length > 0
-      ? `<div class="need-title">Bodenbedarf</div>${needRows.join('')}`
+      ? `<div class="need-title">${t('fields.needSoil')}</div>${needRows.join('')}`
       : '';
     const needSection = `<div class="need-section">${seedSelector}${bodenbedarfSection}</div>`;
 
@@ -4416,13 +4424,13 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
       <article id="field-card-${_idx}" class="card field-card${editMode && fieldHidden ? ' card-edit-hidden' : ''}">
         <div class="field-card-head">
           <div class="field-id-area">
-            <span class="field-num">Feld ${f.id}</span>
-            <span class="field-area-label">Feld ${f.fieldArea || f.area} ha${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">Land ${f.area} ha</span>` : ''}</span>
+            <span class="field-num">${t('fields.fieldNum', { id: f.id })}</span>
+            <span class="field-area-label">${t('fields.fieldArea', { ha: f.fieldArea || f.area })}${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">${t('fields.landArea', { ha: f.area })}</span>` : ''}</span>
           </div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${visFieldBtn(f.farmlandId)}${badges}</div>
         </div>
         ${cropSection}
-        <div class="need-title" style="margin-top:8px">Boden</div>
+        <div class="need-title" style="margin-top:8px">${t('fields.soilTitle')}</div>
         <div class="soil-bars">${chipsMain}</div>
         <div class="soil-bars" style="margin-top:6px">${chipsExtra}</div>
         ${needSection}
@@ -4445,7 +4453,7 @@ function collectAllAlerts(data) {
   (Array.isArray(data.silos?.silos) ? data.silos.silos : []).forEach(s => {
     (Array.isArray(s.contents) ? s.contents : []).forEach(c => {
       const p = pct(c.level, s.capacity);
-      if (p >= 90) alerts.push({ src: s.name, text: `${c.title || c.fillType} fast voll (${p}%)`, level: 'warn' });
+      if (p >= 90) alerts.push({ src: s.name, text: t('alerts.siloNearFull', { fillType: c.title || c.fillType, pct: p }), level: 'warn' });
     });
   });
 
@@ -4454,18 +4462,19 @@ function collectAllAlerts(data) {
     (Array.isArray(pp.inputs) ? pp.inputs : []).forEach(i => {
       if (!i.capacity) return;
       const p = pct(i.level, i.capacity);
-      if (p < 20) alerts.push({ src: pp.name, text: `${i.title || i.fillType} kritisch niedrig (${p}%)`, level: 'crit' });
-      else if (p < 40) alerts.push({ src: pp.name, text: `${i.title || i.fillType} niedrig (${p}%)`, level: 'warn' });
+      if (p < 20) alerts.push({ src: pp.name, text: t('alerts.prodCritLow', { fillType: i.title || i.fillType, pct: p }), level: 'crit' });
+      else if (p < 40) alerts.push({ src: pp.name, text: t('alerts.prodLow', { fillType: i.title || i.fillType, pct: p }), level: 'warn' });
     });
   });
 
   // Fields
   const { fieldWeedWarn: fWW, fieldStoneWarn: fSW } = alertThresholds();
   (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
-    if (f.harvestReady)                  alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntereif (${f.area} ha)`, level: 'warn' });
-    if (f.needsPreparation)              alerts.push({ src: `Feld ${f.id}`, text: `${f.fruitTitle || f.fruitType} erntevorbereitung nötig (${f.area} ha)`, level: 'warn' });
-    if ((f.weedPct  ?? 0) >= fWW)        alerts.push({ src: `Feld ${f.id}`, text: `Unkraut (${(f.weedPct ?? 0).toFixed(0)}%)`, level: 'warn' });
-    if ((f.stonePct ?? 0) >= fSW)        alerts.push({ src: `Feld ${f.id}`, text: `Steine (${(f.stonePct ?? 0).toFixed(0)}%)`, level: 'warn' });
+    const fSrc = t('fields.fieldNum', { id: f.id });
+    if (f.harvestReady)                  alerts.push({ src: fSrc, text: t('alerts.fieldHarvestReady', { fruit: f.fruitTitle || f.fruitType, ha: f.area }), level: 'warn' });
+    if (f.needsPreparation)              alerts.push({ src: fSrc, text: t('alerts.fieldNeedsPrep',    { fruit: f.fruitTitle || f.fruitType, ha: f.area }), level: 'warn' });
+    if ((f.weedPct  ?? 0) >= fWW)        alerts.push({ src: fSrc, text: t('alerts.fieldWeed',  { pct: (f.weedPct  ?? 0).toFixed(0) }), level: 'warn' });
+    if ((f.stonePct ?? 0) >= fSW)        alerts.push({ src: fSrc, text: t('alerts.fieldStone', { pct: (f.stonePct ?? 0).toFixed(0) }), level: 'warn' });
   });
 
   return alerts;
@@ -4478,15 +4487,15 @@ function renderAlerts(data) {
     el.innerHTML = `
       <div class="ok-band" role="status">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-        Keine aktiven Warnungen — alles im grünen Bereich!
+        ${t('alerts.noAlerts')}
       </div>`;
     return;
   }
   const rows = alerts.map(a => {
     const dot = a.level === 'crit' ? 'red' : 'orange';
     const badge = a.level === 'crit'
-      ? '<span class="badge red alert-badge">Kritisch</span>'
-      : '<span class="badge orange alert-badge">Warnung</span>';
+      ? `<span class="badge red alert-badge">${t('home.badgeCrit')}</span>`
+      : `<span class="badge orange alert-badge">${t('home.badgeWarn')}</span>`;
     return `
       <div class="alert-row">
         <span class="alert-dot ${dot}" aria-hidden="true"></span>
@@ -5298,7 +5307,7 @@ function renderSettings() {
       return `
         <div class="placeable-item">
           <div class="placeable-item-info">
-            <div class="placeable-item-name">Feld ${f.id}${f.fruitTitle ? ` — ${f.fruitTitle}` : ''}</div>
+            <div class="placeable-item-name">${t('fields.fieldNum', { id: f.id })}${f.fruitTitle ? ` — ${f.fruitTitle}` : ''}</div>
             <div class="placeable-item-uid">${f.fieldArea || f.area} ha</div>
           </div>
           <label class="toggle" title="${visible ? 'Ausblenden' : 'Einblenden'}">
