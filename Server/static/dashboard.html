@@ -2828,24 +2828,24 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Warenübersicht</h2>
-              <p>Lagerbestände, Verkaufspreise und Empfehlungen</p>
+              <h2 data-i18n-text="nav.goods">Warenübersicht</h2>
+              <p data-i18n-text="goods.subtitle">Lagerbestände, Verkaufspreise und Empfehlungen</p>
             </div>
           </div>
           <div class="goods-controls">
-            <input class="goods-search" type="text" placeholder="Ware suchen …" id="goods-search-input"
+            <input class="goods-search" type="text" placeholder="Ware suchen …" data-i18n-placeholder="goods.search" id="goods-search-input"
               oninput="goodsSearch=this.value; renderGoods(appData?.goods)">
             <select class="filter-btn" id="goods-trend-filter"
               onchange="goodsTrendFilter=this.value; renderGoods(appData?.goods)">
-              <option value="all">Alle Trends</option>
-              <option value="climbing">↑ Steigend</option>
-              <option value="stable">→ Stabil</option>
-              <option value="falling">↓ Fallend</option>
-              <option value="no-station">Keine Station</option>
+              <option value="all" data-i18n-text="goods.filterAllTrends">Alle Trends</option>
+              <option value="climbing" data-i18n-text="goods.filterClimbing">↑ Steigend</option>
+              <option value="stable" data-i18n-text="goods.filterStable">→ Stabil</option>
+              <option value="falling" data-i18n-text="goods.filterFalling">↓ Fallend</option>
+              <option value="no-station" data-i18n-text="goods.filterNoStation">Keine Station</option>
             </select>
             <select class="filter-btn" id="goods-month-filter"
               onchange="goodsMonthFilter=this.value; renderGoods(appData?.goods)">
-              <option value="all">Alle Monate</option>
+              <option value="all" data-i18n-text="goods.filterAllMonths">Alle Monate</option>
               <option value="1">März</option>
               <option value="2">April</option>
               <option value="3">Mai</option>
@@ -2861,10 +2861,10 @@
             </select>
             <select class="filter-btn" id="goods-sort"
               onchange="goodsSort=this.value; renderGoods(appData?.goods)">
-              <option value="name" selected>Nach Name</option>
-              <option value="value">Nach Wert</option>
-              <option value="liters">Nach Menge</option>
-              <option value="month">Nach Monat</option>
+              <option value="name" selected data-i18n-text="goods.sortName">Nach Name</option>
+              <option value="value" data-i18n-text="goods.sortValue">Nach Wert</option>
+              <option value="liters" data-i18n-text="goods.sortLiters">Nach Menge</option>
+              <option value="month" data-i18n-text="goods.sortMonth">Nach Monat</option>
             </select>
             <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)">
               <label class="toggle">
@@ -2872,7 +2872,7 @@
                   onchange="goodsHideWater=this.checked; renderGoods(appData?.goods)">
                 <span class="toggle-slider"></span>
               </label>
-              Wasser ausblenden
+              <span data-i18n-text="goods.hideWater">Wasser ausblenden</span>
             </label>
           </div>
         </div>
@@ -2880,7 +2880,7 @@
         <div class="goods-layout">
           <div class="goods-quicknav" id="goods-quicknav"></div>
           <div class="goods-grid" id="goods-grid">
-            <div class="state-box" style="grid-column:1/-1"><span>Lade Waren …</span></div>
+            <div class="state-box" style="grid-column:1/-1"><span data-i18n-text="goods.loading">Lade Waren …</span></div>
           </div>
         </div>
       </section>
@@ -3182,6 +3182,23 @@ function applyI18nLabels() {
     const val = t(key);
     if (val && val !== key) el.setAttribute('title', val);
   });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const val = t(key);
+    if (val && val !== key) el.setAttribute('placeholder', val);
+  });
+  // Month filter options — reuse weather.months array
+  const monthSel = document.getElementById('goods-month-filter');
+  if (monthSel) {
+    const months = i18next.t('weather.months', { returnObjects: true });
+    if (Array.isArray(months)) {
+      [...monthSel.options].forEach(opt => {
+        if (opt.value === 'all') return;
+        const idx = parseInt(opt.value) - 1;
+        if (months[idx]) opt.textContent = months[idx];
+      });
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4760,17 +4777,17 @@ function trendIcon(trend) {
 }
 
 function goodRecommendation(cls, pricePct) {
-  if (cls === 'no-station')   return { label: 'Keine Verkaufsstelle',      badgeCls: 'gray'   };
-  if (cls === 'great-demand') return { label: '<i class="ti ti-flame"></i> Sondernachfrage!',        badgeCls: 'yellow' };
+  if (cls === 'no-station')   return { label: t('goods.recNoStation'),                                          badgeCls: 'gray'   };
+  if (cls === 'great-demand') return { label: `<i class="ti ti-flame"></i> ${t('goods.recGreatDemand')}`,      badgeCls: 'yellow' };
   if (pricePct >= 95) {
-    if (cls === 'falling')    return { label: '🔥 Jetzt verkaufen!',                                 badgeCls: 'red'    };
-                              return { label: '<i class="ti ti-trending-up"></i> Warten möglich',    badgeCls: 'green'  };
+    if (cls === 'falling')    return { label: `🔥 ${t('goods.recSellNow')}`,                                   badgeCls: 'red'    };
+                              return { label: `<i class="ti ti-trending-up"></i> ${t('goods.recCanWait')}`,    badgeCls: 'green'  };
   }
   if (pricePct >= 70) {
-    if (cls === 'falling')    return { label: '<i class="ti ti-trending-down"></i> Verkaufen prüfen',badgeCls: 'orange' };
-                              return { label: '<i class="ti ti-arrow-right"></i> Beobachten',        badgeCls: 'blue'   };
+    if (cls === 'falling')    return { label: `<i class="ti ti-trending-down"></i> ${t('goods.recCheckSell')}`,badgeCls: 'orange' };
+                              return { label: `<i class="ti ti-arrow-right"></i> ${t('goods.recMonitor')}`,    badgeCls: 'blue'   };
   }
-                              return { label: '⏳ Warten',                  badgeCls: 'blue'   };
+                              return { label: `⏳ ${t('goods.recWait')}`,                                       badgeCls: 'blue'   };
 }
 
 function toggleProdChain(key) {
@@ -4852,11 +4869,11 @@ function renderGoodCard(g) {
       <span class="gsd-price">${fmtPrice(s.price)}</span>
       <span class="gsd-value">${fmtEur(s.value)}</span>
       <span>${trendIcon(s.trend)}</span>
-    </div>`).join('') || '<span style="font-size:12px;color:var(--muted)">Keine Stationen</span>';
+    </div>`).join('') || `<span style="font-size:12px;color:var(--muted)">${t('goods.noStations')}</span>`;
 
   // Diff between best and 2nd
   const diffHtml = stations.length >= 2
-    ? `<div class="good-info-note">Differenz zu nächster Station: ${fmtPrice(stations[0].price - stations[1].price)} = ${fmtEur(stations[0].value - stations[1].value)}</div>`
+    ? `<div class="good-info-note">${t('goods.stationDiff', { price: fmtPrice(stations[0].price - stations[1].price), value: fmtEur(stations[0].value - stations[1].value) })}</div>`
     : '';
 
   // Storage locations
@@ -4875,7 +4892,7 @@ function renderGoodCard(g) {
       }).join('')
     : '<span style="font-size:12px;color:var(--muted)">—</span>';
   const outputModeBtnHtml = hasProductionLocs
-    ? `<button class="good-output-mode-btn" onclick="openOutputModeModal('${g.fillType.replace(/'/g, "\\'")}','${(g.title || g.fillType).replace(/'/g, "\\'")}')"><i class="ti ti-settings-2"></i> Ausgangsmodus wählen</button>`
+    ? `<button class="good-output-mode-btn" onclick="openOutputModeModal('${g.fillType.replace(/'/g, "\\'")}','${(g.title || g.fillType).replace(/'/g, "\\'")}')"><i class="ti ti-settings-2"></i> ${t('goods.setOutputMode')}</button>`
     : '';
 
   // Max price note — bar with inline % label + subtle max/season line
@@ -4903,20 +4920,20 @@ function renderGoodCard(g) {
           <span class="good-price-sub">${fmtEur(bestVal)}</span>
         </div>
         ${maxNoteHtml}
-      ` : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Keine Verkaufsstelle</div>`}
+      ` : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${t('goods.noSellingStation')}</div>`}
       <div class="good-footer">
         <span class="badge ${rec.badgeCls}" style="font-size:11px;padding:3px 8px">${rec.label}</span>
-        <span class="good-station-count">${stations.length > 1 ? stations.length + ' Stationen' : stations.length === 1 ? '1 Station' : ''}</span>
+        <span class="good-station-count">${stations.length > 1 ? t('goods.stationCount', { count: stations.length }) : stations.length === 1 ? t('goods.stationCount', { count: 1 }) : ''}</span>
       </div>
       <div class="good-detail">
         <div>
-          <div class="good-detail-label">Verkaufsstellen (Top 5)</div>
+          <div class="good-detail-label">${t('goods.sellingStations')}</div>
           ${top5Html}
           ${diffHtml}
           ${(() => {
             const usages = goodProductionUsages(g.fillType);
             if (!usages.length) return '';
-            return '<div class="good-detail-label" style="margin-top:12px">Verarbeitung</div>' +
+            return `<div class="good-detail-label" style="margin-top:12px">${t('goods.processing')}</div>` +
               '<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">' +
               usages.map(pp => {
                 const inp = pp.inputs.find(i => i.fillType === g.fillType);
@@ -4932,7 +4949,7 @@ function renderGoodCard(g) {
           })()}
         </div>
         <div>
-          <div class="good-detail-label">Lagerorte</div>
+          <div class="good-detail-label">${t('goods.storageLocations')}</div>
           ${locsHtml}
           ${outputModeBtnHtml}
         </div>
@@ -5039,8 +5056,8 @@ function renderGoods(data) {
   if (goods.length === 0) {
     kpiEl.innerHTML  = '';
     gridEl.innerHTML = `<div class="state-box" style="grid-column:1/-1">
-      <strong>Keine Warendaten</strong>
-      <span>goods.json wurde noch nicht gefunden. FarmMonitor läuft?</span>
+      <strong>${t('goods.noData')}</strong>
+      <span>${t('goods.noDataHint')}</span>
     </div>`;
     return;
   }
@@ -5079,7 +5096,7 @@ function renderGoods(data) {
       return bv - av;
     }
     if (goodsSort === 'liters') return (b.totalLiters || 0) - (a.totalLiters || 0);
-    if (goodsSort === 'name')   return (a.title || '').localeCompare(b.title || '', 'de');
+    if (goodsSort === 'name')   return (a.title || '').localeCompare(b.title || '', getCurrentLang());
     if (goodsSort === 'month')  return (a.bestPeriod || 0) - (b.bestPeriod || 0);
     return 0;
   });
@@ -5097,37 +5114,37 @@ function renderGoods(data) {
 
   kpiEl.innerHTML = `
     <article class="card goods-kpi-tile">
-      <div class="goods-kpi-label">Waren</div>
+      <div class="goods-kpi-label">${t('goods.kpiGoods')}</div>
       <div class="goods-kpi-val">${base.length}</div>
-      <div class="goods-kpi-sub">${noStation > 0 ? noStation + ' ohne Verkaufsstelle' : 'alle verkaufbar'}</div>
+      <div class="goods-kpi-sub">${noStation > 0 ? t('goods.kpiNoStation', { count: noStation }) : t('goods.kpiAllSellable')}</div>
     </article>
     <article class="card goods-kpi-tile">
-      <div class="goods-kpi-label">Gesamtwert aktuell</div>
+      <div class="goods-kpi-label">${t('goods.kpiCurrentValue')}</div>
       <div class="goods-kpi-val" style="font-size:16px">${fmtEur(totalVal)}</div>
-      <div class="goods-kpi-sub">Zum besten Stationspreis</div>
+      <div class="goods-kpi-sub">${t('goods.kpiAtBestPrice')}</div>
     </article>
     <article class="card goods-kpi-tile">
-      <div class="goods-kpi-label">Wertvollste Ware</div>
+      <div class="goods-kpi-label">${t('goods.kpiMostValuable')}</div>
       <div class="goods-kpi-val" style="font-size:15px">${topGood.title || '—'}</div>
       <div class="goods-kpi-sub">${fmtEur(topGood.sellingStations?.[0]?.value)}</div>
     </article>
     <article class="card goods-kpi-tile">
-      <div class="goods-kpi-label">Preistrend</div>
+      <div class="goods-kpi-label">${t('goods.kpiPriceTrend')}</div>
       <div class="goods-kpi-val" style="font-size:17px">
         <span style="color:var(--green)"><i class="ti ti-trending-up"></i>${tUp}</span>
         <span style="color:var(--blue);margin:0 5px"><i class="ti ti-arrow-right"></i>${tFlat}</span>
         <span style="color:var(--orange)"><i class="ti ti-trending-down"></i>${tDown}</span>
       </div>
-      <div class="goods-kpi-sub">Steigend · Stabil · Fallend</div>
+      <div class="goods-kpi-sub">${t('goods.kpiTrendLabel')}</div>
     </article>
     <article class="card goods-kpi-tile">
-      <div class="goods-kpi-label">Max-Gesamtwert</div>
+      <div class="goods-kpi-label">${t('goods.kpiMaxValue')}</div>
       <div class="goods-kpi-val" style="font-size:16px">${fmtEur(maxTotal)}</div>
-      <div class="goods-kpi-sub">Zum Jahreshöchstpreis</div>
+      <div class="goods-kpi-sub">${t('goods.kpiAtMaxPrice')}</div>
     </article>`;
 
   gridEl.innerHTML = filtered.length === 0
-    ? `<div class="state-box" style="grid-column:1/-1"><span>Keine Waren entsprechen dem Filter.</span></div>`
+    ? `<div class="state-box" style="grid-column:1/-1"><span>${t('goods.noMatch')}</span></div>`
     : filtered.map(renderGoodCard).join('');
 
   // Quicknav
