@@ -2754,8 +2754,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M3.5 21V10l5 3v-3l5 3V7h7v14"/><path d="M6 17h3M12 17h3M18 17h1"/><path d="M16 7V3h3v4"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Produktionen</h2>
-              <p>Ein- und Ausgänge deiner Produktionsketten</p>
+              <h2 data-i18n-text="nav.productions">Produktionen</h2>
+              <p data-i18n-text="productions.subtitle">Ein- und Ausgänge deiner Produktionsketten</p>
             </div>
           </div>
           <button class="edit-mode-btn" id="edit-btn-productions" onclick="toggleEditMode()" aria-pressed="false">
@@ -2766,7 +2766,7 @@
         <div class="prod-layout">
           <div class="prod-quicknav" id="prod-quicknav"></div>
           <div class="content-grid" id="productions-content">
-            <div class="state-box"><span>Lade Produktionen …</span></div>
+            <div class="state-box"><span data-i18n-text="productions.loading">Lade Produktionen …</span></div>
           </div>
         </div>
       </section>
@@ -3253,15 +3253,16 @@ function metricRow(label, val, cap, colorClass, goodFillType, badge = '') {
 }
 
 const OUTPUT_MODE_ICON  = { keep: 'ti-arrow-bar-up', sell: 'ti-currency-euro', deliver: 'ti-arrows-move', store: 'ti-arrow-bar-to-down' };
-const OUTPUT_MODE_LABEL = { keep: 'Auslagern', sell: 'Verkauf', deliver: 'Liefern', store: 'Einlagern' };
 const OUTPUT_MODE_COLOR = { keep: 'red', sell: 'orange', deliver: 'blue', store: 'green' };
+const _OUTPUT_MODE_KEYS = { keep: 'productions.outputModeKeep', sell: 'productions.outputModeSell', deliver: 'productions.outputModeDeliver', store: 'productions.outputModeStore' };
+function outputModeLabel(mode) { return _OUTPUT_MODE_KEYS[mode] ? t(_OUTPUT_MODE_KEYS[mode]) : (mode ?? ''); }
 const OUTPUT_MODE_ALL   = ['keep', 'sell', 'deliver', 'store'];
 
 function outputModeBadge(mode, ppUniqueId, fillType) {
   const icon = OUTPUT_MODE_ICON[mode];
   if (!icon) return '';
   const cls = `output-mode-badge ${OUTPUT_MODE_COLOR[mode] ?? 'gray'}`;
-  const title = OUTPUT_MODE_LABEL[mode] ?? '';
+  const title = outputModeLabel(mode) ?? '';
   if (ppUniqueId && fillType) {
     return ` <button class="${cls}" title="${title}" onclick="openOutputModePopover(event,'${ppUniqueId}','${fillType}','${mode}')"><i class="ti ${icon}"></i></button>`;
   }
@@ -3291,7 +3292,7 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
   })();
   const spawnSection = spawnOpts && spawnOpts.max > 0 ? `
     <div class="pop-spawn">
-      <div class="pop-col-label">Auslagern</div>
+      <div class="pop-col-label">${t('productions.outputModeKeep')}</div>
       <div class="spawn-info-sub">Max: ${spawnOpts.max} Stk. · ${fmt(spawnOpts.capacity)} L</div>
       <div class="spawn-controls">
         <input type="range" id="spawn-slider" min="1" max="${spawnOpts.max}" value="1"
@@ -3299,7 +3300,7 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
         <input type="number" id="spawn-count" min="1" max="${spawnOpts.max}" value="1"
                oninput="document.getElementById('spawn-slider').value=Math.min(Math.max(parseInt(this.value)||1,1),${spawnOpts.max})">
       </div>
-      <button class="spawn-btn" onclick="spawnPallets('${ppUniqueId}','${fillType}',${spawnOpts.max})">Auslagern</button>
+      <button class="spawn-btn" onclick="spawnPallets('${ppUniqueId}','${fillType}',${spawnOpts.max})">${t('productions.outputModeKeep')}</button>
     </div>` : '';
   pop.innerHTML = `
     <div class="pop-header">${ftTitle}<button class="pop-close" onclick="_popoverClose && _popoverClose()" title="Schließen">✕</button></div>
@@ -3309,7 +3310,7 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
         ${OUTPUT_MODE_ALL.map(m => `
           <button class="${m === currentMode ? 'active' : ''}" onclick="selectOutputMode(event,'${ppUniqueId}','${fillType}','${m}')">
             <i class="ti ${OUTPUT_MODE_ICON[m]}" style="color:var(--${OUTPUT_MODE_COLOR[m] ?? 'muted'})"></i>
-            <span>${OUTPUT_MODE_LABEL[m]}</span>
+            <span>${outputModeLabel(m)}</span>
           </button>`).join('')}
       </div>
       ${spawnSection ? `<div class="pop-divider-v"></div>${spawnSection}` : ''}
@@ -3382,7 +3383,7 @@ function openEjectPopover(event, uniqueId, objectInfoIndex, count, title) {
   event.stopPropagation();
   _ejectState = { uniqueId, objectInfoIndex, count };
   const pop = document.getElementById('eject-popover');
-  document.getElementById('eject-popover-title').textContent = title || 'Auslagern';
+  document.getElementById('eject-popover-title').textContent = title || t('productions.outputModeKeep');
   document.getElementById('eject-popover-sub').textContent = 'Max: ' + count + ' Stk.';
   const slider = document.getElementById('eject-slider');
   const counter = document.getElementById('eject-count');
@@ -3500,7 +3501,7 @@ function openOutputModeModal(fillType, title) {
     <label class="omm-mode-row">
       <input type="radio" name="omm-mode" value="${m}" ${i === 0 ? 'checked' : ''}>
       <i class="ti ${OUTPUT_MODE_ICON[m]}" style="color:var(--${OUTPUT_MODE_COLOR[m]})"></i>
-      <span>${OUTPUT_MODE_LABEL[m]}</span>
+      <span>${outputModeLabel(m)}</span>
     </label>`).join('');
 
   document.getElementById('omm-backdrop').classList.add('open');
@@ -3526,7 +3527,7 @@ async function confirmOutputModes() {
     if (span) {
       const color = OUTPUT_MODE_COLOR[mode] ?? '';
       span.className = `good-loc-mode output-mode-badge ${color} pending`;
-      span.title = OUTPUT_MODE_LABEL[mode] ?? mode;
+      span.title = outputModeLabel(mode) ?? mode;
       span.innerHTML = `<i class="ti ${OUTPUT_MODE_ICON[mode]}"></i>`;
     }
   }
@@ -4085,12 +4086,12 @@ function renderProductions(data) {
   const el  = document.getElementById('productions-content');
   const nav = document.getElementById('prod-quicknav');
   if (!data || !data.productions || data.productions.length === 0) {
-    el.innerHTML  = '<div class="state-box"><span>Keine Produktionen gefunden</span></div>';
+    el.innerHTML  = `<div class="state-box"><span>${t('productions.noProductions')}</span></div>`;
     nav.innerHTML = '';
     return;
   }
   const prodsToShow = (editMode ? data.productions : data.productions.filter(pp => isVisible(pp.uniqueId)))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', getCurrentLang()));
 
   // Quicknav
   nav.innerHTML = prodsToShow.map((pp, idx) => {
@@ -4121,9 +4122,9 @@ function _productionCardHtml(pp, idx) {
     let html = `<article id="prod-card-${_idx}" class="card content-card${editMode && hidden ? ' card-edit-hidden' : ''}"><h3>${pp.name}${visBtn(pp.uniqueId)}${teleportBtn(pp.uniqueId)}</h3>`;
     const relevantInputs = (pp.inputs || []).filter(i => i.level > 0 || i.needed);
     if (relevantInputs.length) {
-      html += '<div class="sub-label">Eingänge</div>';
+      html += `<div class="sub-label">${t('productions.inputs')}</div>`;
       const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
-      html += [...relevantInputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(i => {
+      html += [...relevantInputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', getCurrentLang())).map(i => {
         const p = pct(i.level, i.capacity);
         const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
         const cls = i.level === 0 ? 'empty-needed' : barClass(p, false);
@@ -4132,17 +4133,17 @@ function _productionCardHtml(pp, idx) {
     }
     const relevantOutputs = (pp.outputs || []).filter(o => o.level > 0 || o.needed);
     if (relevantOutputs.length) {
-      html += '<div class="sub-label">Ausgänge</div>';
+      html += `<div class="sub-label">${t('productions.outputs')}</div>`;
       const goodFillTypesOut = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
-      html += [...relevantOutputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', 'de')).map(o => {
+      html += [...relevantOutputs].sort((a, b) => (a.title || a.fillType || '').localeCompare(b.title || b.fillType || '', getCurrentLang())).map(o => {
         const p = pct(o.level, o.capacity);
         const link = o.fillType && goodFillTypesOut.has(o.fillType) ? o.fillType : null;
         return metricRow(o.title || o.fillType, o.level, o.capacity, barClass(p, true), link, outputModeBadge(o.outputMode, pp.uniqueId, o.fillType));
       }).join('');
     }
     if (activeChains.length) {
-      html += '<div class="sub-label">Ketten</div>';
-      html += [...activeChains].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'de')).map(c =>
+      html += `<div class="sub-label">${t('productions.chains')}</div>`;
+      html += [...activeChains].sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', getCurrentLang())).map(c =>
         chainRowHtml(c, `${pp.uniqueId}:${c.id}`)
       ).join('');
     }
@@ -4154,26 +4155,26 @@ function _productionCardHtml(pp, idx) {
     if (inactiveCount > 0) {
       const expanded = prodInactiveExpanded.has(pp.uniqueId);
       html += `<div class="sub-label inactive-toggle" onclick="toggleProdInactive('${pp.uniqueId}')">
-        ${expanded ? '▼' : '▶'} Inaktiv (${inactiveCount})</div>`;
+        ${expanded ? '▼' : '▶'} ${t('productions.inactive', { count: inactiveCount })}</div>`;
       if (expanded) {
         const goodFillTypes = new Set((appData?.goods?.goods ?? []).map(g => g.fillType));
         if (inactiveInputs.length) {
-          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Eingänge</div>';
-          html += [...inactiveInputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'','de')).map(i => {
+          html += `<div class="sub-label" style="font-size:9px;margin-top:8px">${t('productions.inputs')}</div>`;
+          html += [...inactiveInputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'',getCurrentLang())).map(i => {
             const link = i.fillType && goodFillTypes.has(i.fillType) ? i.fillType : null;
             return metricRow(i.title || i.fillType, i.level, i.capacity, 'gray', link);
           }).join('');
         }
         if (inactiveOutputs.length) {
-          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Ausgänge</div>';
-          html += [...inactiveOutputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'','de')).map(o => {
+          html += `<div class="sub-label" style="font-size:9px;margin-top:8px">${t('productions.outputs')}</div>`;
+          html += [...inactiveOutputs].sort((a, b) => (a.title||a.fillType||'').localeCompare(b.title||b.fillType||'',getCurrentLang())).map(o => {
             const link = o.fillType && goodFillTypes.has(o.fillType) ? o.fillType : null;
             return metricRow(o.title || o.fillType, o.level, o.capacity, 'gray', link, outputModeBadge(o.outputMode));
           }).join('');
         }
         if (inactiveChains.length) {
-          html += '<div class="sub-label" style="font-size:9px;margin-top:8px">Ketten</div>';
-          html += [...inactiveChains].sort((a, b) => (a.name||a.id||'').localeCompare(b.name||b.id||'','de')).map(c =>
+          html += `<div class="sub-label" style="font-size:9px;margin-top:8px">${t('productions.chains')}</div>`;
+          html += [...inactiveChains].sort((a, b) => (a.name||a.id||'').localeCompare(b.name||b.id||'',getCurrentLang())).map(c =>
             chainRowHtml(c, `${pp.uniqueId}:${c.id}`)
           ).join('');
         }
@@ -4793,7 +4794,7 @@ function chainRowHtml(c, key) {
   if (c.status === 'running')       b = '<span class="chain-status green"><i class="tif tif-player-play"></i></span>';
   else if (c.status === 'inactive') b = '<span class="chain-status gray"><i class="tif tif-player-stop"></i></span>';
   else                              b = '<span class="chain-status red"><i class="tif tif-player-pause"></i></span>';
-  const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${c.cyclesPerMonth}×/Mo</span>` : '';
+  const cy = c.cyclesPerMonth ? `<span style="color:var(--muted);font-size:12px">${t('productions.cyclesPerMonth', { count: c.cyclesPerMonth })}</span>` : '';
   const expanded = prodChainExpanded.has(key);
   const arrow = (c.inputs?.length || c.outputs?.length) ? `<span style="color:var(--muted);font-size:11px">${expanded ? '▼' : '▶'}</span>` : '';
   return `<div class="chain-row" onclick="toggleProdChain('${key}')">
@@ -4925,7 +4926,7 @@ function renderGoodCard(g) {
                 const p = pct(inp.level, inp.capacity);
                 const cls = barClass(p, false);
                 return `<div style="display:grid;grid-template-columns:90px 80px auto;align-items:center;gap:8px;font-size:12px;color:var(--text)">
-                  <span class="metric-good-link" onclick="goToProduction('${pp.name.replace(/'/g, "\\'")}')" title="In Produktionen anzeigen" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pp.name}</span>
+                  <span class="metric-good-link" onclick="goToProduction('${pp.name.replace(/'/g, "\\'")}')" title="${t('productions.showInProductions')}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pp.name}</span>
                   <div class="bar ${cls}"><i style="width:${p}%"></i></div>
                   <span style="text-align:right;color:var(--muted);white-space:nowrap">${fmtLiters(inp.level)} <small>${p}%</small></span>
                 </div>`;
@@ -4980,7 +4981,7 @@ function goToProduction(ppName) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const productions = appData?.productions?.productions ?? [];
     const prodsToShow = (editMode ? productions : productions.filter(pp => isVisible(pp.uniqueId)))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', getCurrentLang()));
     const idx = prodsToShow.findIndex(pp => pp.name === ppName);
     if (idx === -1) return;
     const el = document.getElementById('prod-card-' + idx);
@@ -5008,7 +5009,7 @@ function goToStorageLocation(uniqueId) {
   }
 
   const prodsToShow = (editMode ? productions : productions.filter(pp => isVisible(pp.uniqueId)))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', getCurrentLang()));
   const prodIdx = prodsToShow.findIndex(pp => String(pp.uniqueId) === String(uniqueId));
   if (prodIdx !== -1) {
     showView('productions');
@@ -8707,7 +8708,7 @@ if (window._adIconVer) {
 <div id="output-mode-popover"></div>
 <div id="eject-backdrop"></div>
 <div id="eject-popover">
-  <div class="ep-header"><span id="eject-popover-title">Auslagern</span><button class="ep-close" onclick="_ejectClose && _ejectClose()" title="Schließen">✕</button></div>
+  <div class="ep-header"><span id="eject-popover-title" data-i18n-text="productions.outputModeKeep">Auslagern</span><button class="ep-close" onclick="_ejectClose && _ejectClose()" title="Schließen">✕</button></div>
   <div class="ep-body">
     <div class="ep-sub" id="eject-popover-sub"></div>
     <div class="ep-controls">

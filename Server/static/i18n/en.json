@@ -96,6 +96,21 @@
     "needFert": "Fertilizer",
     "needHerb": "Herbicide"
   },
+  "productions": {
+    "subtitle": "Inputs and outputs of your production chains",
+    "loading": "Loading productions …",
+    "noProductions": "No productions found",
+    "inputs": "Inputs",
+    "outputs": "Outputs",
+    "chains": "Chains",
+    "inactive": "Inactive ({{count}})",
+    "cyclesPerMonth": "{{count}}×/mo",
+    "outputModeKeep": "Eject",
+    "outputModeSell": "Sell",
+    "outputModeDeliver": "Deliver",
+    "outputModeStore": "Store",
+    "showInProductions": "Show in Productions"
+  },
   "alerts": {
     "fieldHarvestReady": "{{fruit}} ready to harvest ({{ha}} ha)",
     "fieldNeedsPrep": "{{fruit}} needs harvest preparation ({{ha}} ha)",
