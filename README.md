@@ -33,7 +33,13 @@ Cards for every vehicle on your farm showing current speed, fuel, AdBlue and bat
 ### Map
 An interactive map built on the farm's overview image. Field outlines are drawn as accurate polygons with field numbers placed at the centre of each field. All map hotspots — selling stations, production buildings, fuel stations, the shop, animal pastures and more — appear as colour-coded pins with tooltips. Live vehicle positions are updated every two seconds with smooth movement and direction arrows so you can follow your fleet in real time.
 
-The map supports mouse wheel zoom, click-and-drag panning and pinch-to-zoom on touch devices. You can click any vehicle or hotspot pin to jump directly to the corresponding entry in the Fleet or Productions view.
+The map supports mouse wheel zoom, click-and-drag panning and pinch-to-zoom on touch devices. Most elements on the map are clickable and open a detail panel on the right side:
+
+- **Vehicle pins** — opens the full vehicle detail panel including tanks, implements and AutoDrive controls, identical to clicking a card in the Fleet view
+- **Field polygons** — opens the field detail card showing crop, growth stage, soil conditions and the seed calculator
+- **Production building pins** — opens the production card with input/output bars and output mode controls
+- **Animal husbandry pins** — opens the stall card with food, water, straw levels and outputs
+- **Selling station pins** — shows the station name; no price detail data is available directly on the map
 
 ![Map](docs/screenshots/map.png)
 
