@@ -50,8 +50,25 @@ From the Goods view you can also act directly: for any commodity that is produce
 ### Silos & Storage
 Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left. Individual storage entries can be hidden via the Edit view button; visibility is saved per savegame so hiding a building on one map does not affect other saves.
 
-### Alerts & Settings
-The Alerts view consolidates every active warning and critical state across all categories — animals, productions, silos and fields — in one place, sorted by severity. In Settings you can adjust the warn and critical thresholds for food, water, straw, storage outputs and stall occupancy to match how you run your farm. You can also hide individual placeables from the dashboard per savegame, keeping the views clean when you have buildings you don't actively manage.
+### Alerts
+The Alerts view consolidates every active warning and critical state across all categories — animals, productions, silos and fields — in one place, sorted by severity.
+
+### Settings
+The Settings view is split into several sub-sections:
+
+**Server** — adjust the HTTP port and listen address (changes take effect after a server restart), and override the data directory or mod folder path if auto-detection does not find the right location.
+
+**Detected mods** — shows which optional mods are recognised by FarmMonitor (AutoDrive, Courseplay, ProductionStorageControl, EnhancedVehicle, VehicleInspector). Detection status updates when a savegame is loaded.
+
+**Mod configuration** — configure export intervals for each data type (main export covering silos/productions/husbandries/goods, vehicles, fields, weather, IPC command polling), and tune the soil map overlay quality (grid resolution and rows sampled per game tick). A diagnostics section lets you enable performance logging to `log.txt` and export a full performance report.
+
+**Alert thresholds — Silos** — set the warn and critical fill percentages for the silo quicknav dot indicators.
+
+**Alert thresholds — Husbandries** — set separate warn/critical thresholds for inputs (food, water, straw), outputs (milk, eggs, manure, …), and stall occupancy (watch and warn levels).
+
+**Alert thresholds — Fields** — set yellow and red thresholds for each soil condition: ploughing, fertilising, liming, mulching (all trigger below a percentage) and weeds and stones (trigger above a percentage).
+
+**Visibility** — toggle individual silos, production buildings, animal stalls and fields on or off per savegame. Hidden entries are removed from all views and alerts. Visibility is stored per savegame so changes on one map do not affect other saves.
 
 ---
 
