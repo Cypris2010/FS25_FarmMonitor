@@ -116,10 +116,28 @@ Jeder Ausgang zeigt am Zeilenende ein Tabler-Icon. Hover zeigt einen Tooltip mit
 |---|---|---|---|
 | `keep` | `ti-arrow-bar-up` | Rot | Auslagern — Ware wird als Palette gespawnt |
 | `sell` | `ti-currency-euro` | Orange | Direktverkauf |
-| `deliver` | `ti-arrow-right` | Blau | Automatisch liefern |
+| `deliver` | `ti-arrows-move` | Blau | Automatisch liefern |
 | `store` | `ti-arrow-bar-to-down` | Grün | Einlagern ins Silo (nur mit Mod FS25_ProductionStorageControl) |
 
 Der `store`-Modus wird nur exportiert wenn `g_modIsLoaded["FS25_ProductionStorageControl"]` aktiv ist.
+
+Die globalen Konstanten `OUTPUT_MODE_ICON`, `OUTPUT_MODE_LABEL`, `OUTPUT_MODE_COLOR` und `OUTPUT_MODE_ALL` sind im Dashboard geteilt und werden auch vom Waren-View und dem Ausgangsmodus-Modal verwendet.
+
+### outputModeBadge-Funktion
+
+```js
+outputModeBadge(mode, ppUniqueId, fillType)
+```
+
+- Mit `ppUniqueId` + `fillType`: rendert einen klickbaren `<button>` mit Kreis-Border, öffnet den Modus-Popover
+- Ohne diese Parameter: rendert einen nicht-klickbaren `<span>` ohne Kreis — wird im Waren-View für Lagerort-Zeilen verwendet
+
+### Pending-Animation
+
+Nach einer Modus-Änderung erhält das Badge-Element die Klasse `pending`:
+
+- `button.output-mode-badge.pending`: Hintergrund pulsiert (`mode-pending`-Keyframe)
+- `span.output-mode-badge.pending`: Icon blendet zwischen Vollhelligkeit und `opacity: 0.2` (`mode-pending-icon`-Keyframe)
 
 Icons: [Tabler Icons](https://tabler.io/icons) (MIT-Lizenz, eingebunden via CDN).
 

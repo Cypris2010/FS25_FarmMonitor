@@ -45,18 +45,64 @@
 - ✅ **Lua/modDesc:** Multiplayer aktiviert (`multiplayer supported="true"`)
 - ✅ **Lua:** `isServer`-Guard in `update()` — überspringt Ausführung auf Dedicated Servers
 
-## v0.4.0 — Object Storages (Paletten & Ballenlager)
-- **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
-  - Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
-  - Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
-  - Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
-  - Mistlager (`spec_manureHeap`)
-  - Bienenstock-Paletten (`spec_beehivePalletSpawner`)
-- **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
-- **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
-- **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
-- **Dashboard:** Neuer View "Lager" mit Karten pro Lagertyp + Kapazitätsbalken + Fermentierungsanzeige
+## v0.4.0 — Object Storages, AutoDrive & Courseplay Integration
 
+### Fahrzeuge-View
+- ✅ **Lua:** `vehicles.json` exportiert alle Fahrzeuge der Farm alle 2s: Name, Typ, Geschwindigkeit, Füllstände (Kraftstoff/Harnstoff/Strom/Methan), Schaden, Betriebsstunden, Fahrer, Motor-Status, Position & Rotation
+- ✅ **Lua:** `vehicleMeta.json` exportiert statische Metadaten alle 10s: Marke, Shop-Kategorie, Kaufpreis, Eigentumsart (Kauf/Leasing), Alter, Motorleistung (kW), Arbeitsbreite, Fahrzeugfarben (Hex, diagonal geteilter Kreis)
+- ✅ **Lua:** `vehicleCategories.json` exportiert Shop-Kategorien einmalig via `g_storeManager` + `ShopMenu`
+- ✅ **Dashboard:** View „Fahrzeuge" — Flottenkarten mit Name, Marke, Typ-Icon, Geschwindigkeit, Kraftstoff, Schaden, Fahrer
+- ✅ **Dashboard:** Fahrzeug-Detailpanel — Tanks, Anbaugeräte, Betriebsstunden, Kaufpreis, Arbeitsbreite, Fahrzeugfarbe
+- ✅ **Dashboard:** Fahrzeug-Positionsanzeige „Nearby" — zeigt nächstgelegenes Feld oder Hotspot
+- ✅ **Dashboard:** Gespann-Ansicht — Stammfahrzeug + angehängte Geräte als gestapelte Sektionen
+- ✅ **Dashboard:** Kategorie-Filter-Buttons (dynamisch, nur vorhandene Kategorien)
+- ✅ **Dashboard:** Freitext-Suche, Status-Filter, Zustand-Filter
+- ✅ **Dashboard:** Sortiermodus „Zuletzt bewegt" (client-seitig getrackt)
+- ✅ **Dashboard:** AD/CP Fertig-Puls — km/h-Block pulsiert nach AD/CP-Stop (konfigurierbar)
+- ✅ **Dashboard:** Anzeigeoptionen-Modal überarbeitet (breiter, 2-Spalten-Layout)
+
+### Object Storages (Paletten & Ballenlager)
+- ✅ **Lua:** Alle Lagerquellen exportieren via `g_currentMission.placeableSystem.placeables`:
+  - ✅ Giants Object Storage (`spec_objectStorage`) — Paletten, Ballen inkl. Fermentierungsstatus
+  - ✅ Object Storage Mods (`spec_objectStorageMod`) — z.B. Ballenlager-Mods
+  - ✅ Fahrsilo / Bunker Silo (`spec_bunkerSilo`) — inkl. Fermentierungsstatus & Kompaktierungsgrad
+  - ✅ Mistlager (`spec_manureHeap`)
+  - **Bienenstock-Paletten (`spec_beehivePalletSpawner`) — pendingLiters nur in goods.json, kein eigener Silos-View-Eintrag**
+- ✅ **Lua:** Loose Ballen aus `g_currentMission.itemSystem.itemsToSave` (Bale-Objekte)
+- ✅ **Lua:** Loose Paletten & Shipping Container aus `g_currentMission.vehicleSystem.vehicles`
+- ✅ **Lua:** uniqueId-Deduplizierung zwischen Object Storage und Ballen-Liste
+- ✅ **Dashboard:** Silos-View zeigt alle Lagertypen (Fahrsilos, Paletten-/Ballenlager, Mistlager) mit Filter-Buttons + Fermentierungsanzeige — kein separater „Lager"-View nötig
+
+### AutoDrive Integration
+- ✅ **Lua:** `autoDriveMarkers.json` exportiert alle Marker (Name, Gruppe, markerIndex) via Iterator-Trick über `sm:setFirstMarker(id)` — da `ADGraphManager` aus FarmMonitor-Sandbox nicht zugänglich
+- ✅ **Lua:** Inkrementeller Export alle 60s: Schnelltest mit `lastMaxId+1`, nur re-exportieren bei neuen Markern
+- ✅ **Lua:** `vehicles.json` enthält AutoDrive-Status pro Fahrzeug: `adActive`, `adMode`, `adDriverName`, `adDestination`, `adDestination2`, `adRemainingTime`, erweiterte Zustände (`adBlocked`, `adError`, `adOnRouteToRefuel`, `adOnRouteToPark`, `adIsLoading`, `adIsUnloading`, `adModeState`)
+- ✅ **Lua:** IPC-Commands `autodrive.configure` (Mode, Marker1, Marker2, FillType) und `autodrive.startStop`
+- ✅ **Dashboard:** AutoDrive-Tab im Fahrzeug-Detailpanel mit Mode-Dropdown, Marker-Dropdowns, FillType-Dropdown, Start/Stop-Buttons
+- ✅ **Dashboard:** Flottenkarte zeigt AutoDrive-Status mit detaillierten Badges (Fehler, Blockiert, Rückwärts, Tankt, Parkt, Lädt, Entlädt, CombineUnloader-States)
+
+### Courseplay Integration
+- ✅ **Lua:** `vehicles.json` enthält Courseplay-Status pro Fahrzeug: `cpActive`, `cpStatus`, `cpJobType`, `cpWaypointCurrent`, `cpWaypointTotal`, `cpRemainingTime`
+- ✅ **Dashboard:** Flottenkarte zeigt Courseplay-Status mit detaillierten Badges (Feststeckend, Kein Pfad, Tank leer, Reparatur, Fehler, Voll, Tankt, Blockiert, Wetter, Job-Typen)
+- ✅ **Dashboard:** Courseplay-Banner im Fahrzeug-Detailpanel mit Job-Typ, Wegpunkt-Fortschritt, verbleibender Zeit
+
+### Karten-View
+- ✅ **Lua:** `mapMeta.json` exportiert einmalig: `terrainSize`, `mapName`, `overviewDdsPath`, `savegameDir`
+- ✅ **Lua:** `hotspots.json` exportiert alle Karten-Hotspots einmalig: Name, Typ (SELLING_STATION, PRODUCTION_POINT, FUEL, SHOP, BEE, MISC, Tierhaltungstyp), Weltkoordinaten
+- ✅ **Lua:** `fields.json` enthält Feldpolygon (`densityMapPolygon.pointsX/Z`) pro Feld für Kartenüberlagerung
+- ✅ **Lua:** `vehicles.json` enthält Fahrzeugposition (`x`, `z`) und Fahrtrichtung (`rot`) für Live-Tracking auf der Karte
+- ✅ **Lua:** Spielerpositionen in `vehicles.json` enthalten (`playerSystem.players`)
+- ✅ **Server:** `/api/map/overview` — liest `overview.dds` aus Karten-Verzeichnis oder ZIP, dekodiert DDS → PNG, cached im Arbeitsspeicher
+- ✅ **Server:** `/api/map/heightmap` — Höhenkarten-Endpunkt
+- ✅ **Dashboard:** View „Karte" — Kartenübersicht als Hintergrundbild (`overview.dds` → PNG)
+- ✅ **Dashboard:** SVG-Overlay mit drei Layern: Feldpolygone, Hotspot-Pins, Fahrzeug-Pins
+- ✅ **Dashboard:** Feldpolygone aus `densityMapPolygon` korrekt in Kartenkoordinaten projiziert
+- ✅ **Dashboard:** Hotspot-Pins farbcodiert nach Typ mit Tooltip
+- ✅ **Dashboard:** Fahrzeug-Pins live aktualisiert via SSE — farbkodiert nach Typ (Traktor/Mähdrescher/LKW/Anhänger/Spieler), mit Richtungspfeil
+- ✅ **Dashboard:** Fahrzeug-Pins mit weicher CSS-Bewegungsinterpolation (`transform 2s linear`)
+- ✅ **Dashboard:** Zoom (Mausrad + Buttons), Pan (Drag), Pinch-to-zoom (Touch)
+- ✅ **Dashboard:** IPC-Command `player.teleportToPlaceable` — Spieler zu Hotspot teleportieren
+- ✅ **Dashboard:** IPC-Command `vehicle.teleport` — Spieler zu Fahrzeug teleportieren
 
 ## v0.6.0 — Feldübersicht Erweiterungen
 - **Lua:** Optional mit PrecisionFarming DLC (`g_modIsLoaded["FS25_precisionFarming"]`):
