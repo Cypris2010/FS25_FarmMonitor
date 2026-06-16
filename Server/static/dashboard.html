@@ -3095,6 +3095,7 @@
   </button>
 </nav>
 
+<script src="/lib/i18next.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // polylabel v1.1.0 — Pole of Inaccessibility (Mapbox, ISC License)
@@ -3124,6 +3125,47 @@
     var res=[best.x,best.y];res.distance=best.d;return res;
   };
 })();
+// ═══════════════════════════════════════════════════════════
+// i18n
+// ═══════════════════════════════════════════════════════════
+let _i18nReady = false;
+
+function t(key, opts) {
+  if (!_i18nReady) return key;
+  return i18next.t(key, opts);
+}
+
+function getCurrentLang() {
+  return localStorage.getItem('fm_lang') ||
+    (navigator.language.startsWith('de') ? 'de' : 'en');
+}
+
+async function initI18n() {
+  const lang = getCurrentLang();
+  let resources = {};
+  try {
+    const res = await fetch(`/i18n/${lang}.json`);
+    if (res.ok) resources[lang] = { translation: await res.json() };
+    // also load fallback if different
+    if (lang !== 'de') {
+      const fb = await fetch('/i18n/de.json');
+      if (fb.ok) resources['de'] = { translation: await fb.json() };
+    }
+  } catch (e) { console.warn('i18n load failed:', e); }
+  await i18next.init({
+    lng: lang,
+    fallbackLng: 'de',
+    resources,
+  });
+  _i18nReady = true;
+  document.documentElement.lang = lang;
+}
+
+function setLanguage(lang) {
+  localStorage.setItem('fm_lang', lang);
+  location.reload();
+}
+
 // ═══════════════════════════════════════════════════════════
 // State
 // ═══════════════════════════════════════════════════════════
@@ -5349,8 +5391,22 @@ function renderSettings() {
       <div id="mcfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
     </div>`;
 
-  el.innerHTML = serverBlock + detectedModsBlock + modCfgBlock + alertBlock
-    + '<div class="settings-section-title" style="margin-top:24px">Sichtbarkeit</div>'
+  const currentLang = getCurrentLang();
+  const languageBlock = `
+    <div class="settings-section-title">${t('settings.language')}</div>
+    <div class="placeable-list" style="padding:16px">
+      <div style="display:flex;gap:10px">
+        <button onclick="setLanguage('de')"
+          class="edit-mode-btn${currentLang === 'de' ? ' active' : ''}"
+          style="padding:7px 20px">🇩🇪 Deutsch</button>
+        <button onclick="setLanguage('en')"
+          class="edit-mode-btn${currentLang === 'en' ? ' active' : ''}"
+          style="padding:7px 20px">🇬🇧 English</button>
+      </div>
+    </div>`;
+
+  el.innerHTML = languageBlock + serverBlock + detectedModsBlock + modCfgBlock + alertBlock
+    + '<div class="settings-section-title" style="margin-top:24px">' + t('settings.visibility') + '</div>'
     + sgInfo
     + section('Silos', silos)
     + section('Produktionen', productions)
@@ -8603,10 +8659,13 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
 // Boot
 // ═══════════════════════════════════════════════════════════
 
-showView('home');
-loadGlobalSettings();
-loadData();
-connect();
+(async () => {
+  await initI18n();
+  showView('home');
+  loadGlobalSettings();
+  loadData();
+  connect();
+})();
 
 // Bust Safari's icon cache: append ?v=<server-start-time> to all AD icon URLs
 if (window._adIconVer) {

@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "silos": "Silos",
+    "productions": "Productions",
+    "husbandries": "Livestock",
+    "goods": "Goods",
+    "fields": "Fields",
+    "fleet": "Fleet",
+    "map": "Map",
+    "alerts": "Alerts",
+    "settings": "Settings"
+  },
+  "settings": {
+    "language": "Language",
+    "visibility": "Visibility"
+  }
+}

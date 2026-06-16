@@ -7,15 +7,16 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"encoding/xml"
-	_ "embed"
+	"embed"
 	"flag"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
-	"strconv"
 	"io"
+	"io/fs"
+	"strconv"
 	"log"
 	"net"
 	"net/http"
@@ -29,8 +30,8 @@ import (
 	"time"
 )
 
-//go:embed dashboard.html
-var dashboardHTML []byte
+//go:embed static
+var staticFiles embed.FS
 
 // set via -ldflags "-X main.serverVersion=x.x.x"
 var serverVersion string
@@ -1256,8 +1257,13 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	data, err := staticFiles.ReadFile("static/dashboard.html")
+	if err != nil {
+		http.Error(w, "dashboard not found", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := strings.Replace(string(dashboardHTML), "</head>",
+	html := strings.Replace(string(data), "</head>",
 		fmt.Sprintf(`<script>window._adIconVer="%s";</script></head>`, iconVer), 1)
 	w.Write([]byte(html))
 }
@@ -1458,8 +1464,15 @@ func main() {
 	go watchSavegameChange(dataDir, *mods, adIcons)
 
 
+	staticFS, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		log.Fatalf("failed to create static sub-fs: %v", err)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleDashboard)
+	mux.Handle("/lib/", http.FileServer(http.FS(staticFS)))
+	mux.Handle("/i18n/", http.FileServer(http.FS(staticFS)))
 	mux.HandleFunc("/api/data", handleData(dataDir))
 	mux.HandleFunc("/api/events", handleEvents(b))
 	mux.HandleFunc("/api/vehicles", handleVehicles(dataDir))
