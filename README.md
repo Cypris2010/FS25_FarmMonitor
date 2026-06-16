@@ -17,8 +17,22 @@ A weather widget shows the current in-game conditions — weather type, temperat
 
 > **Work in progress:** The Overview is currently the least developed part of the dashboard. What is shown here will continue to change — additional widgets, rearranged layout, new summary information. The final scope of this view has not been decided yet.
 
-### Silos & Storage
-Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left. Individual storage entries can be hidden via the Edit view button; visibility is saved per savegame so hiding a building on one map does not affect other saves.
+### Fleet
+Cards for every vehicle on your farm showing current speed, fuel, AdBlue and battery levels, damage status, assigned driver and total operating hours. Clicking a card opens the detail panel with a full breakdown of all tanks, attached implements, purchase price, working width and vehicle colour. The fleet view supports filtering by shop category, free-text search by name, status filters and a "last moved" sort mode that puts recently active vehicles at the top.
+
+**AutoDrive** status is shown directly on each fleet card — current mode, destination, remaining drive time and detailed state badges for every situation (loading, unloading, waiting for combine, driving to refuel or park, blocked, error, …). The vehicle detail panel includes a full AutoDrive control tab where you can set the operating mode, assign departure and destination markers, select the commodity to transport, and start or stop the route — all from the browser, without switching back to the game.
+
+**Courseplay** job type, current waypoint progress and estimated remaining time are displayed on the fleet card and in the detail panel alongside AutoDrive whenever both mods are active.
+
+### Map
+An interactive map built on the farm's overview image. Field outlines are drawn as accurate polygons with field numbers placed at the centre of each field. All map hotspots — selling stations, production buildings, fuel stations, the shop, animal pastures and more — appear as colour-coded pins with tooltips. Live vehicle positions are updated every two seconds with smooth movement and direction arrows so you can follow your fleet in real time.
+
+The map supports mouse wheel zoom, click-and-drag panning and pinch-to-zoom on touch devices. You can click any vehicle or hotspot pin to jump directly to the corresponding entry in the Fleet or Productions view.
+
+### Fields
+Per-field cards covering everything you need to plan your next farm run. Each card shows the current crop, growth stage with a visual progress bar, a harvest-ready badge when the time has come, and an estimated yield bonus based on your soil conditions. Seven soil condition bars — ploughing, fertilising, liming, mulching, rolling, weed coverage and stone coverage — give you a complete picture of field health at a glance.
+
+An interactive seed calculator lets you select any crop per field and instantly shows you the required seed quantity in litres per hectare and as a total for that field. The same calculator covers lime, fertiliser and herbicide so you can plan your refill runs before you even get on the tractor. Your crop selection is saved in the browser so you don't lose it when switching views.
 
 ### Productions
 Input and output bars for every production chain on your farm, colour-coded by fill level so you can spot bottlenecks instantly. Each card shows whether the chain is currently running, idle or stopped, and lists all ingredients and products with their current stock and capacity. Clicking any input ingredient takes you directly to that commodity in the Goods view.
@@ -33,22 +47,8 @@ An aggregated overview of everything you own, sorted by commodity. Each row show
 
 From the Goods view you can also act directly: for any commodity that is produced by one or more of your production buildings, you can change the output mode or trigger a pallet ejection across all relevant productions at once — without having to visit each production card individually.
 
-### Fields
-Per-field cards covering everything you need to plan your next farm run. Each card shows the current crop, growth stage with a visual progress bar, a harvest-ready badge when the time has come, and an estimated yield bonus based on your soil conditions. Seven soil condition bars — ploughing, fertilising, liming, mulching, rolling, weed coverage and stone coverage — give you a complete picture of field health at a glance.
-
-An interactive seed calculator lets you select any crop per field and instantly shows you the required seed quantity in litres per hectare and as a total for that field. The same calculator covers lime, fertiliser and herbicide so you can plan your refill runs before you even get on the tractor. Your crop selection is saved in the browser so you don't lose it when switching views.
-
-### Fleet
-Cards for every vehicle on your farm showing current speed, fuel, AdBlue and battery levels, damage status, assigned driver and total operating hours. Clicking a card opens the detail panel with a full breakdown of all tanks, attached implements, purchase price, working width and vehicle colour. The fleet view supports filtering by shop category, free-text search by name, status filters and a "last moved" sort mode that puts recently active vehicles at the top.
-
-**AutoDrive** status is shown directly on each fleet card — current mode, destination, remaining drive time and detailed state badges for every situation (loading, unloading, waiting for combine, driving to refuel or park, blocked, error, …). The vehicle detail panel includes a full AutoDrive control tab where you can set the operating mode, assign departure and destination markers, select the commodity to transport, and start or stop the route — all from the browser, without switching back to the game.
-
-**Courseplay** job type, current waypoint progress and estimated remaining time are displayed on the fleet card and in the detail panel alongside AutoDrive whenever both mods are active.
-
-### Map
-An interactive map built on the farm's overview image. Field outlines are drawn as accurate polygons with field numbers placed at the centre of each field. All map hotspots — selling stations, production buildings, fuel stations, the shop, animal pastures and more — appear as colour-coded pins with tooltips. Live vehicle positions are updated every two seconds with smooth movement and direction arrows so you can follow your fleet in real time.
-
-The map supports mouse wheel zoom, click-and-drag panning and pinch-to-zoom on touch devices. You can click any vehicle or hotspot pin to jump directly to the corresponding entry in the Fleet or Productions view.
+### Silos & Storage
+Fill-level bars for every storage location on your farm — silos, silo extensions, bunker silos (with fermentation progress and compaction level), bale and pallet storage buildings, and manure heaps. Filter buttons at the top let you narrow the view to a specific storage type. Each entry shows its current fill levels by commodity so you always know what you have and how much space is left. Individual storage entries can be hidden via the Edit view button; visibility is saved per savegame so hiding a building on one map does not affect other saves.
 
 ### Alerts & Settings
 The Alerts view consolidates every active warning and critical state across all categories — animals, productions, silos and fields — in one place, sorted by severity. In Settings you can adjust the warn and critical thresholds for food, water, straw, storage outputs and stall occupancy to match how you run your farm. You can also hide individual placeables from the dashboard per savegame, keeping the views clean when you have buildings you don't actively manage.
