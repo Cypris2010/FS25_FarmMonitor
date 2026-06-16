@@ -33,6 +33,8 @@ Cards for every vehicle on your farm showing current speed, fuel, AdBlue and bat
 ### Map
 An interactive map built on the farm's overview image. Field outlines are drawn as accurate polygons with field numbers placed at the centre of each field. All map hotspots — selling stations, production buildings, fuel stations, the shop, animal pastures and more — appear as colour-coded pins with tooltips. Live vehicle positions are updated every two seconds with smooth movement and direction arrows so you can follow your fleet in real time.
 
+The map also supports several overlay layers that can be toggled via the legend. Field polygons can be coloured by current growth stage to see at a glance which fields are ready to harvest, still growing or already cut. Seven individual soil condition overlays — weeds, stones, ploughing, fertilising, liming, mulching and rolling — can be enabled to show the density map values across all fields as a colour-coded layer directly on the map.
+
 The map supports mouse wheel zoom, click-and-drag panning and pinch-to-zoom on touch devices. Most elements on the map are clickable and open a detail panel on the right side:
 
 - **Vehicle pins** — opens the full vehicle detail panel including tanks, implements and AutoDrive controls, identical to clicking a card in the Fleet view
