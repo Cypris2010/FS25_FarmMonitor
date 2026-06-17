@@ -210,6 +210,37 @@
     "recMonitor": "Beobachten",
     "recWait": "Warten"
   },
+  "silos": {
+    "title": "Silos & Lager",
+    "subtitle": "Füllstände aller Silos, Fahrsilos, Paletten- und Ballenlager",
+    "filterAll": "Alle",
+    "filterSilos": "Silos",
+    "filterBunker": "Fahrsilos",
+    "filterLager": "Lager",
+    "filterPallets": "Paletten",
+    "loading": "Lade Silos …",
+    "noSilos": "Keine Silos gefunden",
+    "palletsPrefix": "Paletten: {{name}}",
+    "pieces_one": "{{count}} Stk.",
+    "pieces_other": "{{count}} Stk.",
+    "empty": "Leer",
+    "bunkerState": "Zustand",
+    "compaction": "Verdichtung",
+    "fermentation": "Fermentierung",
+    "stateLabels": {
+      "FILL": "Füllen",
+      "CLOSED": "Geschlossen",
+      "DRAIN": "Ausgabe",
+      "FERMENTED": "Fermentiert"
+    },
+    "typeBadges": {
+      "silo": "Silo",
+      "siloExtension": "Extension",
+      "bunkerSilo": "Fahrsilo",
+      "objectStorage": "Lager",
+      "loosePallets": "Paletten"
+    }
+  },
   "productions": {
     "subtitle": "Ein- und Ausgänge deiner Produktionsketten",
     "loading": "Lade Produktionen …",

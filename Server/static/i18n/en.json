@@ -210,6 +210,37 @@
     "recMonitor": "Monitor",
     "recWait": "Wait"
   },
+  "silos": {
+    "title": "Silos & Storage",
+    "subtitle": "Fill levels of all silos, bunker silos, pallet and bale storage",
+    "filterAll": "All",
+    "filterSilos": "Silos",
+    "filterBunker": "Bunker Silos",
+    "filterLager": "Storage",
+    "filterPallets": "Pallets",
+    "loading": "Loading silos …",
+    "noSilos": "No silos found",
+    "palletsPrefix": "Pallets: {{name}}",
+    "pieces_one": "{{count}} pc.",
+    "pieces_other": "{{count}} pcs.",
+    "empty": "Empty",
+    "bunkerState": "State",
+    "compaction": "Compaction",
+    "fermentation": "Fermentation",
+    "stateLabels": {
+      "FILL": "Filling",
+      "CLOSED": "Closed",
+      "DRAIN": "Draining",
+      "FERMENTED": "Fermented"
+    },
+    "typeBadges": {
+      "silo": "Silo",
+      "siloExtension": "Extension",
+      "bunkerSilo": "Bunker",
+      "objectStorage": "Storage",
+      "loosePallets": "Pallets"
+    }
+  },
   "productions": {
     "subtitle": "Inputs and outputs of your production chains",
     "loading": "Loading productions …",
