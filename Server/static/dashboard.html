@@ -5457,7 +5457,7 @@ async function perfExport() {
     const data = await res.json();
     if (status) status.textContent = t('settings.exported') + data.path;
   } catch(e) {
-    if (status) status.textContent = '✗ Fehler: ' + e.message;
+    if (status) status.textContent = t('settings.exportError') + e.message;
   }
 }
 
@@ -6922,11 +6922,11 @@ async function _adToggleFillType(vid, nid, ftName) {
 
 // ---------------------------------------------------------------------------
 function _buildMarkerOptions(markers, selectedId) {
-  if (!markers || markers.length === 0) return '<option value="">– keine Marker –</option>';
+  if (!markers || markers.length === 0) return `<option value="">${t('fleet.adNoMarkers')}</option>`;
   // Group markers by group name
   const grouped = {};
   for (const m of markers) {
-    const g = m.group || 'Alle';
+    const g = m.group || t('fleet.adMarkerGroupAll');
     if (!grouped[g]) grouped[g] = [];
     grouped[g].push(m);
   }
@@ -6947,7 +6947,7 @@ function _buildMarkerOptions(markers, selectedId) {
 
 function _buildFillTypeOptions(selectedName) {
   const fts = appData?.fillTypes?.fillTypes || [];
-  if (fts.length === 0) return '<option value="">– keine –</option>';
+  if (fts.length === 0) return `<option value="">${t('fleet.adNoFillTypes')}</option>`;
   const relevant = fts.filter(f => f.name && f.title && f.name !== 'UNKNOWN');
   relevant.sort((a, b) => a.title.localeCompare(b.title));
   return '<option value="">– beliebig –</option>' +
