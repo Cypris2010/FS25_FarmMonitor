@@ -2931,29 +2931,29 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><circle cx="16.5" cy="17" r="3"/><circle cx="7" cy="18.5" r="2"/><path d="M9.5 9h5.5l2.5 4.5"/><path d="M4 13.5h5.5V9"/><path d="M2 13.5a2 2 0 0 0-1 1.7V17h5.5"/><path d="M9.5 18.5h4.8"/><path d="M12 6v3"/></svg>
               </span>
               <div class="section-title-text">
-                <h2>Fahrzeuge</h2>
-                <p>Status, Kraftstoff und Ladung deiner Maschinen</p>
+                <h2 data-i18n-text="fleet.title">Fahrzeuge</h2>
+                <p data-i18n-text="fleet.subtitle">Status, Kraftstoff und Ladung deiner Maschinen</p>
               </div>
             </div>
             <div class="goods-controls fleet-goods-controls">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
-                <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" id="fleet-search-input"
+                <input class="goods-search" type="text" placeholder="Suche nach Name oder Marke …" data-i18n-placeholder="fleet.search" id="fleet-search-input"
                   oninput="setFleetSearch(this.value)">
                 <select class="filter-btn" id="fleet-status-select" onchange="setFleetStatusFilter(this.value)">
-                  <option value="all">Alle Status</option>
-                  <option value="active">Aktiv</option>
-                  <option value="parked">Geparkt</option>
+                  <option value="all" data-i18n-text="fleet.statusAll">Alle Status</option>
+                  <option value="active" data-i18n-text="fleet.statusActive">Aktiv</option>
+                  <option value="parked" data-i18n-text="fleet.statusParked">Geparkt</option>
                 </select>
                 <select class="filter-btn" id="fleet-condition-select" onchange="setFleetConditionFilter(this.value)">
-                  <option value="all">Alle Zustände</option>
-                  <option value="damage10">Schaden &gt;10%</option>
-                  <option value="damage30">Schaden &gt;30%</option>
-                  <option value="fuel20">Kraftstoff &lt;20%</option>
-                  <option value="fuel40">Kraftstoff &lt;40%</option>
+                  <option value="all" data-i18n-text="fleet.conditionAll">Alle Zustände</option>
+                  <option value="damage10" data-i18n-text="fleet.conditionDamage10">Schaden &gt;10%</option>
+                  <option value="damage30" data-i18n-text="fleet.conditionDamage30">Schaden &gt;30%</option>
+                  <option value="fuel20" data-i18n-text="fleet.conditionFuel20">Kraftstoff &lt;20%</option>
+                  <option value="fuel40" data-i18n-text="fleet.conditionFuel40">Kraftstoff &lt;40%</option>
                 </select>
                 <button class="fleet-settings-btn" onclick="openFleetSettings()" data-i18n-title="common.displayOptions" title="Anzeigeoptionen">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  Anzeige
+                  <span data-i18n-text="fleet.display">Anzeige</span>
                 </button>
               </div>
               <div id="fleet-filter-bar"></div>
@@ -2961,7 +2961,7 @@
           </div>
         </div>
         <div id="fleet-content">
-          <div class="state-box"><span>Lade Fahrzeuge …</span></div>
+          <div class="state-box"><span data-i18n-text="fleet.loading">Lade Fahrzeuge …</span></div>
         </div>
       </section>
     </div>
@@ -3033,11 +3033,11 @@
         <div class="legend-item"><span class="legend-bar" style="background:#ef4444"></span>Vertrocknet</div>
         <div class="legend-item"><span class="legend-bar" style="background:#6b7280"></span>Leer / Abgeerntet</div>
         <div class="legend-divider"></div>
-        <div class="legend-section-title">Fahrzeuge</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Traktor</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Mähdrescher</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Anhänger/Gerät</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Spieler</div>
+        <div class="legend-section-title" data-i18n-text="fleet.legendSection">Fahrzeuge</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span><span data-i18n-text="fleet.legendTractor">Traktor</span></div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span><span data-i18n-text="fleet.legendHarvester">Mähdrescher</span></div>
+        <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span><span data-i18n-text="fleet.legendImplement">Anhänger/Gerät</span></div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span><span data-i18n-text="fleet.legendPlayer">Spieler</span></div>
         <div class="legend-divider"></div>
         <div class="legend-section-title">Bodenlayer</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:0 2px">
@@ -6255,8 +6255,8 @@ function formatAdTime(seconds) {
 }
 
 const AD_MODE_LABELS = {
-  1: 'Fahren zu', 2: 'Abholen & Liefern', 3: 'Liefern zu',
-  4: 'Laden', 5: 'Entladen', 6: 'BGA'
+  1: 'fleet.adModeName1', 2: 'fleet.adModeName2', 3: 'fleet.adModeName3',
+  4: 'fleet.adModeName4', 5: 'fleet.adModeName5', 6: 'fleet.adModeName6'
 };
 
 function fleetCategoryLabel(cat, appData) {
@@ -6266,7 +6266,7 @@ function fleetCategoryLabel(cat, appData) {
     const found = cats.find(c => c.id === cat);
     if (found?.label) return found.label;
   }
-  return FLEET_CATEGORY_LABELS_FALLBACK[cat] || cat || '–';
+  return t(`fleet.fallback.${cat}`, { defaultValue: FLEET_CATEGORY_LABELS_FALLBACK[cat] || cat || '–' });
 }
 
 // Static fallback order — replaced at runtime by fleetCategoryOrder() from vehicleCategories.json
@@ -6296,7 +6296,7 @@ function fleetCategoryOrder(appData) {
   return FLEET_CATEGORY_ORDER_FALLBACK;
 }
 
-const FLEET_FUEL_LABELS = { DIESEL:'Diesel', ELECTRICCHARGE:'Akku', METHANE:'Gas' };
+const FLEET_FUEL_LABELS = { DIESEL:'fleet.fuelDiesel', ELECTRICCHARGE:'fleet.fuelElectric', METHANE:'fleet.fuelGas' };
 
 // Fleet display settings
 const FLEET_SETTINGS_DEFAULTS = {
@@ -6472,45 +6472,45 @@ function _adStatusBadge(state) {
   const b = (cls, label) => `<span class="fleet-badge ${cls}">${label}${d}</span>`;
   const bn = (cls, label) => `<span class="fleet-badge ${cls}">${label}</span>`; // no dest
 
-  if (state.adError)               return bn('badge-ad-alert', 'AD Fehler');
-  if (ms === 'reverseFromBadLocation') return bn('badge-ad-warn', 'AD Rückwärts');
-  if (state.adBlocked)             return bn('badge-ad-alert', 'AD Blockiert');
-  if (state.adOnRouteToRefuel)     return bn('badge-ad-warn',  'AD Tankt');
-  if (state.adOnRouteToPark)       return bn('badge-ad-warn',  'AD Parkt');
-  if (state.adIsLoading)           return b ('badge-ad-work',  'AD Lädt');
-  if (state.adIsUnloading)         return b ('badge-ad-work',  'AD Entlädt');
-  if (ms === 'waitToBeCalled')     return b ('badge-ad',       'AD Wartet auf Ernter');
-  if (ms === 'driveToCombine')     return b ('badge-ad',       'AD Fährt zum Ernter');
-  if (ms === 'followCombine')      return b ('badge-ad',       'AD Folgt Ernter');
-  if (ms === 'driveToUnload')      return b ('badge-ad',       'AD Fährt zum Entladen');
-  if (ms === 'driveToStart')       return b ('badge-ad',       'AD Fährt zu Start');
+  if (state.adError)               return bn('badge-ad-alert', t('fleet.adError'));
+  if (ms === 'reverseFromBadLocation') return bn('badge-ad-warn', t('fleet.adReverse'));
+  if (state.adBlocked)             return bn('badge-ad-alert', t('fleet.adBlocked'));
+  if (state.adOnRouteToRefuel)     return bn('badge-ad-warn',  t('fleet.adRefuel'));
+  if (state.adOnRouteToPark)       return bn('badge-ad-warn',  t('fleet.adPark'));
+  if (state.adIsLoading)           return b ('badge-ad-work',  t('fleet.adLoading'));
+  if (state.adIsUnloading)         return b ('badge-ad-work',  t('fleet.adUnloading'));
+  if (ms === 'waitToBeCalled')     return b ('badge-ad',       t('fleet.adWaitCombine'));
+  if (ms === 'driveToCombine')     return b ('badge-ad',       t('fleet.adDriveCombine'));
+  if (ms === 'followCombine')      return b ('badge-ad',       t('fleet.adFollowCombine'));
+  if (ms === 'driveToUnload')      return b ('badge-ad',       t('fleet.adDriveUnload'));
+  if (ms === 'driveToStart')       return b ('badge-ad',       t('fleet.adDriveStart'));
   return b('badge-ad', 'AD');
 }
 
 const CP_ALERT_TEXTS = new Set(['IS_STUCK','ERROR_STOPPED','ERROR_NO_PATH_FOUND','IS_COMPLETELY_BROKEN','FUEL_IS_EMPTY','NEEDS_FILLING','ERROR_CUTTER_NOT_SUPPORTED','ERROR_WRONG_SEASON','ERROR_WRONG_MISSION_FRUIT_TYPE','ERROR_PALLETS_ARE_FULL','ERROR_PALLETS_ARE_EMPTY','ERROR_TOO_FAR_FROM_FIELD','ERROR_GROUND_UNLOAD_NOT_SUPPORTED']);
 const CP_WARN_TEXTS  = new Set(['NEEDS_UNLOADING','FUEL_IS_LOW','BLOCKED_BY_OBJECT','OUT_OF_MONEY','WRONG_BALE_WRAP_TYPE','WAITING_FOR_RAIN_TO_FINISH','WAITING_FOR_SNOW_TO_CLEAR']);
-const CP_JOB_LABELS  = { fieldWork: 'CP Feldarbeit', combineUnloader: 'CP Entlader', baleFinder: 'CP Ballen', bunkerSilo: 'CP Silo', siloLoader: 'CP Laden' };
+const CP_JOB_LABELS  = { fieldWork: 'fleet.cpJobFieldWork', combineUnloader: 'fleet.cpJobCombineUnloader', baleFinder: 'fleet.cpJobBaleFinder', bunkerSilo: 'fleet.cpJobBunkerSilo', siloLoader: 'fleet.cpJobSiloLoader' };
 
 function _cpStatusBadge(state) {
   const info = state.cpInfoText;
   if (info && CP_ALERT_TEXTS.has(info)) {
-    const label = info === 'IS_STUCK' ? 'CP Feststeckend'
-      : info === 'ERROR_NO_PATH_FOUND' ? 'CP Kein Pfad'
-      : info === 'FUEL_IS_EMPTY' ? 'CP Tank leer'
-      : info === 'IS_COMPLETELY_BROKEN' ? 'CP Reparatur'
-      : 'CP Fehler';
+    const label = info === 'IS_STUCK' ? t('fleet.cpStuck')
+      : info === 'ERROR_NO_PATH_FOUND' ? t('fleet.cpNoPath')
+      : info === 'FUEL_IS_EMPTY' ? t('fleet.cpFuelEmpty')
+      : info === 'IS_COMPLETELY_BROKEN' ? t('fleet.cpRepair')
+      : t('fleet.cpError');
     return `<span class="fleet-badge badge-cp-alert">${label}</span>`;
   }
   if (info && CP_WARN_TEXTS.has(info)) {
-    const label = info === 'NEEDS_UNLOADING' ? 'CP Voll'
-      : info === 'FUEL_IS_LOW' ? 'CP Tankt'
-      : info === 'BLOCKED_BY_OBJECT' ? 'CP Blockiert'
-      : info.startsWith('WAITING_FOR_RAIN') || info.startsWith('WAITING_FOR_SNOW') ? 'CP Wetter'
-      : 'CP Wartet';
+    const label = info === 'NEEDS_UNLOADING' ? t('fleet.cpFull')
+      : info === 'FUEL_IS_LOW' ? t('fleet.cpRefuel')
+      : info === 'BLOCKED_BY_OBJECT' ? t('fleet.cpBlocked')
+      : info.startsWith('WAITING_FOR_RAIN') || info.startsWith('WAITING_FOR_SNOW') ? t('fleet.cpWeather')
+      : t('fleet.cpWait');
     return `<span class="fleet-badge badge-cp-warn">${label}</span>`;
   }
-  if (state.cpWaitingForUnload) return '<span class="fleet-badge badge-cp-warn">CP Wartet auf Entlader</span>';
-  const jobLabel = state.cpJobType ? (CP_JOB_LABELS[state.cpJobType] || `CP ${state.cpJobType}`) : 'CP';
+  if (state.cpWaitingForUnload) return `<span class="fleet-badge badge-cp-warn">${t('fleet.cpWaitUnloadBadge')}</span>`;
+  const jobLabel = state.cpJobType ? (CP_JOB_LABELS[state.cpJobType] ? t(CP_JOB_LABELS[state.cpJobType]) : `CP ${state.cpJobType}`) : 'CP';
   return `<span class="fleet-badge badge-cp">${jobLabel}</span>`;
 }
 
@@ -6738,7 +6738,7 @@ function _adMsInit(slot, markers, selectedId) {
 }
 
 // Erzeugt das HTML der Such-Komponente (wird in innerHTML eingefügt)
-function _adMsHTML(slot, markers, selectedId, placeholder = 'Ziel suchen…') {
+function _adMsHTML(slot, markers, selectedId, placeholder = t('fleet.adSearchDest')) {
   const selName = selectedId != null && selectedId !== '' ? (markers.find(m => m.id == selectedId)?.name || '') : '';
   const val = selName.replace(/"/g, '&quot;');
   const s = typeof slot === 'string' ? `'${slot}'` : slot; // String-Slots in '', Zahl-Slots ohne Quotes
@@ -6797,13 +6797,13 @@ function _adFtRenderField(vid, nid, activeFt) {
   const chips = [...sel].map(name => {
     const title = appData?.fillTypesByName?.[name]?.title || name;
     const isActive = name === activeFt;
-    return `<span class="ad-ft-chip${isActive ? ' active' : ''}" title="${isActive ? 'Aktiver Fülltyp' : ''}">
+    return `<span class="ad-ft-chip${isActive ? ' active' : ''}" title="${isActive ? t('fleet.adActiveFillType') : ''}">
       <span>${title}</span>
       <button onmousedown="event.preventDefault();_adToggleFillType('${vid}','${nid}','${name}')" title="Entfernen">✕</button>
     </span>`;
   }).join('');
 
-  const ph = sel.size === 0 ? 'Fülltyp suchen…' : '';
+  const ph = sel.size === 0 ? t('fleet.adFtSearch') : '';
   field.innerHTML = chips + `<input class="ad-ft-real-input" id="ad-ft-input-${vid}"
     value="${curQuery.replace(/"/g,'&quot;')}" placeholder="${ph}" autocomplete="off" spellcheck="false"
     oninput="_adFtInput('${vid}','${nid}')"
@@ -6930,7 +6930,7 @@ function _buildMarkerOptions(markers, selectedId) {
     grouped[g].push(m);
   }
   const groups = Object.keys(grouped).sort();
-  let html = '<option value="">– bitte wählen –</option>';
+  let html = `<option value="">${t('fleet.adSelectMarker')}</option>`;
   for (const g of groups) {
     const opts = grouped[g].map(m =>
       `<option value="${m.id}" ${m.id === selectedId ? 'selected' : ''}>${m.name}</option>`
@@ -6956,11 +6956,11 @@ function _buildFillTypeOptions(selectedName) {
 }
 
 const AD_MODES = [
-  { id: 1, label: 'Fahren zu',         icon: 'input_silomode_1', m1: 'Ziel',      m2: null,         ft: false },
-  { id: 2, label: 'Abh. & Lief.',      icon: 'input_silomode_3', m1: 'Ladeort',   m2: 'Entladeort', ft: true  },
-  { id: 3, label: 'Liefern zu',        icon: 'input_silomode_2', m1: 'Entladeort', m2: null,        ft: false },
-  { id: 4, label: 'Laden',             icon: 'input_silomode_4', m1: 'Fahrziel',  m2: 'Ladeort',    ft: true  },
-  { id: 5, label: 'Ernter-Bgl.',       icon: 'input_silomode_5', m1: 'Wartepunkt', m2: 'Entladeort', ft: false },
+  { id: 1, labelKey: 'fleet.adMode1Label', icon: 'input_silomode_1', m1Key: 'fleet.adMarkerTarget',   m2Key: null,                    ft: false },
+  { id: 2, labelKey: 'fleet.adMode2Label', icon: 'input_silomode_3', m1Key: 'fleet.adMarkerPickup',   m2Key: 'fleet.adMarkerDelivery', ft: true  },
+  { id: 3, labelKey: 'fleet.adMode3Label', icon: 'input_silomode_2', m1Key: 'fleet.adMarkerDelivery', m2Key: null,                    ft: false },
+  { id: 4, labelKey: 'fleet.adMode4Label', icon: 'input_silomode_4', m1Key: 'fleet.adMarkerDest',     m2Key: 'fleet.adMarkerPickup',   ft: true  },
+  { id: 5, labelKey: 'fleet.adMode5Label', icon: 'input_silomode_5', m1Key: 'fleet.adMarkerWaiting',  m2Key: 'fleet.adMarkerDelivery', ft: false },
 ];
 let _adSelectedMode = 1; // currently selected mode in the AD panel
 const _adPendingMode = {}; // vehicleId → user-selected mode (not yet applied)
@@ -6977,7 +6977,7 @@ function _renderAdPanel(id) {
 
   if (!hasAD) {
     inner.innerHTML = `<div class="vd-ad-title">AutoDrive</div>
-      <div class="vd-ad-no-ad">Kein AutoDrive-Modul erkannt (id=${id})</div>`;
+      <div class="vd-ad-no-ad">${t('fleet.adNoModule', {id})}</div>`;
     return;
   }
 
@@ -6991,12 +6991,12 @@ function _renderAdPanel(id) {
 
   const modeBtns = AD_MODES.map(m => {
     const active = m.id === curMode ? ' active' : '';
-    return `<button class="vd-ad-mode-btn${active}" onclick="_selectAdMode(${m.id})" title="${m.label}">
+    return `<button class="vd-ad-mode-btn${active}" onclick="_selectAdMode(${m.id})" title="${t(m.labelKey)}">
       <img src="/api/ad-icons/${m.icon}" onerror="this.style.display='none'">
     </button>`;
   }).join('');
 
-  const m2Block = modeInfo.m2 ? `
+  const m2Block = modeInfo.m2Key ? `
     <div class="vd-ad-field">
       <div style="display:flex;align-items:center;gap:5px">
         ${curMode===5||curMode===2?`<img src="/api/ad-icons/input_toggleAutomaticUnloadTarget_2" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:curMode===4?`<img src="/api/ad-icons/input_toggleAutomaticUnloadTarget_4" style="height:28px;width:28px;object-fit:contain;image-rendering:pixelated;opacity:.75;flex-shrink:0">`:''}
@@ -7023,10 +7023,10 @@ function _renderAdPanel(id) {
   const statusBox = isActive ? `
     <div class="vd-ad-status">
       <div class="vd-ad-status-row">
-        <span>Modus</span><span class="vd-ad-status-val">${AD_MODES.find(m=>m.id===curMode)?.label||'–'}</span>
+        <span>${t('fleet.adStatusMode')}</span><span class="vd-ad-status-val">${t(AD_MODES.find(m=>m.id===curMode)?.labelKey)||'–'}</span>
       </div>
-      ${state.adDestination ? `<div class="vd-ad-status-row"><span>Ziel</span><span class="vd-ad-status-val${activeLeg===1?' active':''}">${state.adDestination}</span></div>` : ''}
-      ${state.adDestination2 ? `<div class="vd-ad-status-row"><span>${modeInfo.m2||'Ziel 2'}</span><span class="vd-ad-status-val${activeLeg===2?' active':''}">${state.adDestination2}</span></div>` : ''}
+      ${state.adDestination ? `<div class="vd-ad-status-row"><span>${t('fleet.adMarkerTarget')}</span><span class="vd-ad-status-val${activeLeg===1?' active':''}">${state.adDestination}</span></div>` : ''}
+      ${state.adDestination2 ? `<div class="vd-ad-status-row"><span>${modeInfo.m2Key ? t(modeInfo.m2Key) : t('fleet.adTarget2')}</span><span class="vd-ad-status-val${activeLeg===2?' active':''}">${state.adDestination2}</span></div>` : ''}
     </div>` : '';
 
   inner.innerHTML = `
@@ -7047,10 +7047,10 @@ function _renderAdPanel(id) {
         ? `<button class="vd-ad-btn vd-ad-btn-stop" title="Stopp" onclick="_adStartStop('${id}', '${state.netId||''}', 'stop')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="5" y="5" width="14" height="14" rx="1"/></svg></button>`
         : `<button class="vd-ad-btn vd-ad-btn-start" title="Start" onclick="_adStartStop('${id}', '${state.netId||''}', 'start')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z"/></svg></button>`
       }
-      <button class="vd-ad-btn vd-ad-btn-apply" title="Übernehmen" onclick="_adConfigure('${id}', '${state.netId||''}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10"/></svg></button>
-      <button class="vd-ad-btn vd-ad-btn-next" title="Nächstes Ziel" onclick="_adCmd('${id}','${state.netId||''}','autodrive.continue')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5v14l8 -7z"/><path d="M12 5v14l8 -7z"/><path d="M20 5v14"/></svg></button>
-      <button class="vd-ad-btn vd-ad-btn-park" ${(state.adParkDestination == null || state.adParkDestination < 0) ? 'disabled' : ''} title="${state.adParkDestination >= 0 ? 'Zum Parkziel fahren' : 'Kein Parkziel konfiguriert'}" onclick="_adCmd('${id}','${state.netId||''}','autodrive.park')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17v-8h4a2 2 0 0 1 0 4h-4"/></svg></button>
-      <button class="vd-ad-btn vd-ad-btn-swap" title="Marker 1 ↔ Marker 2 tauschen" onclick="_adCmd('${id}','${state.netId||''}','autodrive.swapTargets')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l4-4 4 4"/><path d="M7 5v14"/><path d="M21 15l-4 4-4-4"/><path d="M17 19V5"/></svg></button>
+      <button class="vd-ad-btn vd-ad-btn-apply" title="${t('fleet.adApply')}" onclick="_adConfigure('${id}', '${state.netId||''}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10"/></svg></button>
+      <button class="vd-ad-btn vd-ad-btn-next" title="${t('fleet.adNextDest')}" onclick="_adCmd('${id}','${state.netId||''}','autodrive.continue')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5v14l8 -7z"/><path d="M12 5v14l8 -7z"/><path d="M20 5v14"/></svg></button>
+      <button class="vd-ad-btn vd-ad-btn-park" ${(state.adParkDestination == null || state.adParkDestination < 0) ? 'disabled' : ''} title="${state.adParkDestination >= 0 ? t('fleet.adDriveToPark') : t('fleet.adNoParkDest')}" onclick="_adCmd('${id}','${state.netId||''}','autodrive.park')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17v-8h4a2 2 0 0 1 0 4h-4"/></svg></button>
+      <button class="vd-ad-btn vd-ad-btn-swap" title="${t('fleet.adSwapMarkers')}" onclick="_adCmd('${id}','${state.netId||''}','autodrive.swapTargets')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l4-4 4 4"/><path d="M7 5v14"/><path d="M21 15l-4 4-4-4"/><path d="M17 19V5"/></svg></button>
     </div>
     ${(() => {
       const vid = id, nid = state.netId||'';
@@ -7066,7 +7066,7 @@ function _renderAdPanel(id) {
       const loopDisplay = lc === 0 ? '∞' : (lc != null ? String(lc) : '–');
       const rocker =(field, cmd, icon, isAdIcon, label, val, valDisplay, min, max, delta, compact=false) => `
       <div class="vd-ad-rocker${compact?' sm':''}" onwheel="event.preventDefault();_adNumAdjust('${vid}','${nid}','${field}','${cmd}',event.deltaY>0?-${delta}:${delta},${min},${max},${val})"${label?` title="${label}"`:''}>
-        <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
+        <button class="vd-ad-rocker-btn" title="${t('fleet.adDecrease')}" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${-delta},${min},${max},${val})">−</button>
         <div class="vd-ad-rocker-center">
           <div class="vd-ad-rocker-icon-wrap">
             ${isAdIcon === 'svg'
@@ -7077,17 +7077,17 @@ function _renderAdPanel(id) {
             <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid}-${field}">${valDisplay}</span>
           </div>
         </div>
-        <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${+delta},${min},${max},${val})">+</button>
+        <button class="vd-ad-rocker-btn" title="${t('fleet.adIncrease')}" onclick="_adNumAdjust('${vid}','${nid}','${field}','${cmd}',${+delta},${min},${max},${val})">+</button>
       </div>`;
       const csIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="18" height="18" style="display:block;opacity:.75;flex-shrink:0"><path fill="currentColor" d="M128.842 62.334c-23.151 0-43.737 5.138-59.522 17.666-104.521 82.955 16 400 16 400h400S62.472 282.86 142.142 144c36.264-63.205 188.819 28.358 236.457 59.102-13.827 12.298-36.347 21.55-62.675 35.735 42.774 7.379 107.957-6.075 133.072-19.825-16.707-54.737-41.265-98.913-83.787-123.87 12.637 27.463 22.197 50.35 23.248 70.883-27.068-17.556-164.658-103.69-259.615-103.691z"/></svg>`;
       return `
     ${(hasLoop || hasCS) ? `<div style="display:flex;gap:8px;width:100%;">
-    ${hasLoop ? rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, 'Wiederholungen', lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true) : ''}
-    ${hasCS   ? rocker('cornerSpeed', 'autodrive.cornerSpeed', csIcon, 'svg', 'Kurvengeschwindigkeit', cs, AD_CORNER_SPEEDS[cs-1]??'–', 1, 30, 1, true) : ''}
+    ${hasLoop ? rocker('loopCounter', 'autodrive.loopCounter', 'ti-repeat', false, t('fleet.adLoopCount'), lc??0, lc===0?'∞':loopDisplay, 0, 99, 1, true) : ''}
+    ${hasCS   ? rocker('cornerSpeed', 'autodrive.cornerSpeed', csIcon, 'svg', t('fleet.adCornerSpeed'), cs, AD_CORNER_SPEEDS[cs-1]??'–', 1, 30, 1, true) : ''}
     </div>` : ''}
     ${(sl != null || fsl != null) ? `<div style="display:flex;gap:8px;width:100%;">
-    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  'Geschwindigkeitslimit',      sl,    sl+' km/h',  2,  200, 1) : ''}
-    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  'Feldgeschwindigkeitslimit',  fsl,   fsl+' km/h', 2,  200, 1) : ''}
+    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  t('fleet.adSpeedLimit'),      sl,    sl+' km/h',  2,  200, 1) : ''}
+    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  t('fleet.adFieldSpeedLimit'), fsl,   fsl+' km/h', 2,  200, 1) : ''}
     </div>` : ''}
     `;
     })()}
@@ -7096,7 +7096,7 @@ function _renderAdPanel(id) {
       if (!s) return '';
       const vid2 = id, nid2 = state.netId||'';
       const maxStates = {rotateTargets:4, exitField:3, restrictToField:2, avoidFruit:2};
-      const iconBtnTitles = {rotateTargets:'Rotierend anfahren', exitField:'Feld verlassen', restrictToField:'Auf Feld beschränken', avoidFruit:'Früchte vermeiden'};
+      const iconBtnTitles = {rotateTargets:t('fleet.adRotateTargets'), exitField:t('fleet.adExitField'), restrictToField:t('fleet.adRestrictToField'), avoidFruit:t('fleet.adAvoidFruit')};
       const iconBtn = (name, fallbackIdx) => {
         if (fallbackIdx == null) return '';
         const k = vid2+':'+name;
@@ -7142,13 +7142,13 @@ function _renderAdPanel(id) {
       ${iconBtn('avoidFruit',      s.avoidFruit)}
     </div>
     <div class="vd-ad-setting-icons">
-      ${svgInlineBtn('parkInField', parkInFieldOff, parkInFieldOn, 'Parken auf Feld')}
-      ${svgInlineBtn('autoRepair',  autoRepairOff,  autoRepairOn,  'Auto-Reparatur')}
-      ${svgInlineBtn('autoRefuel',  autoRefuelOff,  autoRefuelOn,  'Auto-Tanken')}
+      ${svgInlineBtn('parkInField', parkInFieldOff, parkInFieldOn, t('fleet.adParkInField'))}
+      ${svgInlineBtn('autoRepair',  autoRepairOff,  autoRepairOn,  t('fleet.adAutoRepair'))}
+      ${svgInlineBtn('autoRefuel',  autoRefuelOff,  autoRefuelOn,  t('fleet.adAutoRefuel'))}
       ${(() => {
         const endParkOff = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="display:block;opacity:.75"><g> <path fill="none" stroke="#c1c2c1" stroke-linejoin="round" stroke-width="23" d="M50.56,49.92s5.59.84,14.78,2.56"/> <path fill="none" stroke="#c1c2c1" stroke-linejoin="round" stroke-width="23" stroke-dasharray="29.54 19.69" d="M84.65,56.36c51.51,11.11,142.98,36.83,140.42,79.04-2.88,47.6-158.96,48.14-161.9,122.11-.72,18.08,4.5,33.52,15.46,44.76"/> <path fill="none" stroke="#c1c2c1" stroke-linejoin="round" stroke-width="23" d="M86.1,308.65c3.9,2.77,8.29,5.16,13.17,7.12"/> <polygon fill="#c1c2c1" points="78.05 359.92 171.61 322.11 92.1 259.97 78.05 359.92"/> </g> <path fill="#c1c2c1" d="M380.65,186.18l-114.04.24-80.52,80.87.24,114.04,80.87,80.55,114.04-.23,80.55-80.9-.23-114.04-80.9-80.52ZM375.96,197.72l74.03,73.74.23,104.6-72.22,72.51-1.53,1.53-104.6.23-74.05-73.74-.22-104.6,73.74-74.05,104.6-.22ZM371.56,208.28l-95.8.2-67.58,67.9.2,95.8,67.9,67.58,95.8-.18,67.58-67.93-.18-95.8-67.93-67.58ZM237.33,297.27c3.11,0,6.34.29,9.62.76,3.34.47,6.75,1.17,10.27,2.11v12.03c-3.11-1.41-6.16-2.46-9.15-3.17s-5.81-1.06-8.45-1.06c-3.52,0-6.1.47-7.77,1.47-1.68.94-2.52,2.46-2.52,4.52,0,1.53.56,2.7,1.68,3.58,1.14.82,3.21,1.58,6.21,2.17l6.22,1.23c6.34,1.29,10.85,3.23,13.55,5.81,2.64,2.64,3.99,6.34,3.99,11.09,0,6.28-1.88,10.97-5.57,14.08-3.75,3.05-9.44,4.58-17.13,4.58-3.58,0-7.22-.35-10.86-1.06-3.64-.65-7.28-1.7-10.92-3.05v-12.38c3.64,1.94,7.15,3.4,10.54,4.4,3.41.94,6.72,1.41,9.83,1.41s5.69-.53,7.39-1.58c1.7-1.06,2.58-2.58,2.58-4.58,0-1.82-.59-3.17-1.76-4.17-1.17-.94-3.46-1.82-6.92-2.58l-5.69-1.23c-5.71-1.23-9.88-3.17-12.54-5.87-2.62-2.64-3.93-6.28-3.93-10.79,0-5.69,1.83-10.03,5.5-13.08,3.67-3.11,8.94-4.63,15.84-4.63h0ZM347.45,297.27c9.15,0,16.31,2.64,21.53,7.92,5.22,5.22,7.8,12.44,7.8,21.71s-2.58,16.43-7.8,21.71c-5.22,5.22-12.38,7.86-21.53,7.86s-16.31-2.64-21.53-7.86c-5.22-5.28-7.8-12.5-7.8-21.71s2.58-16.48,7.8-21.71c5.22-5.28,12.38-7.92,21.53-7.92ZM264.2,298.33h52.56v11.09h-18.89v45.93h-14.72v-45.93h-18.95v-11.09ZM384.93,298.33h24.4c7.22,0,12.79,1.64,16.66,4.87,3.93,3.17,5.87,7.74,5.87,13.73s-1.94,10.62-5.87,13.84c-3.87,3.17-9.44,4.81-16.66,4.81h-9.74v19.77h-14.67v-57.02h0ZM347.45,307.95c-4.52,0-7.98,1.64-10.44,4.99-2.46,3.29-3.7,7.98-3.7,13.96s1.23,10.62,3.7,13.96c2.46,3.29,5.93,4.93,10.44,4.93s7.98-1.64,10.44-4.93c2.46-3.34,3.7-7.98,3.7-13.96s-1.23-10.68-3.7-13.96c-2.46-3.34-5.93-4.99-10.44-4.99ZM399.6,309v15.9h8.15c2.87,0,5.05-.7,6.63-2.05,1.53-1.41,2.29-3.4,2.29-5.93s-.76-4.52-2.29-5.87c-1.58-1.41-3.75-2.05-6.63-2.05h-8.15Z"/></svg>`;
         const endParkOn  = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="display:block;opacity:.75"><g> <path fill="#c1c2c1" d="M359.35,267.88c-5.29-4.28-12.7-6.42-22.23-6.42h-37.63v56.91h37.63c9.53,0,16.96-2.32,22.29-6.95,5.24-4.63,7.87-11.97,7.87-22.03s-2.65-17.22-7.93-21.5Z"/> <path fill="#c1c2c1" d="M425.76,186.11h-203.57c-19.86,0-36.1,16.25-36.1,36.1v203.57c0,19.86,16.25,36.1,36.1,36.1h203.57c19.86,0,36.1-16.25,36.1-36.1v-203.57c0-19.86-16.25-36.1-36.1-36.1ZM389.97,337.51c-11.54,9.44-28.02,14.16-49.44,14.16h-41.04v69.5h-40.13v-193.28h84.18c19.41,0,34.88,4.98,46.42,14.95,11.54,9.97,17.31,25.4,17.31,46.29,0,22.82-5.77,38.95-17.31,48.39Z"/> </g> <g> <path fill="none" stroke="#c1c2c1" stroke-linejoin="round" stroke-width="23" d="M50.56,49.92s5.59.84,14.78,2.56"/> <path fill="none" stroke="#c1c2c1" stroke-linejoin="round" stroke-width="23" stroke-dasharray="29.54 19.69" d="M84.65,56.36c51.51,11.11,142.98,36.83,140.42,79.04-2.88,47.6-158.96,48.14-161.9,122.11-.72,18.08,4.5,33.52,15.46,44.76"/> <path fill="none" stroke="#c1c2c1" stroke-linejoin="round" stroke-width="23" d="M86.1,308.65c3.9,2.77,8.29,5.16,13.17,7.12"/> <polygon fill="#c1c2c1" points="78.05 359.92 171.61 322.11 92.1 259.97 78.05 359.92"/> </g></svg>`;
-        return svgInlineBtn('enableParkAtJobFinished', endParkOff, endParkOn, 'Am Ende parken');
+        return svgInlineBtn('enableParkAtJobFinished', endParkOff, endParkOn, t('fleet.adParkAtEnd'));
       })()}
       <button class="vd-ad-setting-btn" disabled style="opacity:.2;cursor:default"></button>
     </div>
@@ -7157,38 +7157,38 @@ function _renderAdPanel(id) {
       const po = (_adNumPending[vid3+':pipeOffset'] !== undefined) ? _adNumPending[vid3+':pipeOffset'].value : s.pipeOffset;
       const fd = (_adNumPending[vid3+':followDistance'] !== undefined) ? _adNumPending[vid3+':followDistance'].value : s.followDistance;
       const poRocker = s.pipeOffset != null ? `
-    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',event.deltaY>0?-1:1,1,85,${s.pipeOffset})" title="Abstand Rohr">
-      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',-1,1,85,${s.pipeOffset})">−</button>
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',event.deltaY>0?-1:1,1,85,${s.pipeOffset})" title="${t('fleet.adPipeOffset')}">
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adDecrease')}" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',-1,1,85,${s.pipeOffset})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <i class="ti ti-arrows-left-right vd-ad-rocker-icon-ti"></i>
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-pipeOffset">${_adNumFormatVal('pipeOffset', po)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',1,1,85,${s.pipeOffset})">+</button>
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adIncrease')}" onclick="_adNumAdjust('${vid3}','${nid3}','pipeOffset','autodrive.pipeOffset',1,1,85,${s.pipeOffset})">+</button>
     </div>` : '';
       const fdRocker = s.followDistance != null ? `
-    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',event.deltaY>0?-1:1,1,33,${s.followDistance})" title="Abstand Häcksler">
-      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',-1,1,33,${s.followDistance})">−</button>
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',event.deltaY>0?-1:1,1,33,${s.followDistance})" title="${t('fleet.adFollowDistance')}">
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adDecrease')}" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',-1,1,33,${s.followDistance})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <i class="ti ti-arrows-up-down vd-ad-rocker-icon-ti"></i>
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-followDistance">${_adNumFormatVal('followDistance', fd)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adIncrease')}" onclick="_adNumAdjust('${vid3}','${nid3}','followDistance','autodrive.followDistance',1,1,33,${s.followDistance})">+</button>
     </div>` : '';
       const ufl = (_adNumPending[vid3+':unloadFillLevel'] !== undefined) ? _adNumPending[vid3+':unloadFillLevel'].value : s.unloadFillLevel;
       const uflRocker = s.unloadFillLevel != null ? `
-    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',event.deltaY>0?-1:1,1,14,${s.unloadFillLevel})" title="Abladen ab Level">
-      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',-1,1,14,${s.unloadFillLevel})">−</button>
+    <div class="vd-ad-rocker sm" onwheel="event.preventDefault();_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',event.deltaY>0?-1:1,1,14,${s.unloadFillLevel})" title="${t('fleet.adUnloadFillLevel')}">
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adDecrease')}" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',-1,1,14,${s.unloadFillLevel})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <img class="vd-ad-rocker-icon" src="/api/ad-icons/input_toggleAutomaticUnloadTarget_2" onerror="this.style.display='none'">
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid3}-unloadFillLevel">${_adNumFormatVal('unloadFillLevel', ufl)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',1,1,14,${s.unloadFillLevel})">+</button>
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adIncrease')}" onclick="_adNumAdjust('${vid3}','${nid3}','unloadFillLevel','autodrive.unloadFillLevel',1,1,14,${s.unloadFillLevel})">+</button>
     </div>` : '';
       return `${poRocker ? `<div style="display:flex;gap:8px;width:100%;">${poRocker}</div>` : ''}${fdRocker ? `<div style="display:flex;gap:8px;width:100%;">${fdRocker}</div>` : ''}${uflRocker ? `<div style="display:flex;gap:8px;width:100%;">${uflRocker}</div>` : ''}`;
     })() : ''}`;
@@ -7199,35 +7199,35 @@ function _renderAdPanel(id) {
       const pcl = _adNumGet(vid4, 'preCallLevel', s.preCallLevel);
       const cs  = _adNumGet(vid4, 'chaseSide',    s.chaseSide);
       const pclRocker = s.preCallLevel != null ? `
-    <div class="vd-ad-rocker sm fill-h" style="flex:4 0 15px;align-self:stretch" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',event.deltaY>0?-1:1,1,12,${s.preCallLevel})" title="Früher rufen ab">
-      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',-1,1,12,${s.preCallLevel})">−</button>
+    <div class="vd-ad-rocker sm fill-h" style="flex:4 0 15px;align-self:stretch" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',event.deltaY>0?-1:1,1,12,${s.preCallLevel})" title="${t('fleet.adPreCallLevel')}">
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adDecrease')}" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',-1,1,12,${s.preCallLevel})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <i class="ti ti-bell vd-ad-rocker-icon-ti"></i>
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid4}-preCallLevel">${_adNumFormatVal('preCallLevel', pcl)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',1,1,12,${s.preCallLevel})">+</button>
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adIncrease')}" onclick="_adNumAdjust('${vid4}','${nid4}','preCallLevel','autodrive.preCallLevel',1,1,12,${s.preCallLevel})">+</button>
     </div>` : '';
       const csRocker = s.chaseSide != null ? `
-    <div class="vd-ad-rocker sm fill-h" style="flex:4 0 15px;align-self:stretch" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',event.deltaY>0?-1:1,1,4,${s.chaseSide})" title="Entladeseite Häcksler">
-      <button class="vd-ad-rocker-btn" title="Verringern" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',-1,1,4,${s.chaseSide})">−</button>
+    <div class="vd-ad-rocker sm fill-h" style="flex:4 0 15px;align-self:stretch" onwheel="event.preventDefault();_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',event.deltaY>0?-1:1,1,4,${s.chaseSide})" title="${t('fleet.adChaseSide')}">
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adDecrease')}" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',-1,1,4,${s.chaseSide})">−</button>
       <div class="vd-ad-rocker-center">
         <div class="vd-ad-rocker-icon-wrap">
           <i class="ti ti-arrows-left-right vd-ad-rocker-icon-ti"></i>
           <span class="vd-ad-rocker-val" id="ad-rocker-val-${vid4}-chaseSide">${_adNumFormatVal('chaseSide', cs)}</span>
         </div>
       </div>
-      <button class="vd-ad-rocker-btn" title="Erhöhen" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',1,1,4,${s.chaseSide})">+</button>
+      <button class="vd-ad-rocker-btn" title="${t('fleet.adIncrease')}" onclick="_adNumAdjust('${vid4}','${nid4}','chaseSide','autodrive.chaseSide',1,1,4,${s.chaseSide})">+</button>
     </div>` : '';
       const su2SvgOff = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="display:block;opacity:.85"><path fill="#c1c2c1" d="M167.49,122.65l-3.63,17.25h29.16l-3.63-17.25h-21.9ZM170.68,155.42v12.07h15.52v-12.07h-15.52ZM144.2,183.02l-6.71,81.06h14.78l5.17-68.99h112.57l-1.72-12.07h-124.1ZM405.24,202.85v64.33c5.18.4,10.36.88,15.52,1.44v-65.77h-15.52ZM171.85,210.61l-4.01,53.46h5.43c8.63,0,16.85,3.69,25.01,9.18v-62.64h-26.43ZM213.8,210.61v72.66l67.26,7.49v-18.36l-8.83-61.78h-58.44ZM109.46,279.6c-6.9,0-20.09,5.83-32.23,15.55-9.41,7.52-18.33,17.15-24.79,26.88l14.5,3.62c17.26-21.71,43.87-35.7,73.57-35.7,43.63,0,80.61,30.2,91.05,70.71h17.6c-7.87-16.16-19.9-34.68-33.05-49.92-8.05-9.33-16.44-17.41-24.1-22.94-7.66-5.53-14.56-8.2-18.74-8.2h-63.81ZM296.58,279.65v94.81h27.72c7.83-26,22.59-43.78,42.36-52.77,10.62-4.83,22.41-7.16,35.13-7.4,9.83-.18,20.22.9,31.03,3.05v-31.47c-9.91-1.54-21.63-2.74-34.18-3.62-34.67-2.44-74.3-2.59-102.07-2.6ZM448.35,288.97v16.49h12.07v-11.56c-3.43-2.33-8.54-3.97-12.07-4.93ZM227.72,300.44c.05.05.09.11.14.16,17.24,19.99,32.63,44.49,40.6,65.01l4.11,10.57h-38.4c.21,2.56.33,5.15.33,7.76,0,6.19-.61,12.24-1.77,18.11h48.34v-95.67l-53.35-5.94ZM140.5,305.47c-43.19,0-78.47,35.29-78.47,78.47s35.29,78.47,78.47,78.47,78.47-35.29,78.47-78.47-35.29-78.47-78.47-78.47ZM448.35,320.99v12.07h12.07v-12.07h-12.07ZM140.5,324.44c32.91,0,59.5,26.59,59.5,59.5s-26.59,59.5-59.5,59.5-59.5-26.59-59.5-59.5,26.59-59.5,59.5-59.5ZM405.76,329.84c-11.12.14-23.6,1.95-32.66,5.97-14.52,6.6-25.59,18.58-32.5,38.64h9.11c12.02-19.59,33.64-32.77,58.12-32.77,8.57,0,17.06,1.64,25.01,4.83v-13.32c-9.65-2.08-18.7-3.21-27.07-3.35h0ZM140.5,339.96c-24.65,0-43.98,19.33-43.98,43.98s19.33,43.98,43.98,43.98,43.98-19.33,43.98-43.98-19.33-43.98-43.98-43.98ZM448.35,348.58v6.61c4.47,3.34,8.53,7.21,12.07,11.52v-18.13h-12.07ZM407.82,357.21c-28.88,0-52.6,23.72-52.6,52.6s23.72,52.6,52.6,52.6,52.6-23.72,52.6-52.6-23.72-52.6-52.6-52.6ZM407.82,376.18c18.55,0,33.63,15.08,33.63,33.63s-15.08,33.63-33.63,33.63-33.63-15.08-33.63-33.63,15.08-33.63,33.63-33.63ZM296.58,389.98v13.26l43.13,7.19c0-.2,0-.41,0-.61,0-6.89,1.05-13.55,2.99-19.83h-46.1ZM407.82,391.7c-10.43,0-18.11,7.68-18.11,18.11s7.68,18.11,18.11,18.11,18.11-7.68,18.11-18.11-7.68-18.11-18.11-18.11Z"/></svg>`;
       const su2SvgOn  = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="display:block;opacity:.85"><path fill="#c1c2c1" d="M218.86,179.8l-3.01,14.28h24.14l-3.01-14.28h-18.13ZM221.5,206.93v10h12.85v-10h-12.85ZM199.57,229.77l-5.55,67.11h12.24l4.28-57.12h93.2l-1.43-10h-102.74ZM415.69,246.2v53.26c4.29.33,8.57.73,12.85,1.19v-54.45h-12.85ZM222.47,252.62l-3.32,44.26h4.5c7.14,0,13.95,3.06,20.7,7.6v-51.86h-21.88ZM257.2,252.62v60.16l55.69,6.2v-15.2l-7.31-51.15h-48.38ZM170.81,309.74c-5.71,0-16.63,4.83-26.69,12.87-7.79,6.23-15.17,14.2-20.52,22.25l12,3c14.29-17.97,36.32-29.55,60.91-29.55,36.12,0,66.74,25.01,75.38,58.54h14.57c-6.52-13.38-16.48-28.71-27.36-41.33-6.66-7.72-13.61-14.41-19.95-18.99-6.34-4.58-12.05-6.79-15.51-6.79h-52.83ZM325.74,309.78v78.49h22.95c6.49-21.53,18.7-36.25,35.07-43.69,8.79-4,18.55-5.93,29.08-6.12,8.14-.15,16.74.75,25.69,2.53v-26.05c-8.21-1.27-17.91-2.27-28.3-3-28.71-2.02-61.51-2.14-84.51-2.15ZM451.39,317.5v13.66h10v-9.57c-2.84-1.93-7.07-3.29-10-4.08ZM268.72,326.99s.08.09.12.13c14.28,16.55,27.02,36.83,33.62,53.82l3.4,8.75h-31.79c.18,2.12.27,4.26.27,6.43,0,5.12-.51,10.14-1.47,14.99h40.02v-79.21l-44.17-4.92ZM196.51,331.15c-35.75,0-64.97,29.21-64.97,64.97s29.21,64.97,64.97,64.97,64.97-29.21,64.97-64.97-29.21-64.97-64.97-64.97ZM451.39,344.01v10h10v-10h-10ZM196.51,346.86c27.24,0,49.26,22.02,49.26,49.26s-22.02,49.26-49.26,49.26-49.26-22.02-49.26-49.26,22.02-49.26,49.26-49.26ZM416.12,351.34c-9.21.12-19.54,1.62-27.04,4.94-12.02,5.46-21.19,15.38-26.91,31.99h7.55c9.95-16.22,27.85-27.13,48.12-27.13,7.09,0,14.12,1.36,20.7,4v-11.03c-7.99-1.72-15.48-2.66-22.42-2.77h0ZM196.51,359.71c-20.41,0-36.41,16-36.41,36.41s16,36.41,36.41,36.41,36.41-16,36.41-36.41-16-36.41-36.41-36.41ZM451.39,366.85v5.48c3.7,2.76,7.06,5.97,10,9.54v-15.01h-10ZM417.84,373.99c-23.91,0-43.55,19.64-43.55,43.55s19.64,43.55,43.55,43.55,43.55-19.64,43.55-43.55-19.64-43.55-43.55-43.55ZM417.84,389.7c15.36,0,27.84,12.48,27.84,27.84s-12.48,27.84-27.84,27.84-27.84-12.48-27.84-27.84,12.48-27.84,27.84-27.84ZM325.74,401.12v10.98l35.7,5.95c0-.17,0-.34,0-.51,0-5.7.87-11.22,2.47-16.42h-38.17ZM417.84,402.55c-8.64,0-14.99,6.36-14.99,14.99s6.36,14.99,14.99,14.99,14.99-6.36,14.99-14.99-6.36-14.99-14.99-14.99Z"/><path fill="#c1c2c1" d="M93.01,55.83l-1.39,6.6h11.16l-1.39-6.6h-8.38ZM94.23,68.37v4.62h5.94v-4.62h-5.94ZM84.09,78.94l-2.57,31.03h5.66l1.98-26.41h43.09l-.66-4.62h-47.5ZM184.01,86.53v24.62c1.98.15,3.96.34,5.94.55v-25.17h-5.94ZM94.67,89.5l-1.54,20.46h2.08c3.3,0,6.45,1.41,9.57,3.51v-23.98h-10.12ZM110.73,89.5v27.81l25.75,2.87v-7.03l-3.38-23.65h-22.37ZM70.79,115.91c-2.64,0-7.69,2.23-12.34,5.95-3.6,2.88-7.02,6.57-9.49,10.29l5.55,1.39c6.61-8.31,16.79-13.66,28.16-13.66,16.7,0,30.86,11.56,34.85,27.07h6.74c-3.01-6.19-7.62-13.27-12.65-19.11-3.08-3.57-6.29-6.66-9.22-8.78-2.93-2.12-5.57-3.14-7.17-3.14h-24.43ZM142.42,115.93v36.29h10.61c3-9.95,8.65-16.76,16.22-20.2,4.06-1.85,8.58-2.74,13.45-2.83,3.76-.07,7.74.35,11.88,1.17v-12.04c-3.79-.59-8.28-1.05-13.08-1.39-13.27-.93-28.44-.99-39.07-1ZM200.51,119.5v6.31h4.62v-4.43c-1.31-.89-3.27-1.52-4.62-1.89ZM116.06,123.88s.04.04.05.06c6.6,7.65,12.49,17.03,15.54,24.88l1.57,4.05h-14.7c.08.98.13,1.97.13,2.97,0,2.37-.24,4.69-.68,6.93h18.5v-36.62l-20.42-2.27ZM82.67,125.81c-16.53,0-30.04,13.51-30.04,30.04s13.51,30.04,30.04,30.04,30.04-13.51,30.04-30.04-13.51-30.04-30.04-30.04ZM200.51,131.75v4.62h4.62v-4.62h-4.62ZM82.67,133.07c12.6,0,22.78,10.18,22.78,22.78s-10.18,22.78-22.78,22.78-22.78-10.18-22.78-22.78,10.18-22.78,22.78-22.78ZM184.21,135.14c-4.26.05-9.03.75-12.5,2.29-5.56,2.53-9.79,7.11-12.44,14.79h3.49c4.6-7.5,12.88-12.54,22.25-12.54,3.28,0,6.53.63,9.57,1.85v-5.1c-3.69-.8-7.16-1.23-10.36-1.28h0ZM82.67,139.01c-9.44,0-16.83,7.4-16.83,16.83s7.4,16.83,16.83,16.83,16.83-7.4,16.83-16.83-7.4-16.83-16.83-16.83ZM200.51,142.31v2.53c1.71,1.28,3.26,2.76,4.62,4.41v-6.94h-4.62ZM185,145.61c-11.06,0-20.13,9.08-20.13,20.13s9.08,20.13,20.13,20.13,20.13-9.08,20.13-20.13-9.08-20.13-20.13-20.13ZM185,152.87c7.1,0,12.87,5.77,12.87,12.87s-5.77,12.87-12.87,12.87-12.87-5.77-12.87-12.87,5.77-12.87,12.87-12.87ZM142.42,158.16v5.08l16.51,2.75c0-.08,0-.16,0-.23,0-2.64.4-5.19,1.14-7.59h-17.65ZM185,158.82c-3.99,0-6.93,2.94-6.93,6.93s2.94,6.93,6.93,6.93,6.93-2.94,6.93-6.93-2.94-6.93-6.93-6.93Z"/></svg>`;
       const su2Idx = (_adSettingPending[vid4+':callSecondUnloader'] !== undefined) ? _adSettingPending[vid4+':callSecondUnloader'] : (s.callSecondUnloader ?? 1);
-      const su2 = s.callSecondUnloader != null ? `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid4}','${nid4}','callSecondUnloader',2,${su2Idx})" title="2. Ablader rufen">${su2Idx === 2 ? su2SvgOn : su2SvgOff}</button>` : '';
+      const su2 = s.callSecondUnloader != null ? `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid4}','${nid4}','callSecondUnloader',2,${su2Idx})" title="${t('fleet.adCallSecondUnloader')}">${su2Idx === 2 ? su2SvgOn : su2SvgOff}</button>` : '';
       const auSvgOff = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="display:block;opacity:.85"><rect fill="#616161" x="127.75" y="50.69" width="103.74" height="411.05"/><rect fill="#616161" x="277.58" y="48.95" width="103.74" height="411.05"/><g><rect fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" x="86.62" y="183.83" width="298.28" height="113.93"/><polygon fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" points="371.09 310.16 371.09 297.76 100.43 297.76 100.43 319.85 331.52 319.85 331.52 320.91 431.35 349.53 431.35 327.44 371.09 310.16"/><path fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" d="M256.5,304.66c-18.69,0-33.83,15.15-33.83,33.83s15.15,33.83,33.83,33.83,33.83-15.15,33.83-33.83-15.15-33.83-33.83-33.83ZM256.5,357.14c-10.3,0-18.64-8.35-18.64-18.64s8.35-18.64,18.64-18.64,18.64,8.35,18.64,18.64-8.35,18.64-18.64,18.64Z"/><path fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" d="M179.83,304.66c-18.69,0-33.83,15.15-33.83,33.83s15.15,33.83,33.83,33.83,33.83-15.15,33.83-33.83-15.15-33.83-33.83-33.83ZM179.83,357.14c-10.3,0-18.64-8.35-18.64-18.64s8.35-18.64,18.64-18.64,18.64,8.35,18.64,18.64-8.35,18.64-18.64,18.64Z"/></g></svg>`;
       const auSvgOn  = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="display:block;opacity:.85"><polygon fill="#616161" points="462.71 256.22 50.56 50.69 50.56 461.74 462.71 256.22"/><g><rect fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" x="86.62" y="183.83" width="298.28" height="113.93"/><polygon fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" points="371.09 310.16 371.09 297.76 100.43 297.76 100.43 319.85 331.52 319.85 331.52 320.91 431.35 349.53 431.35 327.44 371.09 310.16"/><path fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" d="M256.5,304.66c-18.69,0-33.83,15.15-33.83,33.83s15.15,33.83,33.83,33.83,33.83-15.15,33.83-33.83-15.15-33.83-33.83-33.83ZM256.5,357.14c-10.3,0-18.64-8.35-18.64-18.64s8.35-18.64,18.64-18.64,18.64,8.35,18.64,18.64-8.35,18.64-18.64,18.64Z"/><path fill="#c1c2c1" stroke="#000" stroke-miterlimit="10" stroke-width="2" d="M179.83,304.66c-18.69,0-33.83,15.15-33.83,33.83s15.15,33.83,33.83,33.83,33.83-15.15,33.83-33.83-15.15-33.83-33.83-33.83ZM179.83,357.14c-10.3,0-18.64-8.35-18.64-18.64s8.35-18.64,18.64-18.64,18.64,8.35,18.64,18.64-8.35,18.64-18.64,18.64Z"/></g></svg>`;
       const auIdx = (_adSettingPending[vid4+':activeUnloading'] !== undefined) ? _adSettingPending[vid4+':activeUnloading'] : (s.activeUnloading ?? 1);
-      const au  = s.activeUnloading != null ? `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid4}','${nid4}','activeUnloading',2,${auIdx})" title="Aktiv abfahren">${auIdx === 2 ? auSvgOn : auSvgOff}</button>` : '';
+      const au  = s.activeUnloading != null ? `<button class="vd-ad-setting-btn" onclick="_adSettingCycle('${vid4}','${nid4}','activeUnloading',2,${auIdx})" title="${t('fleet.adActiveUnloading')}">${auIdx === 2 ? auSvgOn : auSvgOff}</button>` : '';
       if (!pclRocker && !csRocker && !su2 && !au) return '';
       return `
     <div class="vd-ad-divider"></div>
@@ -7238,29 +7238,29 @@ function _renderAdPanel(id) {
       const vid = id, nid = state.netId||'';
       const helperLabels = {1:'CP', 2:'AIVE', 3:'AI', 5:'–'};
       const toggles = [
-        state.adLoadByFillLevel  != null ? {cmd:'autodrive.toggleLoadByFill',  on:state.adLoadByFillLevel,  label:'Füllstand-Laden'} : null,
-        state.adAutoUnloadTarget != null ? {cmd:'autodrive.toggleAutoUnload',   on:state.adAutoUnloadTarget, label:'Auto-Entladen'} : null,
-        state.adAutoPickupTarget != null ? {cmd:'autodrive.toggleAutoPickup',   on:state.adAutoPickupTarget, label:'Auto-Beladen'} : null,
-        state.adStartHelper      != null ? {cmd:'autodrive.toggleStartHelper',  on:state.adStartHelper,      label:'Helper-Neustart'} : null,
+        state.adLoadByFillLevel  != null ? {cmd:'autodrive.toggleLoadByFill',  on:state.adLoadByFillLevel,  label:t('fleet.adLoadByFillLevel')} : null,
+        state.adAutoUnloadTarget != null ? {cmd:'autodrive.toggleAutoUnload',   on:state.adAutoUnloadTarget, label:t('fleet.adAutoUnload')} : null,
+        state.adAutoPickupTarget != null ? {cmd:'autodrive.toggleAutoPickup',   on:state.adAutoPickupTarget, label:t('fleet.adAutoPickup')} : null,
+        state.adStartHelper      != null ? {cmd:'autodrive.toggleStartHelper',  on:state.adStartHelper,      label:t('fleet.adHelperRestart')} : null,
       ].filter(Boolean);
       if (toggles.length === 0 && state.adUsedHelper == null) return '';
       const toggleBtns = toggles.map(t =>
-        `<button class="vd-ad-toggle-btn${t.on?' on':''}" title="${t.label} ${t.on?'deaktivieren':'aktivieren'}" onclick="_adCmd('${vid}','${nid}','${t.cmd}')">${t.label}</button>`
+        `<button class="vd-ad-toggle-btn${t.on?' on':''}" title="${t.label} ${t.on?i18next.t('fleet.adDeactivate'):i18next.t('fleet.adActivate')}" onclick="_adCmd('${vid}','${nid}','${t.cmd}')">${t.label}</button>`
       ).join('');
       const helperBtn = state.adUsedHelper != null
-        ? `<button class="vd-ad-toggle-btn cycle" onclick="_adCmd('${vid}','${nid}','autodrive.toggleUsedHelper')" title="Helper-Typ wechseln">Helper: ${helperLabels[state.adUsedHelper]??state.adUsedHelper}</button>`
+        ? `<button class="vd-ad-toggle-btn cycle" onclick="_adCmd('${vid}','${nid}','autodrive.toggleUsedHelper')" title="${t('fleet.adChangeHelper')}">Helper: ${helperLabels[state.adUsedHelper]??state.adUsedHelper}</button>`
         : '';
       return `
     <div style="display:none">
     <div class="vd-ad-divider"></div>
-    <div class="vd-ad-label">Optionen</div>
+    <div class="vd-ad-label">${t('fleet.adOptions')}</div>
     <div class="vd-ad-toggle-grid">${toggleBtns}${helperBtn}</div>
     </div>`;
     })()}
   `;
   // Marker-Search State nach innerHTML-Injection initialisieren
   _adMsInit(1, markers, curM1);
-  if (modeInfo.m2) _adMsInit(2, markers, curM2);
+  if (modeInfo.m2Key) _adMsInit(2, markers, curM2);
   // FillType: Tag-Input befüllen
   if (modeInfo.ft) {
     _adFtRenderField(id, state.netId || '', state.adFillType);
@@ -7291,7 +7291,7 @@ function _onAdModeChange() {
 
   const m2wrap = document.getElementById('ad-m2-wrap');
   if (m2wrap) {
-    if (modeInfo.m2) {
+    if (modeInfo.m2Key) {
       m2wrap.style.display = '';
       m2wrap.innerHTML = `
         <div class="vd-ad-field">
@@ -7645,15 +7645,15 @@ function _renderVehicleDetail(id) {
     } else if (rootState.cpActive) {
       statusBadge = _cpStatusBadge(rootState);
     } else if (rootState.motorRunning) {
-      if (rootState.isAIActive)      statusBadge = '<span class="fleet-badge badge-ai">KI aktiv</span>';
-      else if (rootState.isEntered)  statusBadge = '<span class="fleet-badge badge-active">In Betrieb</span>';
-      else                           statusBadge = '<span class="fleet-badge badge-active">Motor läuft</span>';
+      if (rootState.isAIActive)      statusBadge = `<span class="fleet-badge badge-ai">${t('fleet.statusAIActive')}</span>`;
+      else if (rootState.isEntered)  statusBadge = `<span class="fleet-badge badge-active">${t('fleet.statusInOperation')}</span>`;
+      else                           statusBadge = `<span class="fleet-badge badge-active">${t('fleet.statusMotorRunning')}</span>`;
     } else {
-      statusBadge = '<span class="fleet-badge badge-idle">Geparkt</span>';
+      statusBadge = `<span class="fleet-badge badge-idle">${t('fleet.statusIdle')}</span>`;
     }
   }
   // damage badge removed from header — shown in body section instead
-  if (rootMeta.propState === 'leased') statusBadge += '<span class="fleet-badge badge-leased">Gemietet</span>';
+  if (rootMeta.propState === 'leased') statusBadge += `<span class="fleet-badge badge-leased">${t('fleet.statusLeased')}</span>`;
 
   const driverLine = driverName
     ? `<div class="vd-driver-line">
@@ -7697,7 +7697,7 @@ function _renderVehicleDetail(id) {
   // ── AutoDrive banner (below header) ─────────────────────────────
   const adBanner = document.getElementById('vd-ad-banner');
   if (rootState.adActive === true && adBanner) {
-    const modeName = AD_MODE_LABELS[rootState.adMode] || '–';
+    const modeName = t(AD_MODE_LABELS[rootState.adMode]) || '–';
     const singleDestModes = [1, 3, 4];
     const ct = rootState.adCurrentTarget ?? (singleDestModes.includes(rootState.adMode) ? 1 : null);
     const dest1Class = ct === 1 ? 'active' : '';
@@ -7712,14 +7712,14 @@ function _renderVehicleDetail(id) {
       ? (appData?.fillTypesByName?.[rootState.adFillType]?.title || rootState.adFillType)
       : null;
     const fillHtml = fillTypeTitle
-      ? `<span class="vd-ad-banner-meta">Ware: <strong>${fillTypeTitle}</strong></span>`
+      ? `<span class="vd-ad-banner-meta">${t('fleet.adBannerCargo')} <strong>${fillTypeTitle}</strong></span>`
       : '';
     const loopHtml = rootState.adLoopCounter
-      ? `<span class="vd-ad-banner-meta">Runden: <strong>${rootState.adLoopsDone ?? 0} / ${rootState.adLoopCounter}</strong></span>`
+      ? `<span class="vd-ad-banner-meta">${t('fleet.adBannerRounds')} <strong>${rootState.adLoopsDone ?? 0} / ${rootState.adLoopCounter}</strong></span>`
       : '';
     const timeStr = formatAdTime(rootState.adRemainingTime);
     const timeHtml = timeStr
-      ? `<span class="vd-ad-banner-meta">Ankunft: <strong>${timeStr}</strong></span>`
+      ? `<span class="vd-ad-banner-meta">${t('fleet.adBannerEta')} <strong>${timeStr}</strong></span>`
       : '';
     const hasMeta = fillHtml || loopHtml || timeHtml;
     adBanner.className = 'vd-ad-banner visible';
@@ -7739,15 +7739,15 @@ function _renderVehicleDetail(id) {
   // ── Courseplay banner (below header) ────────────────────────────
   const cpBanner = document.getElementById('vd-cp-banner');
   if (rootState.cpActive === true && cpBanner) {
-    const jobLabel = rootState.cpJobType ? (CP_JOB_LABELS[rootState.cpJobType] || `CP ${rootState.cpJobType}`) : 'CP';
+    const jobLabel = rootState.cpJobType ? (CP_JOB_LABELS[rootState.cpJobType] ? t(CP_JOB_LABELS[rootState.cpJobType]) : `CP ${rootState.cpJobType}`) : 'CP';
     const wpHtml = rootState.cpWaypointCurrent && rootState.cpWaypointTotal
-      ? `<span class="vd-cp-banner-meta">Wegpunkt: <strong>${rootState.cpWaypointCurrent} / ${rootState.cpWaypointTotal}</strong></span>`
+      ? `<span class="vd-cp-banner-meta">${t('fleet.cpBannerWaypoint')} <strong>${rootState.cpWaypointCurrent} / ${rootState.cpWaypointTotal}</strong></span>`
       : '';
     const timeHtml = rootState.cpRemainingTime
-      ? `<span class="vd-cp-banner-meta">Verbleibend: <strong>${rootState.cpRemainingTime}</strong></span>`
+      ? `<span class="vd-cp-banner-meta">${t('fleet.cpBannerRemaining')} <strong>${rootState.cpRemainingTime}</strong></span>`
       : '';
     const balesHtml = rootState.cpNumBalesLeft
-      ? `<span class="vd-cp-banner-meta">Ballen: <strong>${rootState.cpNumBalesLeft}</strong></span>`
+      ? `<span class="vd-cp-banner-meta">${t('fleet.cpBannerBales')} <strong>${rootState.cpNumBalesLeft}</strong></span>`
       : '';
     const infoHtml = rootState.cpInfoText
       ? `<span class="vd-cp-banner-meta">${rootState.cpInfoText}</span>`
@@ -7757,8 +7757,8 @@ function _renderVehicleDetail(id) {
     cpBanner.innerHTML = `
       <div class="vd-cp-banner-row1">
         <span class="vd-cp-banner-job">${jobLabel}</span>
-        ${rootState.cpHarvesterManeuvering ? '<span class="vd-cp-banner-sep">·</span><span class="vd-cp-banner-meta">Manövriert</span>' : ''}
-        ${rootState.cpWaitingForUnload ? '<span class="vd-cp-banner-sep">·</span><span class="vd-cp-banner-meta">Wartet auf Entlader</span>' : ''}
+        ${rootState.cpHarvesterManeuvering ? `<span class="vd-cp-banner-sep">·</span><span class="vd-cp-banner-meta">${t('fleet.cpManeuvering')}</span>` : ''}
+        ${rootState.cpWaitingForUnload ? `<span class="vd-cp-banner-sep">·</span><span class="vd-cp-banner-meta">${t('fleet.cpWaitUnload')}</span>` : ''}
       </div>
       ${hasMeta ? `<div class="vd-cp-banner-row2">${wpHtml}${timeHtml}${balesHtml}${infoHtml}</div>` : ''}
     `;
@@ -7843,7 +7843,7 @@ function _renderVehicleDetail(id) {
   {
     const damageCol = `<div class="vd-tank">
       <div class="vd-tank-label-row">
-        <span class="vd-tank-name">Schaden</span>
+        <span class="vd-tank-name">${t('fleet.damage')}</span>
         <span class="vd-tank-val">${damage}%</span>
       </div>
       <div class="vd-tank-track slim"><div class="vd-tank-fill damage" style="width:${damage}%"></div></div>
@@ -7851,7 +7851,7 @@ function _renderVehicleDetail(id) {
     const wearColor = wear > 60 ? '#ef5350' : wear > 30 ? '#ffa726' : '#9e9e9e';
     const wearCol = `<div class="vd-tank">
       <div class="vd-tank-label-row">
-        <span class="vd-tank-name">Lackabnutzung</span>
+        <span class="vd-tank-name">${t('fleet.wear')}</span>
         <span class="vd-tank-val">${wear}%</span>
       </div>
       <div class="vd-tank-track slim"><div class="vd-tank-fill" style="width:${wear}%;background:${wearColor}"></div></div>
@@ -7869,18 +7869,18 @@ function _renderVehicleDetail(id) {
     const dmClass  = rootState.evDriveMode === 1 ? 'drive-4wd' : rootState.evDriveMode === 2 ? 'drive-fwd' : '';
     const dmSlot   = rootState.evDriveMode != null ? `
       <div class="vd-cc-slot ${dmClass}">
-        <span class="vd-cc-label">Antrieb</span>
+        <span class="vd-cc-label">${t('fleet.drive')}</span>
         <span class="vd-cc-speed">${dmLabels[rootState.evDriveMode] ?? '–'}</span>
       </div>` : '';
     const frontSlot = rootState.evFrontDiff != null ? `
       <div class="vd-cc-slot ${rootState.evFrontDiff ? 'diff-locked' : ''}">
-        <span class="vd-cc-label">Diff V</span>
-        <span class="vd-cc-speed">${rootState.evFrontDiff ? 'gesperrt' : 'offen'}</span>
+        <span class="vd-cc-label">${t('fleet.diffFront')}</span>
+        <span class="vd-cc-speed">${rootState.evFrontDiff ? t('fleet.locked') : t('fleet.open')}</span>
       </div>` : '';
     const rearSlot  = rootState.evRearDiff != null ? `
       <div class="vd-cc-slot ${rootState.evRearDiff ? 'diff-locked' : ''}">
-        <span class="vd-cc-label">Diff H</span>
-        <span class="vd-cc-speed">${rootState.evRearDiff ? 'gesperrt' : 'offen'}</span>
+        <span class="vd-cc-label">${t('fleet.diffRear')}</span>
+        <span class="vd-cc-speed">${rootState.evRearDiff ? t('fleet.locked') : t('fleet.open')}</span>
       </div>` : '';
     sections += `<div class="vd-section">
       <div class="vd-cc-row">${dmSlot}${frontSlot}${rearSlot}</div>
@@ -7904,13 +7904,13 @@ function _renderVehicleDetail(id) {
 
   // Info grid — collapsible, hidden by default
   const infoStats = [];
-  if (rootMeta.workWidth)    infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Arbeitsbreite</span><span class="vd-stat-value">${rootMeta.workWidth} m</span></div>`);
-  if (rootMeta.opHours > 0) infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Betriebsstunden</span><span class="vd-stat-value">${rootMeta.opHours} Bh.</span></div>`);
-  if (rootMeta.age    > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Alter</span><span class="vd-stat-value">${rootMeta.age} Mon.</span></div>`);
-  if (rootMeta.price  > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">Zeitwert</span><span class="vd-stat-value">${rootMeta.price.toLocaleString('de-DE')} $</span></div>`);
+  if (rootMeta.workWidth)    infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">${t('fleet.workWidth')}</span><span class="vd-stat-value">${rootMeta.workWidth} m</span></div>`);
+  if (rootMeta.opHours > 0) infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">${t('fleet.opHours')}</span><span class="vd-stat-value">${rootMeta.opHours} ${t('fleet.opHoursUnit')}</span></div>`);
+  if (rootMeta.age    > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">${t('fleet.age')}</span><span class="vd-stat-value">${rootMeta.age} ${t('fleet.ageUnit')}</span></div>`);
+  if (rootMeta.price  > 0)  infoStats.push(`<div class="vd-stat"><span class="vd-stat-label">${t('fleet.currentValue')}</span><span class="vd-stat-value">${rootMeta.price.toLocaleString(getCurrentLang() === 'de' ? 'de-DE' : 'en-US')} $</span></div>`);
   if (infoStats.length) {
     sections += `<div class="vd-section">
-      <button class="vd-info-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Informationen <span>▸</span></button>
+      <button class="vd-info-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">${t('fleet.info')} <span>▸</span></button>
       <div class="vd-collapsible-body"><div class="vd-stat-grid">${infoStats.join('')}</div></div>
     </div>`;
   }
@@ -8048,7 +8048,7 @@ function nearestHotspot(vehicleId, vx, vz, speed, hotspots, fields) {
   let result = null;
   if (nearField && (!nearHs || nearFieldDist < nearHsDist * 2)) {
     const dx = nearField.cx - vx, dz = nearField.cz - vz;
-    result = { text: `${Math.round(nearFieldDist)} m ${_cardinal(dx, dz)} v Feld ${nearField.id}` };
+    result = { text: `${Math.round(nearFieldDist)} m ${_cardinal(dx, dz)} ${t('fleet.nearFieldOf')} ${nearField.id}` };
   } else if (nearHs) {
     const dx = nearHs.x - vx, dz = nearHs.z - vz;
     result = { text: `${Math.round(nearHsDist)} m ${_cardinal(dx, dz)} · ${nearHs.name}` };
@@ -8060,15 +8060,15 @@ function nearestHotspot(vehicleId, vx, vz, speed, hotspots, fields) {
 
 // ── Fleet category groups ─────────────────────────────────────────
 const FLEET_CAT_GROUPS = [
-  { id: 'g_tractors',  label: 'Traktoren',       cats: new Set(['TRACTORSL','TRACTORSM','TRACTORSS']) },
-  { id: 'g_harvesters',label: 'Mähdrescher',      cats: new Set(['HARVESTERS','COTTONHARVESTERS','POTATOHARVESTING']) },
-  { id: 'g_forage',    label: 'Häcksler',         cats: new Set(['FORAGEHARVESTERS']) },
-  { id: 'g_trucks',    label: 'LKW',              cats: new Set(['TRUCKS']) },
-  { id: 'g_cars',      label: 'PKW',              cats: new Set(['CARS']) },
-  { id: 'g_harvest',   label: 'Ernte',            cats: new Set(['CUTTERS','BALERSSQUARE','BALELOADERS','CUTTERTRAILERS','AUGERWAGONS','BELTS']) },
-  { id: 'g_fieldwork', label: 'Bodenbearbeitung', cats: new Set(['PLOWS','PLANTERS','SPRAYERS','FERTILIZERSPREADERS','WEEDERS','ROLLERS','POTATOPLANTING']) },
-  { id: 'g_transport', label: 'Transport',        cats: new Set(['TRAILERS','TRAILERSSEMI','SLURRYTRANSPORT','COTTONTRANSPORT','ANIMALTRANSPORT','BARRELS']) },
-  { id: 'g_misc',      label: 'Sonstiges',        cats: new Set(['LOADERS','TELEHANDLERS','FRONTLOADERTOOLS','CRANES','MISC']) },
+  { id: 'g_tractors',  i18nKey: 'fleet.g_tractors',  cats: new Set(['TRACTORSL','TRACTORSM','TRACTORSS']) },
+  { id: 'g_harvesters',i18nKey: 'fleet.g_harvesters', cats: new Set(['HARVESTERS','COTTONHARVESTERS','POTATOHARVESTING']) },
+  { id: 'g_forage',    i18nKey: 'fleet.g_forage',    cats: new Set(['FORAGEHARVESTERS']) },
+  { id: 'g_trucks',    i18nKey: 'fleet.g_trucks',    cats: new Set(['TRUCKS']) },
+  { id: 'g_cars',      i18nKey: 'fleet.g_cars',      cats: new Set(['CARS']) },
+  { id: 'g_harvest',   i18nKey: 'fleet.g_harvest',   cats: new Set(['CUTTERS','BALERSSQUARE','BALELOADERS','CUTTERTRAILERS','AUGERWAGONS','BELTS']) },
+  { id: 'g_fieldwork', i18nKey: 'fleet.g_fieldwork', cats: new Set(['PLOWS','PLANTERS','SPRAYERS','FERTILIZERSPREADERS','WEEDERS','ROLLERS','POTATOPLANTING']) },
+  { id: 'g_transport', i18nKey: 'fleet.g_transport', cats: new Set(['TRAILERS','TRAILERSSEMI','SLURRYTRANSPORT','COTTONTRANSPORT','ANIMALTRANSPORT','BARRELS']) },
+  { id: 'g_misc',      i18nKey: 'fleet.g_misc',      cats: new Set(['LOADERS','TELEHANDLERS','FRONTLOADERTOOLS','CRANES','MISC']) },
 ];
 
 // ── Fleet filter state ────────────────────────────────────────────
@@ -8115,7 +8115,7 @@ function _renderFleetFilterBar(sortedCats, totalCount, shownCount) {
 
   const catBtns = [null, ...sortedCats].map(grp => {
     const isAll = grp === null;
-    const label = isAll ? 'Alle' : grp.label;
+    const label = isAll ? t('fleet.filterAll') : t(grp.i18nKey);
     const active = isAll ? ff.category === null : ff.category === grp.id;
     const onclick = isAll ? `setFleetCatFilter(null)` : `setFleetCatFilter('${grp.id}')`;
     return `<button class="fleet-cat-btn${active ? ' active' : ''}" onclick="${onclick}">${label}</button>`;
@@ -8137,7 +8137,7 @@ function renderVehicleFleet(appData) {
   const stateList = appData?.vehicles?.vehicles    || [];
 
   if (metaList.length === 0) {
-    el.innerHTML = '<div class="state-box"><span>Keine Fahrzeuge gefunden</span></div>';
+    el.innerHTML = `<div class="state-box"><span>${t('fleet.noVehicles')}</span></div>`;
     return;
   }
 
@@ -8280,11 +8280,11 @@ function renderVehicleFleet(appData) {
       } else if (state.cpActive) {
         statusLabel = _cpStatusBadge(state);
       } else if (state.motorRunning) {
-        if (state.isAIActive)      statusLabel = '<span class="fleet-badge badge-ai">KI aktiv</span>';
-        else if (state.isEntered)  statusLabel = '<span class="fleet-badge badge-active">In Betrieb</span>';
-        else                       statusLabel = '<span class="fleet-badge badge-active">Motor läuft</span>';
+        if (state.isAIActive)      statusLabel = `<span class="fleet-badge badge-ai">${t('fleet.statusAIActive')}</span>`;
+        else if (state.isEntered)  statusLabel = `<span class="fleet-badge badge-active">${t('fleet.statusInOperation')}</span>`;
+        else                       statusLabel = `<span class="fleet-badge badge-active">${t('fleet.statusMotorRunning')}</span>`;
       } else {
-        statusLabel = '<span class="fleet-badge badge-idle">Geparkt</span>';
+        statusLabel = `<span class="fleet-badge badge-idle">${t('fleet.statusIdle')}</span>`;
       }
     }
 
@@ -8322,14 +8322,14 @@ function renderVehicleFleet(appData) {
     // Remaining badges (damage, leased) — still inline in top row
     let extraBadges = '';
     if (fss.showDamage && (state.damage || 0) > 5) extraBadges += `<span class="fleet-badge badge-damage">${state.damage}%</span>`;
-    if (meta.propState === 'leased') extraBadges += '<span class="fleet-badge badge-leased">Gemietet</span>';
+    if (meta.propState === 'leased') extraBadges += `<span class="fleet-badge badge-leased">${t('fleet.statusLeased')}</span>`;
     const badgesHtml = extraBadges ? `<div class="fleet-badges">${extraBadges}</div>` : '';
 
     // Bars (inline)
     let bars = '';
     if (fss.showFuel && meta.fuelCap > 0 && state.fuelPct != null) {
       const fc = state.fuelPct < 20 ? 'low' : state.fuelPct < 40 ? 'warn' : '';
-      const fl = FLEET_FUEL_LABELS[meta.fuelType] || 'Kraftstoff';
+      const fl = t(FLEET_FUEL_LABELS[meta.fuelType] || 'fleet.fuelDefault');
       const fuelLabel = state.fuelLiter != null
         ? `${state.fuelLiter} / ${meta.fuelCap} L`
         : `${state.fuelPct}%`;
@@ -8413,7 +8413,7 @@ function renderVehicleFleet(appData) {
   }
 
   if (filteredRootIds.length === 0) {
-    el.innerHTML = '<div class="state-box"><span>Keine Fahrzeuge gefunden</span></div>';
+    el.innerHTML = `<div class="state-box"><span>${t('fleet.noVehicles')}</span></div>`;
     return;
   }
 
@@ -8777,46 +8777,46 @@ if (window._adIconVer) {
 <div id="fleet-settings-modal" class="fsm-overlay" style="display:none" onclick="if(event.target===this)closeFleetSettings()">
   <div class="fsm-dialog">
     <div class="fsm-header">
-      <span>Fahrzeuge — Anzeigeoptionen</span>
+      <span data-i18n-text="fleet.fssTitle">Fahrzeuge — Anzeigeoptionen</span>
       <button class="fsm-close" onclick="closeFleetSettings()">✕</button>
     </div>
     <div class="fsm-body">
-      <div class="fsm-group-label">Sortierung &amp; Verhalten</div>
+      <div class="fsm-group-label" data-i18n-text="fleet.fssSortBehavior">Sortierung &amp; Verhalten</div>
       <div style="display:flex;align-items:center;gap:10px">
-        <label style="font-size:12px;color:var(--fg-dim);white-space:nowrap;min-width:90px">Reihenfolge</label>
+        <label style="font-size:12px;color:var(--fg-dim);white-space:nowrap;min-width:90px" data-i18n-text="fleet.fssOrder">Reihenfolge</label>
         <select id="fss-sort" class="filter-btn" style="flex:1" onchange="saveFleetSettings()">
-          <option value="default">Standard (Aktiv → Motorisiert → Alphabetisch)</option>
-          <option value="lastMoved">Zuletzt bewegt (Aktiv → Zuletzt gefahren → Alphabetisch)</option>
+          <option value="default" data-i18n-text="fleet.fssSortDefault">Standard (Aktiv → Motorisiert → Alphabetisch)</option>
+          <option value="lastMoved" data-i18n-text="fleet.fssSortLastMoved">Zuletzt bewegt (Aktiv → Zuletzt gefahren → Alphabetisch)</option>
         </select>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <label style="font-size:12px;color:var(--fg-dim);white-space:nowrap;min-width:90px">AD/CP Fertig-Puls</label>
+        <label style="font-size:12px;color:var(--fg-dim);white-space:nowrap;min-width:90px" data-i18n-text="fleet.fssAdCpPulse">AD/CP Fertig-Puls</label>
         <select id="fss-pulse-dur" class="filter-btn" style="flex:1" onchange="saveFleetSettings()">
-          <option value="0">Aus</option>
-          <option value="30">30 Sekunden</option>
-          <option value="60">1 Minute</option>
-          <option value="120">2 Minuten</option>
-          <option value="300">5 Minuten</option>
-          <option value="600">10 Minuten</option>
+          <option value="0" data-i18n-text="fleet.fssPulseOff">Aus</option>
+          <option value="30" data-i18n-text="fleet.fssPulse30s">30 Sekunden</option>
+          <option value="60" data-i18n-text="fleet.fssPulse1m">1 Minute</option>
+          <option value="120" data-i18n-text="fleet.fssPulse2m">2 Minuten</option>
+          <option value="300" data-i18n-text="fleet.fssPulse5m">5 Minuten</option>
+          <option value="600" data-i18n-text="fleet.fssPulse10m">10 Minuten</option>
         </select>
       </div>
-      <label class="fsm-toggle"><input type="checkbox" id="fss-auto-ad" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>AutoDrive-Panel beim Öffnen mitöffnen</span></label>
+      <label class="fsm-toggle"><input type="checkbox" id="fss-auto-ad" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssAutoOpenAD">AutoDrive-Panel beim Öffnen mitöffnen</span></label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-top:4px">
         <div>
-          <div class="fsm-group-label">Allgemein</div>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-color" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugfarbe</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Motorleistung (kW)</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-ps" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>PS zusätzlich anzeigen</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-damage" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Schaden-Badge</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-hours" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Betriebsstunden</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-age" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Fahrzeugalter</span></label>
+          <div class="fsm-group-label" data-i18n-text="fleet.fssGeneral">Allgemein</div>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-color" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssVehicleColor">Fahrzeugfarbe</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-power" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssMotorPower">Motorleistung (kW)</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-ps" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssPsAlso">PS zusätzlich anzeigen</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-damage" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssDamageBadge">Schaden-Badge</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-hours" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssOpHours">Betriebsstunden</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-age" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssVehicleAge">Fahrzeugalter</span></label>
         </div>
         <div>
-          <div class="fsm-group-label">Füllstandsbalken</div>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-fuel" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Kraftstoff / Strom / Gas</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-def" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Harnstofflösung (DEF)</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-air" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Druckluft</span></label>
-          <label class="fsm-toggle"><input type="checkbox" id="fss-cargo" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span>Ladung (sonstige Tanks)</span></label>
+          <div class="fsm-group-label" data-i18n-text="fleet.fssFillBars">Füllstandsbalken</div>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-fuel" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssFuel">Kraftstoff / Strom / Gas</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-def" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssDef">Harnstofflösung (DEF)</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-air" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssAir">Druckluft</span></label>
+          <label class="fsm-toggle"><input type="checkbox" id="fss-cargo" onchange="saveFleetSettings()"><span class="fsm-slider"></span><span data-i18n-text="fleet.fssCargo">Ladung (sonstige Tanks)</span></label>
         </div>
       </div>
     </div>
