@@ -164,6 +164,8 @@
   },
   "common": {
     "close": "Schließen",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
     "teleport": "Teleportieren",
     "boardVehicle": "Einsteigen",
     "driveToVehicle": "Hinfahren",
@@ -279,6 +281,8 @@
     "processing": "Verarbeitung",
     "storageLocations": "Lagerorte",
     "setOutputMode": "Ausgangsmodus wählen",
+    "outputModeCol": "Ausgangsmodus",
+    "ommNewMode": "Neuer Modus für Auswahl",
     "kpiGoods": "Waren",
     "kpiNoStation_one": "{{count}} ohne Verkaufsstelle",
     "kpiNoStation_other": "{{count}} ohne Verkaufsstelle",

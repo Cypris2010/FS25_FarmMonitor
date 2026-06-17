@@ -2846,18 +2846,18 @@
             <select class="filter-btn" id="goods-month-filter"
               onchange="goodsMonthFilter=this.value; renderGoods(appData?.goods)">
               <option value="all" data-i18n-text="goods.filterAllMonths">Alle Monate</option>
-              <option value="1">März</option>
-              <option value="2">April</option>
-              <option value="3">Mai</option>
-              <option value="4">Juni</option>
-              <option value="5">Juli</option>
-              <option value="6">August</option>
-              <option value="7">September</option>
-              <option value="8">Oktober</option>
-              <option value="9">November</option>
-              <option value="10">Dezember</option>
-              <option value="11">Januar</option>
-              <option value="12">Februar</option>
+              <option value="1"  data-i18n-text="weather.months.0">März</option>
+              <option value="2"  data-i18n-text="weather.months.1">April</option>
+              <option value="3"  data-i18n-text="weather.months.2">Mai</option>
+              <option value="4"  data-i18n-text="weather.months.3">Juni</option>
+              <option value="5"  data-i18n-text="weather.months.4">Juli</option>
+              <option value="6"  data-i18n-text="weather.months.5">August</option>
+              <option value="7"  data-i18n-text="weather.months.6">September</option>
+              <option value="8"  data-i18n-text="weather.months.7">Oktober</option>
+              <option value="9"  data-i18n-text="weather.months.8">November</option>
+              <option value="10" data-i18n-text="weather.months.9">Dezember</option>
+              <option value="11" data-i18n-text="weather.months.10">Januar</option>
+              <option value="12" data-i18n-text="weather.months.11">Februar</option>
             </select>
             <select class="filter-btn" id="goods-sort"
               onchange="goodsSort=this.value; renderGoods(appData?.goods)">
@@ -3328,7 +3328,7 @@ function openOutputModePopover(event, ppUniqueId, fillType, currentMode) {
     <div class="pop-header">${ftTitle}<button class="pop-close" onclick="_popoverClose && _popoverClose()" title="${t('common.close')}">✕</button></div>
     <div class="pop-columns">
       <div class="pop-body">
-        <div class="pop-col-label">Ausgangsmodus</div>
+        <div class="pop-col-label">${t('goods.outputModeCol')}</div>
         ${OUTPUT_MODE_ALL.map(m => `
           <button class="${m === currentMode ? 'active' : ''}" onclick="selectOutputMode(event,'${ppUniqueId}','${fillType}','${m}')">
             <i class="ti ${OUTPUT_MODE_ICON[m]}" style="color:var(--${OUTPUT_MODE_COLOR[m] ?? 'muted'})"></i>
@@ -3503,7 +3503,7 @@ function openOutputModeModal(fillType, title) {
   const prodLocs = (good?.storageLocations ?? []).filter(l => l.sourceType === 'production');
   if (!prodLocs.length) return;
 
-  document.getElementById('omm-title').textContent = `Ausgangsmodus wählen — ${title}`;
+  document.getElementById('omm-title').textContent = `${t('goods.setOutputMode')} — ${title}`;
 
   // Checkboxes
   document.getElementById('omm-productions').innerHTML = prodLocs.map(l => {
@@ -8734,17 +8734,17 @@ if (window._adIconVer) {
   </div>
   <div class="omm-body">
     <div>
-      <div class="omm-section-label">Produktionen</div>
+      <div class="omm-section-label" data-i18n-text="nav.productions">Produktionen</div>
       <div id="omm-productions"></div>
     </div>
     <div>
-      <div class="omm-section-label">Neuer Modus für Auswahl</div>
+      <div class="omm-section-label" data-i18n-text="goods.ommNewMode">Neuer Modus für Auswahl</div>
       <div class="omm-mode-grid" id="omm-modes"></div>
     </div>
   </div>
   <div class="omm-footer">
-    <button onclick="closeOutputModeModal()">Abbrechen</button>
-    <button class="omm-confirm" onclick="confirmOutputModes()">Bestätigen</button>
+    <button onclick="closeOutputModeModal()" data-i18n-text="common.cancel">Abbrechen</button>
+    <button class="omm-confirm" onclick="confirmOutputModes()" data-i18n-text="common.confirm">Bestätigen</button>
   </div>
 </div>
 

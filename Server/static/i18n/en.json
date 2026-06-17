@@ -164,6 +164,8 @@
   },
   "common": {
     "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
     "teleport": "Teleport",
     "boardVehicle": "Board vehicle",
     "driveToVehicle": "Drive to vehicle",
@@ -279,6 +281,8 @@
     "processing": "Processing",
     "storageLocations": "Storage Locations",
     "setOutputMode": "Set output mode",
+    "outputModeCol": "Output mode",
+    "ommNewMode": "New mode for selection",
     "kpiGoods": "Goods",
     "kpiNoStation_one": "{{count}} without station",
     "kpiNoStation_other": "{{count}} without station",
