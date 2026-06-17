@@ -2995,13 +2995,13 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.36a1.7 1.7 0 0 0-1 .58V20a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-.58 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-.58-1H4a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 .58-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64a1.7 1.7 0 0 0 1-.58V4a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 .58 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9c.18.36.37.7.58 1H20a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-.52 1Z"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Einstellungen</h2>
-              <p>Konfiguration des FarmMonitor-Dashboards</p>
+              <h2 data-i18n-text="settings.title">Einstellungen</h2>
+              <p data-i18n-text="settings.subtitle">Konfiguration des FarmMonitor-Dashboards</p>
             </div>
           </div>
         </div>
         <div id="settings-content">
-          <div class="state-box"><span>Lade Einstellungen …</span></div>
+          <div class="state-box"><span data-i18n-text="settings.loading">Lade Einstellungen …</span></div>
         </div>
       </section>
     </div>
@@ -5198,7 +5198,7 @@ function renderSettings() {
             <div class="placeable-item-name">${item.name || '—'}</div>
             ${uid ? `<div class="placeable-item-uid">${uid}</div>` : ''}
           </div>
-          <label class="toggle" title="${visible ? 'Ausblenden' : 'Einblenden'}">
+          <label class="toggle" title="${visible ? t('common.hide') : t('common.show')}">
             <input type="checkbox" ${visible ? 'checked' : ''} onchange="toggleVisibility('${uid}')">
             <span class="toggle-slider"></span>
           </label>
@@ -5209,7 +5209,7 @@ function renderSettings() {
 
   const srv = globalSettings.server || {};
   const serverBlock = `
-    <div class="settings-section-title">Server</div>
+    <div class="settings-section-title">${t('settings.serverSection')}</div>
     <div class="placeable-list" style="gap:14px;padding:16px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
@@ -5224,20 +5224,20 @@ function renderSettings() {
         </label>
       </div>
       <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-        Datenpfad <span style="font-size:11px">(leer = automatisch erkennen)</span>
-        <input id="cfg-data" type="text" value="${srv.data ?? ''}" placeholder="Automatisch"
+        ${t('settings.dataPath')} <span style="font-size:11px">${t('settings.autoDetect')}</span>
+        <input id="cfg-data" type="text" value="${srv.data ?? ''}" placeholder="${t('settings.autoDetect')}"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
       </label>
       <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-        Modordner <span style="font-size:11px">(leer = automatisch aus Datenpfad ableiten)</span>
-        <input id="cfg-mods" type="text" value="${srv.mods ?? ''}" placeholder="Automatisch"
+        ${t('settings.modsDir')} <span style="font-size:11px">${t('settings.autoDeriveFromData')}</span>
+        <input id="cfg-mods" type="text" value="${srv.mods ?? ''}" placeholder="${t('settings.autoDetect')}"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
       </label>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-        <span style="font-size:12px;color:var(--muted)">⚠ Port und Host erfordern einen Serverneustart.</span>
-        <button onclick="saveServerSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
+        <span style="font-size:12px;color:var(--muted)">${t('settings.serverRestartHint')}</span>
+        <button onclick="saveServerSettings()" class="edit-mode-btn active" style="padding:7px 18px">${t('settings.save')}</button>
       </div>
-      <div id="cfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
+      <div id="cfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">${t('settings.saved')}</div>
     </div>`;
 
   const sgInfo = savegameId
@@ -5253,8 +5253,8 @@ function renderSettings() {
     return '<div>'
       + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + ' — <span style="opacity:.7">' + hint + '</span></div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--yellow)') + 'Warnung ab (%)</span>' + inp(id1, val1) + '</label>'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--red)') + 'Kritisch ab (%)</span>' + inp(id2, val2) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--yellow)') + t('settings.warnFrom') + '</span>' + inp(id1, val1) + '</label>'
+      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--red)') + t('settings.critFrom') + '</span>' + inp(id2, val2) + '</label>'
       + '</div></div>';
   }
   function inputPairField(label, lbl1, col1, id1, val1, lbl2, col2, id2, val2, step) {
@@ -5272,41 +5272,41 @@ function renderSettings() {
 
   const al2 = globalSettings.alerts || {};
 
-  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">Warnstufen Silos</div>'
+  const alertBlock = '<div class="settings-section-title" style="margin-top:24px">' + t('settings.alertSilosTitle') + '</div>'
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
-    + inputPair('Quicknav-Dot Silos', 'Füllstand des Silos', 'cfg-silo-warn', al2.siloWarn ?? 80, 'cfg-silo-crit', al2.siloCrit ?? 90)
-    + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Grün = unter Warnung · Orange = ab Warnung · Rot = ab Kritisch</div>'
+    + inputPair(t('settings.alertSilosLabel'), t('settings.alertSilosHint'), 'cfg-silo-warn', al2.siloWarn ?? 80, 'cfg-silo-crit', al2.siloCrit ?? 90)
+    + '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + t('settings.siloColorHint') + '</div>'
     + '<div style="display:flex;align-items:center;justify-content:flex-end;margin-top:8px">'
-    + '<button onclick="saveSiloAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
-    + '<div id="cfg-silo-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '<button onclick="saveSiloAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">' + t('settings.save') + '</button></div>'
+    + '<div id="cfg-silo-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">' + t('settings.saved') + '</div>'
     + '</div>'
-    + '<div class="settings-section-title" style="margin-top:24px">Warnstufen Ställe</div>'
+    + '<div class="settings-section-title" style="margin-top:24px">' + t('settings.alertStallsTitle') + '</div>'
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
-    + inputPair('Eingänge', 'Futter, Wasser, Stroh', 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
-    + inputPair('Ausgänge', 'Milch, Eier, Mist …', 'cfg-out-warn', al2.outWarn ?? 80, 'cfg-out-crit', al2.outCrit ?? 90)
+    + inputPair(t('settings.alertInputs'), t('settings.alertInputsHint'), 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
+    + inputPair(t('settings.alertOutputs'), t('settings.alertOutputsHint'), 'cfg-out-warn', al2.outWarn ?? 80, 'cfg-out-crit', al2.outCrit ?? 90)
     + '<div>'
-    + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belegung</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + t('settings.occupancy') + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Beobachten ab (%)'
+    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">' + t('settings.watchFrom')
     + '<input id="cfg-occ-watch" type="number" min="1" max="100" value="' + (al2.occWatch ?? 95) + '" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%"></label>'
-    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">Warnung ab (%)'
+    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">' + t('settings.warnFrom')
     + '<input id="cfg-occ-warn" type="number" min="1" max="100" value="' + (al2.occWarn ?? 100) + '" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%"></label>'
     + '</div></div>'
     + '<div style="display:flex;align-items:center;justify-content:flex-end">'
-    + '<button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
-    + '<div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '<button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">' + t('settings.save') + '</button></div>'
+    + '<div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">' + t('settings.saved') + '</div>'
     + '</div>'
-    + '<div class="settings-section-title" style="margin-top:24px">Warnstufen Felder</div>'
+    + '<div class="settings-section-title" style="margin-top:24px">' + t('settings.alertFieldsTitle') + '</div>'
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
-    + inputPairField('Pflug',   'Gelb unter (%)', 'var(--yellow)', 'cfg-field-plow-w',  al2.fieldPlowWarn  ?? 90,  'Rot unter (%)', 'var(--red)', 'cfg-field-plow-c',  al2.fieldPlowCrit  ?? 50)
-    + inputPairField('Dünger',  'Gelb unter (%)', 'var(--yellow)', 'cfg-field-fert-w',  al2.fieldFertWarn  ?? 100, 'Rot unter (%)', 'var(--red)', 'cfg-field-fert-c',  al2.fieldFertCrit  ?? 50)
-    + inputPairField('Kalk',    'Gelb unter (%)', 'var(--yellow)', 'cfg-field-lime-w',  al2.fieldLimeWarn  ?? 100, 'Rot unter (%)', 'var(--red)', 'cfg-field-lime-c',  al2.fieldLimeCrit  ?? 50)
-    + inputPairField('Mulch',   'Gelb unter (%)', 'var(--yellow)', 'cfg-field-mulch-w', al2.fieldMulchWarn ?? 90,  'Rot unter (%)', 'var(--red)', 'cfg-field-mulch-c', al2.fieldMulchCrit ?? 50)
-    + inputPairField('Unkraut', 'Gelb ab (%)',    'var(--yellow)', 'cfg-field-weed-w',  al2.fieldWeedWarn  ?? 5,   'Rot ab (%)',    'var(--red)', 'cfg-field-weed-c',  al2.fieldWeedCrit  ?? 10)
-    + inputPairField('Steine',  'Gelb ab (%)',    'var(--yellow)', 'cfg-field-stone-w', al2.fieldStoneWarn ?? 0.5, 'Rot ab (%)',    'var(--red)', 'cfg-field-stone-c', al2.fieldStoneCrit ?? 1, 0.1)
+    + inputPairField(t('fields.soilPlow'),  t('settings.yellowBelow'), 'var(--yellow)', 'cfg-field-plow-w',  al2.fieldPlowWarn  ?? 90,  t('settings.redBelow'), 'var(--red)', 'cfg-field-plow-c',  al2.fieldPlowCrit  ?? 50)
+    + inputPairField(t('fields.soilFert'),  t('settings.yellowBelow'), 'var(--yellow)', 'cfg-field-fert-w',  al2.fieldFertWarn  ?? 100, t('settings.redBelow'), 'var(--red)', 'cfg-field-fert-c',  al2.fieldFertCrit  ?? 50)
+    + inputPairField(t('fields.soilLime'),  t('settings.yellowBelow'), 'var(--yellow)', 'cfg-field-lime-w',  al2.fieldLimeWarn  ?? 100, t('settings.redBelow'), 'var(--red)', 'cfg-field-lime-c',  al2.fieldLimeCrit  ?? 50)
+    + inputPairField(t('fields.soilMulch'), t('settings.yellowBelow'), 'var(--yellow)', 'cfg-field-mulch-w', al2.fieldMulchWarn ?? 90,  t('settings.redBelow'), 'var(--red)', 'cfg-field-mulch-c', al2.fieldMulchCrit ?? 50)
+    + inputPairField(t('fields.soilWeed'),  t('settings.yellowFrom'),  'var(--yellow)', 'cfg-field-weed-w',  al2.fieldWeedWarn  ?? 5,   t('settings.redFrom'),  'var(--red)', 'cfg-field-weed-c',  al2.fieldWeedCrit  ?? 10)
+    + inputPairField(t('fields.soilStone'), t('settings.yellowFrom'),  'var(--yellow)', 'cfg-field-stone-w', al2.fieldStoneWarn ?? 0.5, t('settings.redFrom'),  'var(--red)', 'cfg-field-stone-c', al2.fieldStoneCrit ?? 1, 0.1)
     + '<div style="display:flex;align-items:center;justify-content:flex-end">'
-    + '<button onclick="saveFieldAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button></div>'
-    + '<div id="cfg-field-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>'
+    + '<button onclick="saveFieldAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">' + t('settings.save') + '</button></div>'
+    + '<div id="cfg-field-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">' + t('settings.saved') + '</div>'
     + '</div>';
 
   const fieldsList = appData?.fields?.fields ?? [];
@@ -5320,20 +5320,20 @@ function renderSettings() {
             <div class="placeable-item-name">${t('fields.fieldNum', { id: f.id })}${f.fruitTitle ? ` — ${f.fruitTitle}` : ''}</div>
             <div class="placeable-item-uid">${f.fieldArea || f.area} ha</div>
           </div>
-          <label class="toggle" title="${visible ? 'Ausblenden' : 'Einblenden'}">
+          <label class="toggle" title="${visible ? t('common.hide') : t('common.show')}">
             <input type="checkbox" ${visible ? 'checked' : ''} onchange="toggleFieldVisibility(${f.farmlandId})">
             <span class="toggle-slider"></span>
           </label>
         </div>`;
     }).join('');
-    return `<div class="settings-section-title" style="margin-top:24px">Felder</div><div class="placeable-list">${rows}</div>`;
+    return `<div class="settings-section-title" style="margin-top:24px">${t('nav.fields')}</div><div class="placeable-list">${rows}</div>`;
   })();
 
   const mc = modConfigCache || {};
   const mci = mc.exportIntervals || {};
   const mcs = mc.soilMap || {};
   function cfgRow(label, desc, id, val, min, max, unit) {
-    const u = unit || 'Sek.';
+    const u = unit || t('settings.seconds');
     return `<div style="display:flex;flex-direction:column;gap:5px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">${label}</span>
       <span style="font-size:11px;color:var(--muted);opacity:.7;line-height:1.4">${desc}</span>
@@ -5347,20 +5347,20 @@ function renderSettings() {
   const dm = appData?.modInfo?.detectedMods;
   const detectedModsBlock = (() => {
     const mods = [
-      { key: 'autoDrive',       label: 'AutoDrive',                  desc: 'Fahrzeugsteuerung, Marker-Export, IPC-Commands' },
-      { key: 'courseplay',      label: 'Courseplay',                  desc: 'Feldarbeit, Status-Export, Badges' },
-      { key: 'psc',             label: 'ProductionStorageControl',    desc: 'Paletten auslagern (spawnPallets)' },
-      { key: 'enhancedVehicle',  label: 'EnhancedVehicle',            desc: 'Differential & Traktionshilfe im Detailpanel' },
-      { key: 'vehicleInspector', label: 'VehicleInspector',           desc: 'Tempomat-Presets im Detailpanel' },
+      { key: 'autoDrive',        label: 'AutoDrive',               desc: t('settings.modAutoDriveDesc') },
+      { key: 'courseplay',       label: 'Courseplay',              desc: t('settings.modCourseplayDesc') },
+      { key: 'psc',              label: 'ProductionStorageControl',desc: t('settings.modPscDesc') },
+      { key: 'enhancedVehicle',  label: 'EnhancedVehicle',         desc: t('settings.modEnhancedVehicleDesc') },
+      { key: 'vehicleInspector', label: 'VehicleInspector',        desc: t('settings.modVehicleInspectorDesc') },
     ];
     const noDataHint = !dm
-      ? `<div style="font-size:12px;color:var(--muted);padding:12px 16px 0">Spiel nicht verbunden oder Mod-Version veraltet — starte ein Savegame um Mod-Status zu laden.</div>`
+      ? `<div style="font-size:12px;color:var(--muted);padding:12px 16px 0">${t('settings.modNotConnected')}</div>`
       : '';
     const rows = mods.map(m => {
       const active = dm?.[m.key] === true;
       const badge = active
-        ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.25);white-space:nowrap">Erkannt</span>`
-        : `<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);white-space:nowrap">Nicht geladen</span>`;
+        ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.25);white-space:nowrap">${t('settings.modDetected')}</span>`
+        : `<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${t('settings.modNotLoaded')}</span>`;
       return `<div class="placeable-item">
         <div class="placeable-item-info">
           <div class="placeable-item-name">${m.label}</div>
@@ -5369,37 +5369,32 @@ function renderSettings() {
         ${badge}
       </div>`;
     }).join('');
-    return `<div class="settings-section-title" style="margin-top:24px">Erkannte Mods</div><div class="placeable-list">${noDataHint}${rows}</div>`;
+    return `<div class="settings-section-title" style="margin-top:24px">${t('settings.detectedModsTitle')}</div><div class="placeable-list">${noDataHint}${rows}</div>`;
   })();
 
   const modCfgBlock = `
-    <div class="settings-section-title" style="margin-top:24px">Mod-Konfiguration</div>
+    <div class="settings-section-title" style="margin-top:24px">${t('settings.modConfigTitle')}</div>
     <div class="placeable-list" style="gap:20px;padding:16px">
-      <div style="font-size:12px;color:var(--muted);line-height:1.5">
-        Änderungen werden in <code>config.xml</code> im modSettings-Ordner gespeichert und beim nächsten Laden eines Spielstands übernommen.
-        Niedrigere Werte = häufigere Aktualisierung = höhere CPU-Last.
-      </div>
-      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Export-Intervalle</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">${t('settings.modConfigHint')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t('settings.exportIntervals')}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        ${cfgRow('Haupt-Export', 'Silos, Produktionen, Tierställe und Warenübersicht. Kernexport des Mods.', 'mcfg-main', mci.mainSeconds ?? 10, 1, 300)}
-        ${cfgRow('Fahrzeuge', 'Position, Tanks, Beladung und AutoDrive-Status aller Fahrzeuge auf der Karte.', 'mcfg-vehicles', mci.vehicleSeconds ?? 2, 1, 60)}
-        ${cfgRow('Felder', 'Wachstumsstufe, Bodenzustand und Erntestatus aller eigenen Felder.', 'mcfg-fields', mci.fieldSeconds ?? 60, 10, 600)}
-        ${cfgRow('Wetter', 'Aktuelle Wetterlage, stündliche und tagesweise Vorhersage.', 'mcfg-weather', mci.weatherSeconds ?? 30, 5, 300)}
-        <div style="grid-column:1/-1">${cfgRow('IPC-Commands', 'Wie oft das Spiel auf Befehle aus dem Dashboard prüft (z.B. Produktionsmodus setzen, Fahrzeug steuern). Empfohlen: 1–2 Sek.', 'mcfg-commands', mci.commandSeconds ?? 1, 1, 10)}</div>
+        ${cfgRow(t('settings.mainExport'), t('settings.mainExportDesc'), 'mcfg-main', mci.mainSeconds ?? 10, 1, 300)}
+        ${cfgRow(t('nav.fleet'), t('settings.vehiclesExportDesc'), 'mcfg-vehicles', mci.vehicleSeconds ?? 2, 1, 60)}
+        ${cfgRow(t('nav.fields'), t('settings.fieldsExportDesc'), 'mcfg-fields', mci.fieldSeconds ?? 60, 10, 600)}
+        ${cfgRow(t('settings.weatherLabel'), t('settings.weatherExportDesc'), 'mcfg-weather', mci.weatherSeconds ?? 30, 5, 300)}
+        <div style="grid-column:1/-1">${cfgRow('IPC-Commands', t('settings.commandsExportDesc'), 'mcfg-commands', mci.commandSeconds ?? 1, 1, 10)}</div>
       </div>
-      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">Bodenkarte</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:-12px">
-        Steuert die Qualität der Bodenzustand-Overlays auf der Karte (Unkraut, Pflug, Kalk …). Höhere Auflösung = schärferes Bild = mehr CPU-Last.
-      </div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">${t('settings.soilMap')}</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:-12px">${t('settings.soilMapDesc')}</div>
       <div style="display:flex;gap:32px;flex-wrap:wrap">
-        ${cfgRow('Auflösung', 'Pixelgröße des Rasters. Empfohlen: 128.<br>Werte: 32 / 64 / 128 / 256 / 512.', 'mcfg-soil-res', mcs.resolution ?? 128, 32, 512, 'px')}
-        ${cfgRow('Zeilen pro Tick', 'Zeilen pro Spiel-Tick.<br>Höher = schnellere Aktualisierung, mehr Last. Empfohlen: 2.', 'mcfg-soil-rows', mcs.rowsPerTick ?? 2, 1, 16, 'Zeilen')}
+        ${cfgRow(t('settings.resolution'), t('settings.resolutionDesc'), 'mcfg-soil-res', mcs.resolution ?? 128, 32, 512, 'px')}
+        ${cfgRow(t('settings.rowsPerTick'), t('settings.rowsPerTickDesc'), 'mcfg-soil-rows', mcs.rowsPerTick ?? 2, 1, 16, t('settings.rows'))}
       </div>
-      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">Diagnose</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">${t('settings.diagnostics')}</div>
       <div class="placeable-item">
         <div class="placeable-item-info">
-          <div class="placeable-item-name">Performance-Logging</div>
-          <div class="placeable-item-uid">Schreibt PERF-Zeilen in die log.txt. Nur für Diagnose aktivieren.</div>
+          <div class="placeable-item-name">${t('settings.perfLogging')}</div>
+          <div class="placeable-item-uid">${t('settings.perfLoggingDesc')}</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="mcfg-perflog" ${modConfigCache?.perfLog ? 'checked' : ''}>
@@ -5408,15 +5403,15 @@ function renderSettings() {
       </div>
       <div class="placeable-item">
         <div class="placeable-item-info">
-          <div class="placeable-item-name">Perf-Export erstellen</div>
-          <div class="placeable-item-uid" id="perf-export-status">Systeminfo + Konfiguration + Messungen → perf_export.txt</div>
+          <div class="placeable-item-name">${t('settings.perfExport')}</div>
+          <div class="placeable-item-uid" id="perf-export-status">${t('settings.perfExportDesc')}</div>
         </div>
-        <button onclick="perfExport()" class="edit-mode-btn active" style="padding:6px 14px;white-space:nowrap">Exportieren</button>
+        <button onclick="perfExport()" class="edit-mode-btn active" style="padding:6px 14px;white-space:nowrap">${t('settings.export')}</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:4px">
-        <button onclick="saveModConfig()" class="edit-mode-btn active" style="padding:7px 18px">Speichern</button>
+        <button onclick="saveModConfig()" class="edit-mode-btn active" style="padding:7px 18px">${t('settings.save')}</button>
       </div>
-      <div id="mcfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">Gespeichert ✓</div>
+      <div id="mcfg-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">${t('settings.saved')}</div>
     </div>`;
 
   const currentLang = getCurrentLang();
@@ -5436,11 +5431,11 @@ function renderSettings() {
   el.innerHTML = languageBlock + serverBlock + detectedModsBlock + modCfgBlock + alertBlock
     + '<div class="settings-section-title" style="margin-top:24px">' + t('settings.visibility') + '</div>'
     + sgInfo
-    + section('Silos', silos)
-    + section('Produktionen', productions)
-    + section('Tierställe', husbandries)
+    + section(t('nav.silos'), silos)
+    + section(t('nav.productions'), productions)
+    + section(t('nav.husbandries'), husbandries)
     + fieldsSection
-    || '<div class="state-box"><span>Keine Daten verfügbar.</span></div>';
+    || `<div class="state-box"><span>${t('settings.noData')}</span></div>`;
 }
 
 let modConfigCache = null;
@@ -5455,12 +5450,12 @@ async function loadModConfig() {
 
 async function perfExport() {
   const status = document.getElementById('perf-export-status');
-  if (status) status.textContent = 'Exportiere …';
+  if (status) status.textContent = t('settings.exporting');
   try {
     const res = await fetch('/api/perf-export', { method: 'POST' });
     if (!res.ok) throw new Error(res.statusText);
     const data = await res.json();
-    if (status) status.textContent = '✓ Exportiert: ' + data.path;
+    if (status) status.textContent = t('settings.exported') + data.path;
   } catch(e) {
     if (status) status.textContent = '✗ Fehler: ' + e.message;
   }
@@ -5492,7 +5487,7 @@ async function saveModConfig() {
     modConfigCache = await res.json();
     const el = document.getElementById('mcfg-saved');
     if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
-  } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
+  } catch(e) { alert(t('settings.saveError') + e.message); }
 }
 
 async function saveAlertSettings() {
