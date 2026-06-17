@@ -2975,13 +2975,13 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5h.01"/></svg>
             </span>
             <div class="section-title-text">
-              <h2>Warnungen</h2>
-              <p>Alle aktiven Hinweise und kritischen Zustände</p>
+              <h2 data-i18n-text="alerts.title">Warnungen</h2>
+              <p data-i18n-text="alerts.subtitle">Alle aktiven Hinweise und kritischen Zustände</p>
             </div>
           </div>
         </div>
         <div id="alerts-content">
-          <div class="state-box"><span>Lade Warnungen …</span></div>
+          <div class="state-box"><span data-i18n-text="alerts.loading">Lade Warnungen …</span></div>
         </div>
       </section>
     </div>
@@ -3010,7 +3010,7 @@
     <div id="view-map" class="view" style="display:none; flex-direction:column;">
       <div class="map-container" id="map-container">
         <div class="map-inner" id="map-inner">
-          <img id="map-overview" alt="Kartenübersicht" />
+          <img id="map-overview" data-i18n-label="map.imgAlt" alt="Kartenübersicht" />
           <svg id="map-svg" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
             <g id="layer-soil"></g>
             <g id="layer-fields"></g>
@@ -3026,12 +3026,12 @@
         <button class="map-btn" id="map-center"   data-i18n-title="map.center" title="Zentrieren">⌖</button>
       </div>
       <div class="map-legend">
-        <label class="legend-section-title"><input type="checkbox" checked onchange="document.getElementById('layer-fields').classList.toggle('no-fill',!this.checked)"> Felder</label>
-        <div class="legend-item"><span class="legend-bar" style="background:linear-gradient(to right,hsl(110,65%,28%),hsl(52,85%,44%))"></span>Wächst</div>
-        <div class="legend-item"><span class="legend-bar" style="background:#f59e0b"></span>Erntereif</div>
-        <div class="legend-item"><span class="legend-bar" style="background:#f97316"></span>Vorbereitung nötig</div>
-        <div class="legend-item"><span class="legend-bar" style="background:#ef4444"></span>Vertrocknet</div>
-        <div class="legend-item"><span class="legend-bar" style="background:#6b7280"></span>Leer / Abgeerntet</div>
+        <label class="legend-section-title"><input type="checkbox" checked onchange="document.getElementById('layer-fields').classList.toggle('no-fill',!this.checked)"> <span data-i18n-text="map.legendFields">Felder</span></label>
+        <div class="legend-item"><span class="legend-bar" style="background:linear-gradient(to right,hsl(110,65%,28%),hsl(52,85%,44%))"></span><span data-i18n-text="map.legendGrowing">Wächst</span></div>
+        <div class="legend-item"><span class="legend-bar" style="background:#f59e0b"></span><span data-i18n-text="map.legendHarvestReady">Erntereif</span></div>
+        <div class="legend-item"><span class="legend-bar" style="background:#f97316"></span><span data-i18n-text="map.legendPreparation">Vorbereitung nötig</span></div>
+        <div class="legend-item"><span class="legend-bar" style="background:#ef4444"></span><span data-i18n-text="map.legendWithered">Vertrocknet</span></div>
+        <div class="legend-item"><span class="legend-bar" style="background:#6b7280"></span><span data-i18n-text="map.legendEmpty">Leer / Abgeerntet</span></div>
         <div class="legend-divider"></div>
         <div class="legend-section-title" data-i18n-text="fleet.legendSection">Fahrzeuge</div>
         <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span><span data-i18n-text="fleet.legendTractor">Traktor</span></div>
@@ -3039,10 +3039,10 @@
         <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span><span data-i18n-text="fleet.legendImplement">Anhänger/Gerät</span></div>
         <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span><span data-i18n-text="fleet.legendPlayer">Spieler</span></div>
         <div class="legend-divider"></div>
-        <div class="legend-section-title">Bodenlayer</div>
+        <div class="legend-section-title" data-i18n-text="map.legendSoilLayers">Bodenlayer</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:0 2px">
-          <span style="font-size:11px;color:#9ca3af;flex:1">Scan:</span>
-          <button id="soil-scan-mode-btn" onclick="_toggleSoilScanMode()" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#d1d5db;cursor:pointer" data-i18n-title="map.toggleScanMode" title="Umschalten: nur eigene Felder / alle Felder">eigene Felder</button>
+          <span style="font-size:11px;color:#9ca3af;flex:1" data-i18n-text="map.scanLabel">Scan:</span>
+          <button id="soil-scan-mode-btn" onclick="_toggleSoilScanMode()" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#d1d5db;cursor:pointer" data-i18n-title="map.toggleScanMode" title="Umschalten: nur eigene Felder / alle Felder"><span data-i18n-text="map.scanOwn">eigene Felder</span></button>
         </div>
         <div id="soil-layer-legend" style="display:contents"></div>
       </div>
@@ -6011,13 +6011,13 @@ function _marchingSquares(data, res, threshold, above, cellSize, ox, oy, noDataV
 
 // Labels and tooltips for the legend — the only place that needs updating when layers change
 const SOIL_LAYER_META = {
-  weed:   { label: 'Unkraut',     tooltip: 'jung → penalisierend → stark' },
-  stone:  { label: 'Steine',      tooltip: 'wenig → mittel → viel' },
-  plow:   { label: 'Pflug nötig', tooltip: '' },
-  spray:  { label: 'Dünger fehlt',tooltip: 'halb gedüngt → kein Dünger' },
-  lime:   { label: 'Kalk fehlt',  tooltip: 'wenig Kalk → kein Kalk' },
-  mulch:  { label: 'Mulch fehlt', tooltip: '' },
-  roller: { label: 'Walze nötig', tooltip: '' },
+  weed:   { labelKey: 'map.soilWeed',   tooltipKey: 'map.soilWeedTip'  },
+  stone:  { labelKey: 'map.soilStone',  tooltipKey: 'map.soilStoneTip' },
+  plow:   { labelKey: 'map.soilPlow',   tooltipKey: null },
+  spray:  { labelKey: 'map.soilSpray',  tooltipKey: 'map.soilSprayTip' },
+  lime:   { labelKey: 'map.soilLime',   tooltipKey: 'map.soilLimeTip'  },
+  mulch:  { labelKey: 'map.soilMulch',  tooltipKey: null },
+  roller: { labelKey: 'map.soilRoller', tooltipKey: null },
 };
 
 function buildSoilLayerLegend() {
@@ -6042,8 +6042,9 @@ function buildSoilLayerLegend() {
     const steps = bands.map((_, i) =>
       `<span class="legend-step" style="background:rgba(${rgb},${stackedOpacity(bands, i+1)})"></span>`
     ).join('');
-    const title = meta.tooltip ? ` title="${meta.tooltip}"` : '';
-    return `<label class="layer-toggle"><input type="checkbox" data-layer="${name}" onchange="toggleSoilLayer(this)"><span class="legend-steps"${title}>${steps}</span> ${meta.label}</label>`;
+    const tip = meta.tooltipKey ? t(meta.tooltipKey) : '';
+    const title = tip ? ` title="${tip}"` : '';
+    return `<label class="layer-toggle"><input type="checkbox" data-layer="${name}" onchange="toggleSoilLayer(this)"><span class="legend-steps"${title}>${steps}</span> ${t(meta.labelKey)}</label>`;
   }).join('');
 }
 
@@ -6060,7 +6061,7 @@ function _toggleSoilScanMode() {
   _soilScanMode = _soilScanMode === 'owned' ? 'all' : 'owned';
   const btn = document.getElementById('soil-scan-mode-btn');
   if (btn) {
-    btn.textContent = _soilScanMode === 'owned' ? 'eigene Felder' : 'alle Felder';
+    btn.textContent = _soilScanMode === 'owned' ? t('map.scanOwn') : t('map.scanAll');
     btn.style.color  = _soilScanMode === 'owned' ? '#d1d5db' : '#34d399';
     btn.style.borderColor = _soilScanMode === 'owned' ? '#374151' : '#34d399';
   }
