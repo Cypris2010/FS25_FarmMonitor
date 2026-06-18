@@ -3037,7 +3037,7 @@
         <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span><span data-i18n-text="fleet.legendTractor">Traktor</span></div>
         <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span><span data-i18n-text="fleet.legendHarvester">Mähdrescher</span></div>
         <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span><span data-i18n-text="fleet.legendImplement">Anhänger/Gerät</span></div>
-        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span><span data-i18n-text="fleet.legendPlayer">Spieler</span></div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="toggle-player-labels" checked onchange="document.querySelectorAll('.player-label-g').forEach(el=>el.style.display=this.checked?'':'none');localStorage.setItem('fm_playerLabels',this.checked)" style="margin:0;accent-color:#4ade80;cursor:pointer"><span data-i18n-text="fleet.legendPlayer">Spieler</span></label></div>
         <div class="legend-divider"></div>
         <div class="legend-section-title" data-i18n-text="map.legendSoilLayers">Bodenlayer</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:0 2px">
@@ -6192,7 +6192,7 @@ function updateVehicles(vehiclesData, terrainSize) {
   const seen = new Set();
   const typeColor = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
                       TOOL:'#6b7280', TRUCK:'#92400e', PLAYER:'#3b82f6', VEHICLE:'#22c55e' };
-  const typeSize  = { TRACTOR:8, HARVESTER:10, TRAILER:6, TOOL:4, TRUCK:8, PLAYER:10, VEHICLE:7 };
+  const typeSize  = { TRACTOR:8, HARVESTER:10, TRAILER:6, TOOL:4, TRUCK:8, PLAYER:13, VEHICLE:7 };
 
   for (const v of vehicles) {
     seen.add(String(v.id));
@@ -6203,7 +6203,7 @@ function updateVehicles(vehiclesData, terrainSize) {
 
     let el = document.getElementById('vm-' + v.id);
     if (!el) {
-      const color  = typeColor[v.type] || '#22c55e';
+      const color  = (v.type === 'PLAYER' && v.farmColor) ? v.farmColor : (typeColor[v.type] || '#22c55e');
       const r      = typeSize[v.type]  || 5;
       const iconS  = (1 / mapZoom).toFixed(4);
 
@@ -6246,22 +6246,39 @@ function updateVehicles(vehiclesData, terrainSize) {
         const lg = document.createElementNS('http://www.w3.org/2000/svg','g');
         lg.classList.add('player-label-g');
         lg.style.transform = `scale(${iconS})`;
+        lg.style.pointerEvents = 'none';
+        const _plCb = document.getElementById('toggle-player-labels');
+        if (_plCb && !_plCb.checked) lg.style.display = 'none';
+        const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('rx','6');
+        bg.setAttribute('fill', v.farmColor || '#000');
+        bg.setAttribute('fill-opacity', '0.55');
         const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
         txt.setAttribute('text-anchor','middle');
-        txt.setAttribute('y', -(r + 8));
+        txt.setAttribute('y', -(r + 12));
         txt.setAttribute('fill','#fff');
-        txt.setAttribute('font-size','20');
-        txt.setAttribute('stroke','#000');
-        txt.setAttribute('stroke-width','0.6');
-        txt.setAttribute('paint-order','stroke');
+        txt.setAttribute('font-size','16');
         txt.textContent = v.name || 'Player';
+        lg.appendChild(bg);
         lg.appendChild(txt);
         el.appendChild(lg);
+        requestAnimationFrame(() => {
+          const bb = txt.getBBox();
+          const pad = 4;
+          bg.setAttribute('x', bb.x - pad);
+          bg.setAttribute('y', bb.y - pad);
+          bg.setAttribute('width',  bb.width  + pad * 2);
+          bg.setAttribute('height', bb.height + pad * 2);
+        });
       }
 
       el.style.transition = 'none';
       el.style.transform  = `translate3d(${tx}px,${ty}px,0)`;
-      layer.appendChild(el);
+      if (v.type === 'PLAYER') {
+        layer.insertBefore(el, layer.firstChild);
+      } else {
+        layer.appendChild(el);
+      }
       requestAnimationFrame(() => { el.style.transition = 'transform 2s linear'; });
     } else {
       el.style.transform = `translate3d(${tx}px,${ty}px,0)`;
@@ -8748,6 +8765,10 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
   loadGlobalSettings();
   loadData();
   connect();
+  const cb = document.getElementById('toggle-player-labels');
+  if (cb && localStorage.getItem('fm_playerLabels') === 'false') {
+    cb.checked = false;
+  }
 })();
 
 // Bust Safari's icon cache: append ?v=<server-start-time> to all AD icon URLs

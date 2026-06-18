@@ -1787,14 +1787,28 @@ function FarmMonitor:collectVehicles()
                 end
                 local ok, nick = pcall(function() return player:getNickname() end)
                 local playerName = (ok and nick and nick ~= "") and nick or "Player"
+                local farmColor = nil
+                if player.farmId ~= nil and g_farmManager ~= nil then
+                    local farm = g_farmManager:getFarmById(player.farmId)
+                    if farm ~= nil and Farm ~= nil and Farm.COLORS ~= nil and farm.color ~= nil then
+                        local c = Farm.COLORS[farm.color]
+                        if c ~= nil then
+                            farmColor = string.format("#%02x%02x%02x",
+                                math.min(255, math.floor((c[1] or 0) * 255)),
+                                math.min(255, math.floor((c[2] or 0) * 255)),
+                                math.min(255, math.floor((c[3] or 0) * 255)))
+                        end
+                    end
+                end
                 table.insert(result, FarmMonitor.obj(
-                    "id",      "player_" .. tostring(player.rootNode),
-                    "name",    playerName,
-                    "type",    "PLAYER",
-                    "x",       MathUtil.round(x * 10) / 10,
-                    "z",       MathUtil.round(z * 10) / 10,
-                    "rot",     MathUtil.round((rot or 0) * 1000) / 1000,
-                    "fillPct", nil
+                    "id",        "player_" .. tostring(player.rootNode),
+                    "name",      playerName,
+                    "type",      "PLAYER",
+                    "farmColor", farmColor,
+                    "x",         MathUtil.round(x * 10) / 10,
+                    "z",         MathUtil.round(z * 10) / 10,
+                    "rot",       MathUtil.round((rot or 0) * 1000) / 1000,
+                    "fillPct",   nil
                 ))
             end
         end
