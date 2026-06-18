@@ -3137,7 +3137,7 @@ function t(key, opts) {
 
 function getCurrentLang() {
   return localStorage.getItem('fm_lang') ||
-    (navigator.language.startsWith('de') ? 'de' : 'en');
+    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : 'en');
 }
 
 async function initI18n() {
@@ -5425,6 +5425,12 @@ function renderSettings() {
         <button onclick="setLanguage('en')"
           class="edit-mode-btn${currentLang === 'en' ? ' active' : ''}"
           style="padding:7px 20px">🇬🇧 English</button>
+        <button onclick="setLanguage('fr')"
+          class="edit-mode-btn${currentLang === 'fr' ? ' active' : ''}"
+          style="padding:7px 20px">🇫🇷 Français</button>
+        <button onclick="setLanguage('es')"
+          class="edit-mode-btn${currentLang === 'es' ? ' active' : ''}"
+          style="padding:7px 20px">🇪🇸 Español</button>
       </div>
     </div>`;
 
