@@ -3137,7 +3137,7 @@ function t(key, opts) {
 
 function getCurrentLang() {
   return localStorage.getItem('fm_lang') ||
-    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : 'en');
+    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : navigator.language.startsWith('cs') ? 'cs' : navigator.language.startsWith('ro') ? 'ro' : navigator.language.startsWith('hu') ? 'hu' : 'en');
 }
 
 async function initI18n() {
@@ -5434,6 +5434,15 @@ function renderSettings() {
         <button onclick="setLanguage('pl')"
           class="edit-mode-btn${currentLang === 'pl' ? ' active' : ''}"
           style="padding:7px 20px">🇵🇱 Polski</button>
+        <button onclick="setLanguage('cs')"
+          class="edit-mode-btn${currentLang === 'cs' ? ' active' : ''}"
+          style="padding:7px 20px">🇨🇿 Čeština</button>
+        <button onclick="setLanguage('ro')"
+          class="edit-mode-btn${currentLang === 'ro' ? ' active' : ''}"
+          style="padding:7px 20px">🇷🇴 Română</button>
+        <button onclick="setLanguage('hu')"
+          class="edit-mode-btn${currentLang === 'hu' ? ' active' : ''}"
+          style="padding:7px 20px">🇭🇺 Magyar</button>
       </div>
     </div>`;
 
