@@ -3137,7 +3137,7 @@ function t(key, opts) {
 
 function getCurrentLang() {
   return localStorage.getItem('fm_lang') ||
-    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : navigator.language.startsWith('cs') ? 'cs' : navigator.language.startsWith('ro') ? 'ro' : navigator.language.startsWith('hu') ? 'hu' : 'en');
+    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : navigator.language.startsWith('cs') ? 'cs' : navigator.language.startsWith('ro') ? 'ro' : navigator.language.startsWith('hu') ? 'hu' : navigator.language.startsWith('nl') ? 'nl' : navigator.language.startsWith('pt') ? 'pt' : navigator.language.startsWith('tr') ? 'tr' : navigator.language.startsWith('ja') ? 'ja' : 'en');
 }
 
 async function initI18n() {
@@ -5443,6 +5443,18 @@ function renderSettings() {
         <button onclick="setLanguage('hu')"
           class="edit-mode-btn${currentLang === 'hu' ? ' active' : ''}"
           style="padding:7px 20px">🇭🇺 Magyar</button>
+        <button onclick="setLanguage('nl')"
+          class="edit-mode-btn${currentLang === 'nl' ? ' active' : ''}"
+          style="padding:7px 20px">🇳🇱 Nederlands</button>
+        <button onclick="setLanguage('pt')"
+          class="edit-mode-btn${currentLang === 'pt' ? ' active' : ''}"
+          style="padding:7px 20px">🇵🇹 Português</button>
+        <button onclick="setLanguage('tr')"
+          class="edit-mode-btn${currentLang === 'tr' ? ' active' : ''}"
+          style="padding:7px 20px">🇹🇷 Türkçe</button>
+        <button onclick="setLanguage('ja')"
+          class="edit-mode-btn${currentLang === 'ja' ? ' active' : ''}"
+          style="padding:7px 20px">🇯🇵 日本語</button>
       </div>
     </div>`;
 
