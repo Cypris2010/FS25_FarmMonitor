@@ -3202,6 +3202,37 @@ function applyI18nLabels() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Unit conversion helpers
+// ═══════════════════════════════════════════════════════════
+let _units = { speed: 'km/h', distance: 'km', area: 'ha', temperature: '°C', currency: 'EUR', currencySymbol: '€' };
+
+function _applyUnits(modInfo) {
+  if (modInfo?.units) _units = { ..._units, ...modInfo.units };
+}
+
+function fmtSpeed(kmh) {
+  if (kmh == null) return '—';
+  const v = _units.speed === 'mph' ? kmh * 0.621371 : kmh;
+  return Math.round(v * 10) / 10 + ' ' + _units.speed;
+}
+
+function fmtTemp(celsius) {
+  if (celsius == null) return '—';
+  const v = _units.temperature === '°F' ? celsius * 9/5 + 32 : celsius;
+  return Math.round(v * 10) / 10 + _units.temperature;
+}
+
+function fmtArea(ha) {
+  if (ha == null) return '—';
+  const v = _units.area === 'acres' ? ha * 2.47105 : ha;
+  return (Math.round(v * 100) / 100).toLocaleString() + ' ' + _units.area;
+}
+
+function fmtAreaNum(ha) {
+  if (ha == null) return 0;
+  return _units.area === 'acres' ? Math.round(ha * 2.47105 * 100) / 100 : ha;
+}
+
 // State
 // ═══════════════════════════════════════════════════════════
 let appData          = null;
@@ -4206,7 +4237,7 @@ function updateSeedResult(select, fieldId, fieldAreaHa) {
   const _sl = getCurrentLang() === 'de' ? 'de-DE' : 'en-US';
   el.innerHTML = `<div class="need-row">
     <span class="need-label">${t('fields.needSeed')}</span>
-    <span class="need-lph">${lph.toLocaleString(_sl, {maximumFractionDigits:1})} L/ha</span>
+    <span class="need-lph">${lph.toLocaleString(_sl, {maximumFractionDigits:1})} L/${_units.area}</span>
     <span class="need-total">~${total.toLocaleString(_sl)} L</span>
   </div>`;
 }
@@ -4383,7 +4414,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
     function needRow(label, lph, total) {
       return `<div class="need-row">
         <span class="need-label">${label}</span>
-        <span class="need-lph">${lph.toLocaleString(_needLocale)} L/ha</span>
+        <span class="need-lph">${lph.toLocaleString(_needLocale)} L/${_units.area}</span>
         <span class="need-total">~${total.toLocaleString(_needLocale)} L</span>
       </div>`;
     }
@@ -4403,7 +4434,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
       )).join('');
     const activeFt = seedableFruits.find(ft => ft.name === activeSeed);
     const savedResultHtml = activeFt
-      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString(_needLocale, {maximumFractionDigits:1})} L/ha &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString(_needLocale)} L</span>`
+      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString(_needLocale, {maximumFractionDigits:1})} L/${_units.area} &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString(_needLocale)} L</span>`
       : '';
     const activeSeedResultHtml = activeFt
       ? needRow(t('fields.needSeed'), activeFt.seedUsagePerSqm * 10000, Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa))
@@ -4435,7 +4466,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
         <div class="field-card-head">
           <div class="field-id-area">
             <span class="field-num">${t('fields.fieldNum', { id: f.id })}</span>
-            <span class="field-area-label">${t('fields.fieldArea', { ha: f.fieldArea || f.area })}${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">${t('fields.landArea', { ha: f.area })}</span>` : ''}</span>
+            <span class="field-area-label">${t('fields.fieldArea', { ha: fmtArea(f.fieldArea || f.area) })}${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">${t('fields.landArea', { ha: fmtArea(f.area) })}</span>` : ''}</span>
           </div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${visFieldBtn(f.farmlandId)}${badges}</div>
         </div>
@@ -4481,8 +4512,8 @@ function collectAllAlerts(data) {
   const { fieldWeedWarn: fWW, fieldStoneWarn: fSW } = alertThresholds();
   (Array.isArray(data.fields?.fields) ? data.fields.fields : []).forEach(f => {
     const fSrc = t('fields.fieldNum', { id: f.id });
-    if (f.harvestReady)                  alerts.push({ src: fSrc, text: t('alerts.fieldHarvestReady', { fruit: f.fruitTitle || f.fruitType, ha: f.area }), level: 'warn' });
-    if (f.needsPreparation)              alerts.push({ src: fSrc, text: t('alerts.fieldNeedsPrep',    { fruit: f.fruitTitle || f.fruitType, ha: f.area }), level: 'warn' });
+    if (f.harvestReady)                  alerts.push({ src: fSrc, text: t('alerts.fieldHarvestReady', { fruit: f.fruitTitle || f.fruitType, ha: fmtArea(f.area) }), level: 'warn' });
+    if (f.needsPreparation)              alerts.push({ src: fSrc, text: t('alerts.fieldNeedsPrep',    { fruit: f.fruitTitle || f.fruitType, ha: fmtArea(f.area) }), level: 'warn' });
     if ((f.weedPct  ?? 0) >= fWW)        alerts.push({ src: fSrc, text: t('alerts.fieldWeed',  { pct: (f.weedPct  ?? 0).toFixed(0) }), level: 'warn' });
     if ((f.stonePct ?? 0) >= fSW)        alerts.push({ src: fSrc, text: t('alerts.fieldStone', { pct: (f.stonePct ?? 0).toFixed(0) }), level: 'warn' });
   });
@@ -4585,11 +4616,11 @@ function renderWeather(weather) {
       <div class="weather-zone-label">${periodLabel}${dayLabel ? ' · ' + dayLabel : ''}${timeLabel ? ' · ' + timeLabel : ''}</div>
       <div class="weather-current-row">
         <div class="weather-big-icon">${weatherIcon(cur.type)}</div>
-        <div class="weather-temp-main">${cur.temperature ?? '–'}°</div>
+        <div class="weather-temp-main">${fmtTemp(cur.temperature)}</div>
       </div>
       <div class="weather-type-label">${weatherTypeLabel(cur.type)}</div>
       <div class="weather-meta-row">
-        <span class="weather-meta-item">${windArrow} ${cur.windSpeed ?? '–'} km/h ${cur.windCardinal ?? ''}</span>
+        <span class="weather-meta-item">${windArrow} ${fmtSpeed(cur.windSpeed)} ${cur.windCardinal ?? ''}</span>
         ${cur.isRaining ? `<span class="weather-meta-item">${rainIcon} ${cur.rainScale ?? 0}%</span>` : ''}
         ${(cur.groundWet ?? 0) > 10 ? `<span class="weather-meta-item">${dropIcon} ${t('weather.groundMoist', { pct: cur.groundWet })}</span>` : ''}
       </div>
@@ -4600,7 +4631,7 @@ function renderWeather(weather) {
     <div class="weather-hourly-item">
       <div class="weather-hourly-time">${h.time ?? ''}</div>
       ${weatherIcon(h.type)}
-      <div class="weather-hourly-temp">${h.temperature ?? '–'}°</div>
+      <div class="weather-hourly-temp">${fmtTemp(h.temperature)}</div>
       <div style="font-size:11px;color:var(--muted)">${h.windSpeed ?? '–'} km/h</div>
     </div>`).join('');
   const hourlyHtml = `
@@ -4734,14 +4765,14 @@ function fmtLiters(n) {
   return n.toLocaleString(locale) + ' ' + t('units.liter');
 }
 
-function fmtEur(n) {
+function fmtCurrency(n) {
   if (n == null || n === 0) return '—';
-  return n.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+  return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ' + _units.currencySymbol;
 }
 
-function fmtPrice(n) {
+function fmtPricePerLiter(n) {
   if (n == null || n === 0) return '—';
-  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' €/l';
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' ' + _units.currencySymbol + '/l';
 }
 
 function goodTrendClass(g) {
@@ -4861,14 +4892,14 @@ function renderGoodCard(g) {
   const top5Html = stations.slice(0, 5).map((s, i) => `
     <div class="good-station-row-detail">
       <span class="gsd-name">${i === 0 ? '<strong>' + s.name + '</strong>' : s.name}</span>
-      <span class="gsd-price">${fmtPrice(s.price)}</span>
-      <span class="gsd-value">${fmtEur(s.value)}</span>
+      <span class="gsd-price">${fmtPricePerLiter(s.price)}</span>
+      <span class="gsd-value">${fmtCurrency(s.value)}</span>
       <span>${trendIcon(s.trend)}</span>
     </div>`).join('') || `<span style="font-size:12px;color:var(--muted)">${t('goods.noStations')}</span>`;
 
   // Diff between best and 2nd
   const diffHtml = stations.length >= 2
-    ? `<div class="good-info-note">${t('goods.stationDiff', { price: fmtPrice(stations[0].price - stations[1].price), value: fmtEur(stations[0].value - stations[1].value) })}</div>`
+    ? `<div class="good-info-note">${t('goods.stationDiff', { price: fmtPricePerLiter(stations[0].price - stations[1].price), value: fmtCurrency(stations[0].value - stations[1].value) })}</div>`
     : '';
 
   // Storage locations
@@ -4896,7 +4927,7 @@ function renderGoodCard(g) {
       <div class="bar ${pBarCls}"><i style="width:${Math.min(pricePct,100)}%"></i></div>
       <span class="good-pct-label">${pricePct}%</span>
     </div>
-    <div class="good-max-line">Max: ${fmtPrice(g.maxPrice)} · ${getPeriodName(g.bestPeriod) || '—'}</div>
+    <div class="good-max-line">Max: ${fmtPricePerLiter(g.maxPrice)} · ${getPeriodName(g.bestPeriod) || '—'}</div>
   ` : '';
 
   return `
@@ -4910,9 +4941,9 @@ function renderGoodCard(g) {
       ${best ? `
         <div class="good-station-row">🏪 ${best.name}</div>
         <div class="good-price-row">
-          <span>${fmtPrice(best.price)}</span>
+          <span>${fmtPricePerLiter(best.price)}</span>
           ${trendIcon(best.trend)}
-          <span class="good-price-sub">${fmtEur(bestVal)}</span>
+          <span class="good-price-sub">${fmtCurrency(bestVal)}</span>
         </div>
         ${maxNoteHtml}
       ` : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${t('goods.noSellingStation')}</div>`}
@@ -5115,13 +5146,13 @@ function renderGoods(data) {
     </article>
     <article class="card goods-kpi-tile">
       <div class="goods-kpi-label">${t('goods.kpiCurrentValue')}</div>
-      <div class="goods-kpi-val" style="font-size:16px">${fmtEur(totalVal)}</div>
+      <div class="goods-kpi-val" style="font-size:16px">${fmtCurrency(totalVal)}</div>
       <div class="goods-kpi-sub">${t('goods.kpiAtBestPrice')}</div>
     </article>
     <article class="card goods-kpi-tile">
       <div class="goods-kpi-label">${t('goods.kpiMostValuable')}</div>
       <div class="goods-kpi-val" style="font-size:15px">${topGood.title || '—'}</div>
-      <div class="goods-kpi-sub">${fmtEur(topGood.sellingStations?.[0]?.value)}</div>
+      <div class="goods-kpi-sub">${fmtCurrency(topGood.sellingStations?.[0]?.value)}</div>
     </article>
     <article class="card goods-kpi-tile">
       <div class="goods-kpi-label">${t('goods.kpiPriceTrend')}</div>
@@ -5134,7 +5165,7 @@ function renderGoods(data) {
     </article>
     <article class="card goods-kpi-tile">
       <div class="goods-kpi-label">${t('goods.kpiMaxValue')}</div>
-      <div class="goods-kpi-val" style="font-size:16px">${fmtEur(maxTotal)}</div>
+      <div class="goods-kpi-val" style="font-size:16px">${fmtCurrency(maxTotal)}</div>
       <div class="goods-kpi-sub">${t('goods.kpiAtMaxPrice')}</div>
     </article>`;
 
@@ -5318,7 +5349,7 @@ function renderSettings() {
         <div class="placeable-item">
           <div class="placeable-item-info">
             <div class="placeable-item-name">${t('fields.fieldNum', { id: f.id })}${f.fruitTitle ? ` — ${f.fruitTitle}` : ''}</div>
-            <div class="placeable-item-uid">${f.fieldArea || f.area} ha</div>
+            <div class="placeable-item-uid">${fmtArea(f.fieldArea || f.area)}</div>
           </div>
           <label class="toggle" title="${visible ? t('common.hide') : t('common.show')}">
             <input type="checkbox" ${visible ? 'checked' : ''} onchange="toggleFieldVisibility(${f.farmlandId})">
@@ -7162,8 +7193,8 @@ function _renderAdPanel(id) {
     ${hasCS   ? rocker('cornerSpeed', 'autodrive.cornerSpeed', csIcon, 'svg', t('fleet.adCornerSpeed'), cs, AD_CORNER_SPEEDS[cs-1]??'–', 1, 30, 1, true) : ''}
     </div>` : ''}
     ${(sl != null || fsl != null) ? `<div style="display:flex;gap:8px;width:100%;">
-    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  t('fleet.adSpeedLimit'),      sl,    sl+' km/h',  2,  200, 1) : ''}
-    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  t('fleet.adFieldSpeedLimit'), fsl,   fsl+' km/h', 2,  200, 1) : ''}
+    ${sl  != null ? rocker('speedLimit',      'autodrive.speedLimit',      'speedmeter',       true,  t('fleet.adSpeedLimit'),      sl,    sl+' '+_units.speed,  2,  200, 1) : ''}
+    ${fsl != null ? rocker('fieldSpeedLimit', 'autodrive.fieldSpeedLimit', 'speedmeter_field', true,  t('fleet.adFieldSpeedLimit'), fsl,   fsl+' '+_units.speed, 2,  200, 1) : ''}
     </div>` : ''}
     `;
     })()}
@@ -7528,7 +7559,7 @@ function _adNumFormatVal(field, val) {
   if (field === 'cornerSpeed')    return AD_CORNER_SPEEDS[val - 1] ?? '–';
   if (field === 'preCallLevel')   return AD_PRECALL_LEVELS[val - 1] ?? '–';
   if (field === 'chaseSide')      return AD_CHASE_SIDES[val - 1] ?? '–';
-  return val + ' km/h';
+  return (_units.speed === 'mph' ? Math.round(val * 0.621371 * 10) / 10 : val) + ' ' + _units.speed;
 }
 
 function _adNumAdjust(vid, nid, field, cmd, delta, min, max, serverVal) {
@@ -7749,7 +7780,7 @@ function _renderVehicleDetail(id) {
   const speedBlock = isMotorized ? `
     <div class="vd-header-speed ${isMoving ? 'moving' : ''}${rootState.adActive ? ' ad-active' : ''}${rootState.cpActive ? ' cp-active' : ''}">
       <span class="vd-header-speed-val">${isMoving ? speed : '0'}</span>
-      <span class="vd-header-speed-unit">km/h</span>
+      <span class="vd-header-speed-unit">${_units.speed}</span>
     </div>` : '';
 
   const gespannBadge = '';
@@ -7970,7 +8001,7 @@ function _renderVehicleDetail(id) {
       const isSelected = !isRunning && (rootState.viActiveKey === i + 1);
       return `<div class="vd-cc-slot ${isRunning ? 'running' : isSelected ? 'selected' : ''}">
         <span class="vd-cc-label">Tempo P${i + 1}</span>
-        <span class="vd-cc-speed">${p.speed}<small> km/h</small></span>
+        <span class="vd-cc-speed">${_units.speed === 'mph' ? Math.round(p.speed * 0.621371 * 10) / 10 : p.speed}<small> ${_units.speed}</small></span>
       </div>`;
     }).join('');
     sections += `<div class="vd-section">
@@ -8386,7 +8417,7 @@ function renderVehicleFleet(appData) {
            <div class="fleet-speed-action-row">
              <div class="fleet-speed-block ${speed > 0.5 ? 'moving' : ''}${state.adActive ? ' ad-active' : ''}${state.cpActive ? ' cp-active' : ''}${(() => { const dur = (fss.donePulseDuration||0)*1000; if(dur>0 && !state.adActive && !state.cpActive){ const now=Date.now(); if(fleetLastAdDone[state.id] && now-fleetLastAdDone[state.id]<dur) return ' ad-done'; if(fleetLastCpDone[state.id] && now-fleetLastCpDone[state.id]<dur) return ' cp-done'; } return ''; })()}" style="${(() => { const dur = (fss.donePulseDuration||0)*1000; if(dur>0 && !state.adActive && !state.cpActive){ const now=Date.now(); const t = fleetLastAdDone[state.id] || fleetLastCpDone[state.id]; if(t && now-t<dur) return 'animation-delay:-' + ((now-t) % 2000) + 'ms'; } return ''; })()}">
                <span class="fleet-speed-val">${speed > 0.5 ? speed : '0'}</span>
-               <span class="fleet-speed-unit">km/h</span>
+               <span class="fleet-speed-unit">${_units.speed}</span>
              </div>
              ${actionBtn}
            </div>
@@ -8635,6 +8666,7 @@ async function loadData() {
     if (!res.ok) throw new Error(res.status);
     const d = await res.json();
     appData = d;
+    _applyUnits(d.modInfo);
     // Build name→title lookup for fill types (fillTypes is an array)
     appData.fillTypesByName = {};
     for (const ft of (d.fillTypes?.fillTypes || [])) {

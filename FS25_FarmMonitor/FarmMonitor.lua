@@ -293,6 +293,20 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.config      = outputDir .. "config.xml"
     FarmMonitor.paths.outputDir   = outputDir
     FarmMonitor:loadConfig()
+
+    local function onUnitSettingChanged()
+        FarmMonitor.modInfoExported = false
+    end
+    local unitSettings = {
+        GameSettings.SETTING.USE_MILES,
+        GameSettings.SETTING.USE_FAHRENHEIT,
+        GameSettings.SETTING.USE_ACRE,
+        GameSettings.SETTING.MONEY_UNIT,
+    }
+    for _, setting in ipairs(unitSettings) do
+        g_messageCenter:subscribe(MessageType.SETTING_CHANGED[setting], onUnitSettingChanged, FarmMonitor)
+    end
+
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -809,18 +823,38 @@ function FarmMonitor:exportModInfo()
         local version = ""
         local mod = g_modManager:getModByName(modName)
         if mod ~= nil then version = mod.version or "" end
+
+        local lang = (g_languageSuffix and #g_languageSuffix > 1) and g_languageSuffix:sub(2) or "en"
+
+        local useMiles      = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.USE_MILES)      or false
+        local useFahrenheit = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.USE_FAHRENHEIT) or false
+        local useAcre       = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.USE_ACRE)       or false
+        local moneyUnit     = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.MONEY_UNIT)     or 0
+        local moneySymbols  = {"€", "$", "£"}
+        local moneyCodes    = {"EUR", "USD", "GBP"}
+        local moneyIdx      = (moneyUnit or 1)
+
         FarmMonitor:writeJSON(FarmMonitor.paths.modInfo, FarmMonitor.obj(
             "modName",  modName,
             "version",  version,
+            "language", lang,
+            "units", FarmMonitor.obj(
+                "speed",        useMiles and "mph"        or "km/h",
+                "distance",     useMiles and "miles"      or "km",
+                "area",         useAcre  and "acres"      or "ha",
+                "temperature",  useFahrenheit and "°F"   or "°C",
+                "currency",     moneyCodes[moneyIdx]      or "EUR",
+                "currencySymbol", moneySymbols[moneyIdx]  or "€"
+            ),
             "detectedMods", FarmMonitor.obj(
-                "autoDrive",       g_modIsLoaded["FS25_AutoDrive"]                == true,
-                "courseplay",      g_modIsLoaded["FS25_Courseplay"]               == true,
-                "psc",             g_modIsLoaded["FS25_ProductionStorageControl"] == true,
+                "autoDrive",        g_modIsLoaded["FS25_AutoDrive"]                == true,
+                "courseplay",       g_modIsLoaded["FS25_Courseplay"]               == true,
+                "psc",              g_modIsLoaded["FS25_ProductionStorageControl"] == true,
                 "enhancedVehicle",  g_modIsLoaded["FS25_EnhancedVehicle"]          == true,
                 "vehicleInspector", g_modIsLoaded["FS25_VehicleInspector"]         == true
             )
         ))
-        print("[FarmMonitor] modInfo.json written (version=" .. version .. ")")
+        print("[FarmMonitor] modInfo.json written (version=" .. version .. ", lang=" .. lang .. ")")
     end)
     if not ok then
         print("[FarmMonitor] ERROR writing modInfo.json: " .. tostring(err))
