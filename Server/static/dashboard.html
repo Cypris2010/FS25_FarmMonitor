@@ -3137,7 +3137,7 @@ function t(key, opts) {
 
 function getCurrentLang() {
   return localStorage.getItem('fm_lang') ||
-    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : navigator.language.startsWith('cs') ? 'cs' : navigator.language.startsWith('ro') ? 'ro' : navigator.language.startsWith('hu') ? 'hu' : navigator.language.startsWith('nl') ? 'nl' : navigator.language.startsWith('pt') ? 'pt' : navigator.language.startsWith('tr') ? 'tr' : navigator.language.startsWith('ja') ? 'ja' : 'en');
+    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : navigator.language.startsWith('cs') ? 'cs' : navigator.language.startsWith('ro') ? 'ro' : navigator.language.startsWith('hu') ? 'hu' : navigator.language.startsWith('nl') ? 'nl' : navigator.language.startsWith('pt') ? 'pt' : navigator.language.startsWith('tr') ? 'tr' : navigator.language.startsWith('ja') ? 'ja' : navigator.language.startsWith('zh') ? 'zh' : navigator.language.startsWith('ko') ? 'ko' : 'en');
 }
 
 async function initI18n() {
@@ -5455,6 +5455,12 @@ function renderSettings() {
         <button onclick="setLanguage('ja')"
           class="edit-mode-btn${currentLang === 'ja' ? ' active' : ''}"
           style="padding:7px 20px">🇯🇵 日本語</button>
+        <button onclick="setLanguage('zh')"
+          class="edit-mode-btn${currentLang === 'zh' ? ' active' : ''}"
+          style="padding:7px 20px">🇨🇳 中文</button>
+        <button onclick="setLanguage('ko')"
+          class="edit-mode-btn${currentLang === 'ko' ? ' active' : ''}"
+          style="padding:7px 20px">🇰🇷 한국어</button>
       </div>
     </div>`;
 
