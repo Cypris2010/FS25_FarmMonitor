@@ -5622,6 +5622,9 @@ function applyMapTransform() {
   document.querySelectorAll('.vehicle-rot-scale').forEach(el => {
     el.style.transform = `rotate(${el.dataset.deg}deg) scale(${iconS})`;
   });
+  document.querySelectorAll('.player-label-g').forEach(el => {
+    el.style.transform = `scale(${iconS})`;
+  });
   document.querySelectorAll('.hotspot-pin, .field-label').forEach(el => {
     el.style.transform = `translate3d(${el.dataset.x}px,${el.dataset.y}px,0) scale(${iconS})`;
   });
@@ -6239,6 +6242,23 @@ function updateVehicles(vehiclesData, terrainSize) {
       inner.appendChild(title);
       el.appendChild(inner);
 
+      if (v.type === 'PLAYER') {
+        const lg = document.createElementNS('http://www.w3.org/2000/svg','g');
+        lg.classList.add('player-label-g');
+        lg.style.transform = `scale(${iconS})`;
+        const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('text-anchor','middle');
+        txt.setAttribute('y', -(r + 8));
+        txt.setAttribute('fill','#fff');
+        txt.setAttribute('font-size','20');
+        txt.setAttribute('stroke','#000');
+        txt.setAttribute('stroke-width','0.6');
+        txt.setAttribute('paint-order','stroke');
+        txt.textContent = v.name || 'Player';
+        lg.appendChild(txt);
+        el.appendChild(lg);
+      }
+
       el.style.transition = 'none';
       el.style.transform  = `translate3d(${tx}px,${ty}px,0)`;
       layer.appendChild(el);
@@ -6250,6 +6270,8 @@ function updateVehicles(vehiclesData, terrainSize) {
         inner.dataset.deg = deg;
         inner.style.transform = `rotate(${deg}deg) scale(${(1/mapZoom).toFixed(4)})`;
       }
+      const lg = el.querySelector('.player-label-g');
+      if (lg) lg.style.transform = `scale(${(1/mapZoom).toFixed(4)})`;
     }
 
     const title = el.querySelector('title');

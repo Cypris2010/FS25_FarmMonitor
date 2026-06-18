@@ -1765,15 +1765,35 @@ function FarmMonitor:collectVehicles()
     if g_currentMission.playerSystem ~= nil then
         for _, player in pairs(g_currentMission.playerSystem.players) do
             if player ~= nil and player.rootNode ~= nil then
-                local x, _, z = getWorldTranslation(player.rootNode)
-                local playerName = (player.networkInformation and player.networkInformation.playerName) or "Player"
+                local x, z, rot
+                local okV, cv = pcall(function() return player:getCurrentVehicle() end)
+                if okV and cv ~= nil and cv.rootNode ~= nil then
+                    -- in vehicle: identical formula to vehicle export
+                    local vx, _, vz = getWorldTranslation(cv.rootNode)
+                    local dx, _, dz = localDirectionToWorld(cv.rootNode, 0, 0, 1)
+                    x, z = vx, vz
+                    rot = -MathUtil.getYRotationFromDirection(dx, dz) + math.pi
+                else
+                    -- on foot: rootNode position, graphicsRootNode for body direction
+                    local wx, _, wz = getWorldTranslation(player.rootNode)
+                    x, z = wx, wz
+                    local graphicsNode = player.graphicsComponent and player.graphicsComponent.graphicsRootNode
+                    if graphicsNode ~= nil then
+                        local dx, _, dz = localDirectionToWorld(graphicsNode, 0, 0, 1)
+                        rot = -MathUtil.getYRotationFromDirection(dx, dz) + math.pi
+                    else
+                        rot = 0
+                    end
+                end
+                local ok, nick = pcall(function() return player:getNickname() end)
+                local playerName = (ok and nick and nick ~= "") and nick or "Player"
                 table.insert(result, FarmMonitor.obj(
                     "id",      "player_" .. tostring(player.rootNode),
                     "name",    playerName,
                     "type",    "PLAYER",
                     "x",       MathUtil.round(x * 10) / 10,
                     "z",       MathUtil.round(z * 10) / 10,
-                    "rot",     0,
+                    "rot",     MathUtil.round((rot or 0) * 1000) / 1000,
                     "fillPct", nil
                 ))
             end
