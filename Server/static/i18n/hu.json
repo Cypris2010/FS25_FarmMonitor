@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "Nyelv",
+    "tabGeneral": "Általános",
+    "tabAlerts": "Riasztások",
+    "tabVisibility": "Láthatóság",
+    "tabMod": "Mod",
+    "savegameLabel": "Mentés",
     "languageHint": "🎮 Az Auto átveszi a játék nyelvét és automatikusan vált, ha megváltoztatod a játékban. A kézzel kiválasztott nyelvek mindig elsőbbséget élveznek.",
     "visibility": "Láthatóság",
     "title": "Beállítások",

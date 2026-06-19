@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "언어",
+    "tabGeneral": "일반",
+    "tabAlerts": "알림",
+    "tabVisibility": "표시",
+    "tabMod": "Mod",
+    "savegameLabel": "저장 게임",
     "languageHint": "🎮 자동은 게임의 언어를 사용하며 게임에서 변경 시 자동으로 전환됩니다. 수동으로 선택한 언어는 항상 우선합니다.",
     "visibility": "표시 설정",
     "title": "설정",

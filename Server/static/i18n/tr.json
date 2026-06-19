@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "Dil",
+    "tabGeneral": "Genel",
+    "tabAlerts": "Uyarılar",
+    "tabVisibility": "Görünürlük",
+    "tabMod": "Mod",
+    "savegameLabel": "Kayıt",
     "languageHint": "🎮 Otomatik, oyunun dilini alır ve oyun içinde değiştirdiğinizde otomatik olarak değişir. Manuel seçilen diller her zaman önceliklidir.",
     "visibility": "Görünürlük",
     "title": "Ayarlar",

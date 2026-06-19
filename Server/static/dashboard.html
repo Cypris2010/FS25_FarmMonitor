@@ -45,6 +45,10 @@
     --shadow:        0 18px 50px rgba(0,0,0,.45);
     --radius:        18px;
     --sidebar-w:     66px;
+    /* aliases — used across popovers, inputs and cards */
+    --border:        var(--line);
+    --surface2:      var(--panel-2);
+    --card:          var(--panel-2);
   }
 
   body {
@@ -1030,6 +1034,19 @@
     margin: 20px 0 8px;
   }
   .settings-section-title:first-child { margin-top: 0; }
+
+  .settings-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .settings-tab-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    padding: 8px 16px 10px; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .settings-tab-btn:hover { color: var(--text); }
+  .settings-tab-btn.active { color: var(--green, #4ade80); border-bottom-color: var(--green, #4ade80); }
+  .settings-tab-panel { display: none; }
+  .settings-tab-panel.active { display: block; }
 
   .placeable-list { display: flex; flex-direction: column; gap: 6px; }
   .placeable-item {
@@ -5239,6 +5256,11 @@ function showView(name) {
   if (willTrack) startVehicleTracking();
 }
 
+function switchSettingsTab(tab) {
+  localStorage.setItem('fm_settings_tab', tab);
+  renderSettings();
+}
+
 function renderSettings() {
   const el = document.getElementById('settings-content');
   if (!appData) return;
@@ -5271,28 +5293,40 @@ function renderSettings() {
   const serverBlock = `
     <div class="settings-section-title">${t('settings.serverSection')}</div>
     <div class="placeable-list" style="gap:14px;padding:16px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-          Port
+      <div class="placeable-item" style="gap:16px;flex-wrap:wrap">
+        <div class="placeable-item-info" style="flex:1;min-width:150px"><div class="placeable-item-name">Port</div></div>
+        <div style="flex:1;min-width:0">
           <input id="cfg-port" type="number" min="1" max="65535" value="${srv.port ?? 8080}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
-        </label>
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-          Host
-          <input id="cfg-host" type="text" value="${srv.host ?? '127.0.0.1'}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
-        </label>
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:96px">
+        </div>
       </div>
-      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-        ${t('settings.dataPath')} <span style="font-size:11px">${t('settings.autoDetect')}</span>
-        <input id="cfg-data" type="text" value="${srv.data ?? ''}" placeholder="${t('settings.autoDetect')}"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">
-        ${t('settings.modsDir')} <span style="font-size:11px">${t('settings.autoDeriveFromData')}</span>
-        <input id="cfg-mods" type="text" value="${srv.mods ?? ''}" placeholder="${t('settings.autoDetect')}"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">
-      </label>
+      <div class="placeable-item" style="gap:16px;flex-wrap:wrap">
+        <div class="placeable-item-info" style="flex:1;min-width:150px"><div class="placeable-item-name">Host</div></div>
+        <div style="flex:1;min-width:0">
+          <input id="cfg-host" type="text" value="${srv.host ?? '127.0.0.1'}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%;max-width:200px;box-sizing:border-box">
+        </div>
+      </div>
+      <div class="placeable-item" style="gap:16px;flex-wrap:wrap">
+        <div class="placeable-item-info" style="flex:1;min-width:150px">
+          <div class="placeable-item-name">${t('settings.dataPath')}</div>
+          <div class="placeable-item-uid">${t('settings.autoDetect')}</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <input id="cfg-data" type="text" value="${srv.data ?? ''}" placeholder="${t('settings.autoDetect')}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box">
+        </div>
+      </div>
+      <div class="placeable-item" style="gap:16px;flex-wrap:wrap">
+        <div class="placeable-item-info" style="flex:1;min-width:150px">
+          <div class="placeable-item-name">${t('settings.modsDir')}</div>
+          <div class="placeable-item-uid">${t('settings.autoDeriveFromData')}</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <input id="cfg-mods" type="text" value="${srv.mods ?? ''}" placeholder="${t('settings.autoDetect')}"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box">
+        </div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
         <span style="font-size:12px;color:var(--muted)">${t('settings.serverRestartHint')}</span>
         <button onclick="saveServerSettings()" class="edit-mode-btn active" style="padding:7px 18px">${t('settings.save')}</button>
@@ -5301,33 +5335,37 @@ function renderSettings() {
     </div>`;
 
   const sgInfo = savegameId
-    ? `<div class="pill" style="margin-bottom:16px;display:inline-flex">Spielstand: <strong style="margin-left:6px">${savegameId}</strong></div>`
+    ? `<div class="pill" style="margin-bottom:16px;display:inline-flex">${t('settings.savegameLabel')}: <strong style="margin-left:6px">${savegameId}</strong></div>`
     : '';
 
-  const al = globalSettings.alerts || {};
-
+  // Shared threshold-row: 50/50 split — label/hint left half, colored number inputs right half (B1)
+  function thresholdRow(label, hint, fields, step) {
+    const s = step ?? 1;
+    const dot = c => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:5px;flex-shrink:0"></span>`;
+    const cell = f => `<label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted)">
+        <span style="display:flex;align-items:center;white-space:nowrap">${dot(f.dot)}${f.lbl}</span>
+        <input id="${f.id}" type="number" min="0" max="100" step="${s}" value="${f.val}"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:14px;width:96px;text-align:right">
+      </label>`;
+    return `<div class="placeable-item" style="align-items:center;gap:16px;flex-wrap:wrap">
+      <div class="placeable-item-info" style="flex:1;min-width:150px">
+        <div class="placeable-item-name">${label}</div>
+        ${hint ? `<div class="placeable-item-uid" style="line-height:1.4">${hint}</div>` : ''}
+      </div>
+      <div style="flex:1;min-width:0;display:flex;gap:14px">${fields.map(cell).join('')}</div>
+    </div>`;
+  }
   function inputPair(label, hint, id1, val1, id2, val2) {
-    const dot = c => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:5px;flex-shrink:0"></span>';
-    const inp = (id, val) => '<input id="' + id + '" type="number" min="1" max="100" value="' + val + '"'
-      + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
-    return '<div>'
-      + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + ' — <span style="opacity:.7">' + hint + '</span></div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--yellow)') + t('settings.warnFrom') + '</span>' + inp(id1, val1) + '</label>'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot('var(--red)') + t('settings.critFrom') + '</span>' + inp(id2, val2) + '</label>'
-      + '</div></div>';
+    return thresholdRow(label, hint, [
+      { dot: 'var(--yellow)', lbl: t('settings.warnFrom'), id: id1, val: val1 },
+      { dot: 'var(--red)',    lbl: t('settings.critFrom'), id: id2, val: val2 },
+    ]);
   }
   function inputPairField(label, lbl1, col1, id1, val1, lbl2, col2, id2, val2, step) {
-    const s = step ?? 1;
-    const dot = c => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:5px;flex-shrink:0"></span>';
-    const inp = (id, val) => '<input id="' + id + '" type="number" min="0" max="100" step="' + s + '" value="' + val + '"'
-      + ' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%">';
-    return '<div>'
-      + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + label + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot(col1) + lbl1 + '</span>' + inp(id1, val1) + '</label>'
-      + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)"><span style="display:flex;align-items:center">' + dot(col2) + lbl2 + '</span>' + inp(id2, val2) + '</label>'
-      + '</div></div>';
+    return thresholdRow(label, '', [
+      { dot: col1, lbl: lbl1, id: id1, val: val1 },
+      { dot: col2, lbl: lbl2, id: id2, val: val2 },
+    ], step);
   }
 
   const al2 = globalSettings.alerts || {};
@@ -5344,14 +5382,10 @@ function renderSettings() {
     + '<div class="placeable-list" style="gap:18px;padding:16px">'
     + inputPair(t('settings.alertInputs'), t('settings.alertInputsHint'), 'cfg-warn', al2.warn ?? 40, 'cfg-crit', al2.crit ?? 20)
     + inputPair(t('settings.alertOutputs'), t('settings.alertOutputsHint'), 'cfg-out-warn', al2.outWarn ?? 80, 'cfg-out-crit', al2.outCrit ?? 90)
-    + '<div>'
-    + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + t('settings.occupancy') + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">' + t('settings.watchFrom')
-    + '<input id="cfg-occ-watch" type="number" min="1" max="100" value="' + (al2.occWatch ?? 95) + '" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%"></label>'
-    + '<label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)">' + t('settings.warnFrom')
-    + '<input id="cfg-occ-warn" type="number" min="1" max="100" value="' + (al2.occWarn ?? 100) + '" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:14px;width:100%"></label>'
-    + '</div></div>'
+    + thresholdRow(t('settings.occupancy'), '', [
+        { dot: 'var(--muted)',  lbl: t('settings.watchFrom'), id: 'cfg-occ-watch', val: al2.occWatch ?? 95 },
+        { dot: 'var(--yellow)', lbl: t('settings.warnFrom'),  id: 'cfg-occ-warn',  val: al2.occWarn ?? 100 },
+      ])
     + '<div style="display:flex;align-items:center;justify-content:flex-end">'
     + '<button onclick="saveAlertSettings()" class="edit-mode-btn active" style="padding:7px 18px">' + t('settings.save') + '</button></div>'
     + '<div id="cfg-alert-saved" style="font-size:12px;color:var(--green,#4ade80);display:none;text-align:right">' + t('settings.saved') + '</div>'
@@ -5394,13 +5428,15 @@ function renderSettings() {
   const mcs = mc.soilMap || {};
   function cfgRow(label, desc, id, val, min, max, unit) {
     const u = unit || t('settings.seconds');
-    return `<div style="display:flex;flex-direction:column;gap:5px">
-      <span style="font-size:13px;font-weight:600;color:var(--text)">${label}</span>
-      <span style="font-size:11px;color:var(--muted);opacity:.7;line-height:1.4">${desc}</span>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+    return `<div class="placeable-item" style="gap:16px;flex-wrap:wrap">
+      <div class="placeable-item-info" style="flex:1;min-width:150px">
+        <div class="placeable-item-name">${label}</div>
+        <div class="placeable-item-uid" style="line-height:1.4">${desc}</div>
+      </div>
+      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
         <input id="${id}" type="number" min="${min}" max="${max}" value="${val}"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:14px;width:90px">
-        <span style="font-size:12px;color:var(--muted);opacity:.6;white-space:nowrap">${u}</span>
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:14px;width:96px;text-align:right">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap">${u}</span>
       </div>
     </div>`;
   }
@@ -5437,19 +5473,15 @@ function renderSettings() {
     <div class="placeable-list" style="gap:20px;padding:16px">
       <div style="font-size:12px;color:var(--muted);line-height:1.5">${t('settings.modConfigHint')}</div>
       <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${t('settings.exportIntervals')}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        ${cfgRow(t('settings.mainExport'), t('settings.mainExportDesc'), 'mcfg-main', mci.mainSeconds ?? 10, 1, 300)}
-        ${cfgRow(t('nav.fleet'), t('settings.vehiclesExportDesc'), 'mcfg-vehicles', mci.vehicleSeconds ?? 2, 1, 60)}
-        ${cfgRow(t('nav.fields'), t('settings.fieldsExportDesc'), 'mcfg-fields', mci.fieldSeconds ?? 60, 10, 600)}
-        ${cfgRow(t('settings.weatherLabel'), t('settings.weatherExportDesc'), 'mcfg-weather', mci.weatherSeconds ?? 30, 5, 300)}
-        <div style="grid-column:1/-1">${cfgRow('IPC-Commands', t('settings.commandsExportDesc'), 'mcfg-commands', mci.commandSeconds ?? 1, 1, 10)}</div>
-      </div>
+      ${cfgRow(t('settings.mainExport'), t('settings.mainExportDesc'), 'mcfg-main', mci.mainSeconds ?? 10, 1, 300)}
+      ${cfgRow(t('nav.fleet'), t('settings.vehiclesExportDesc'), 'mcfg-vehicles', mci.vehicleSeconds ?? 2, 1, 60)}
+      ${cfgRow(t('nav.fields'), t('settings.fieldsExportDesc'), 'mcfg-fields', mci.fieldSeconds ?? 60, 10, 600)}
+      ${cfgRow(t('settings.weatherLabel'), t('settings.weatherExportDesc'), 'mcfg-weather', mci.weatherSeconds ?? 30, 5, 300)}
+      ${cfgRow('IPC-Commands', t('settings.commandsExportDesc'), 'mcfg-commands', mci.commandSeconds ?? 1, 1, 10)}
       <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">${t('settings.soilMap')}</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:-12px">${t('settings.soilMapDesc')}</div>
-      <div style="display:flex;gap:32px;flex-wrap:wrap">
-        ${cfgRow(t('settings.resolution'), t('settings.resolutionDesc'), 'mcfg-soil-res', mcs.resolution ?? 128, 32, 512, 'px')}
-        ${cfgRow(t('settings.rowsPerTick'), t('settings.rowsPerTickDesc'), 'mcfg-soil-rows', mcs.rowsPerTick ?? 2, 1, 16, t('settings.rows'))}
-      </div>
+      ${cfgRow(t('settings.resolution'), t('settings.resolutionDesc'), 'mcfg-soil-res', mcs.resolution ?? 128, 32, 512, 'px')}
+      ${cfgRow(t('settings.rowsPerTick'), t('settings.rowsPerTickDesc'), 'mcfg-soil-rows', mcs.rowsPerTick ?? 2, 1, 16, t('settings.rows'))}
       <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">${t('settings.diagnostics')}</div>
       <div class="placeable-item">
         <div class="placeable-item-info">
@@ -5530,14 +5562,41 @@ function renderSettings() {
       </div>
     </div>`;
 
-  el.innerHTML = languageBlock + serverBlock + detectedModsBlock + modCfgBlock + alertBlock
-    + '<div class="settings-section-title" style="margin-top:24px">' + t('settings.visibility') + '</div>'
-    + sgInfo
+  const activeTab = localStorage.getItem('fm_settings_tab') || 'general';
+
+  const tabBar = `<div class="settings-tabs" role="tablist">
+    <button class="settings-tab-btn${activeTab === 'general'    ? ' active' : ''}" onclick="switchSettingsTab('general')"    role="tab" aria-selected="${activeTab === 'general'}">${t('settings.tabGeneral')}</button>
+    <button class="settings-tab-btn${activeTab === 'alerts'     ? ' active' : ''}" onclick="switchSettingsTab('alerts')"     role="tab" aria-selected="${activeTab === 'alerts'}">${t('settings.tabAlerts')}</button>
+    <button class="settings-tab-btn${activeTab === 'visibility' ? ' active' : ''}" onclick="switchSettingsTab('visibility')" role="tab" aria-selected="${activeTab === 'visibility'}">${t('settings.tabVisibility')}</button>
+    <button class="settings-tab-btn${activeTab === 'mod'        ? ' active' : ''}" onclick="switchSettingsTab('mod')"        role="tab" aria-selected="${activeTab === 'mod'}">${t('settings.tabMod')}</button>
+  </div>`;
+
+  const panelGeneral = `<div class="settings-tab-panel${activeTab === 'general' ? ' active' : ''}" data-tab="general">
+    ${languageBlock}
+    <div style="margin-top:16px"></div>
+    ${serverBlock}
+  </div>`;
+
+  const panelAlerts = `<div class="settings-tab-panel${activeTab === 'alerts' ? ' active' : ''}" data-tab="alerts">
+    ${alertBlock}
+  </div>`;
+
+  const visibilityContent = sgInfo
     + section(t('nav.silos'), silos)
     + section(t('nav.productions'), productions)
     + section(t('nav.husbandries'), husbandries)
-    + fieldsSection
-    || `<div class="state-box"><span>${t('settings.noData')}</span></div>`;
+    + fieldsSection;
+  const panelVisibility = `<div class="settings-tab-panel${activeTab === 'visibility' ? ' active' : ''}" data-tab="visibility">
+    ${visibilityContent || `<div class="state-box"><span>${t('settings.noData')}</span></div>`}
+  </div>`;
+
+  const panelMod = `<div class="settings-tab-panel${activeTab === 'mod' ? ' active' : ''}" data-tab="mod">
+    ${modCfgBlock}
+    <div style="margin-top:16px"></div>
+    ${detectedModsBlock}
+  </div>`;
+
+  el.innerHTML = tabBar + panelGeneral + panelAlerts + panelVisibility + panelMod;
 }
 
 let modConfigCache = null;

@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "Jazyk",
+    "tabGeneral": "Obecné",
+    "tabAlerts": "Upozornění",
+    "tabVisibility": "Viditelnost",
+    "tabMod": "Mod",
+    "savegameLabel": "Uložená hra",
     "languageHint": "🎮 Auto přebírá jazyk hry a mění se automaticky, když ho ve hře změníte. Ručně zvolené jazyky mají vždy přednost.",
     "visibility": "Viditelnost",
     "title": "Nastavení",

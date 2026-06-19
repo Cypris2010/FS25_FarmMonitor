@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "Langue",
+    "tabGeneral": "Général",
+    "tabAlerts": "Alertes",
+    "tabVisibility": "Visibilité",
+    "tabMod": "Mod",
+    "savegameLabel": "Sauvegarde",
     "languageHint": "🎮 Auto adopte la langue du jeu et change automatiquement quand vous la modifiez dans le jeu. Les langues sélectionnées manuellement ont toujours la priorité.",
     "visibility": "Visibilité",
     "title": "Paramètres",

@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "言語",
+    "tabGeneral": "一般",
+    "tabAlerts": "アラート",
+    "tabVisibility": "表示",
+    "tabMod": "Mod",
+    "savegameLabel": "セーブデータ",
     "languageHint": "🎮 自動はゲームの言語を使用し、ゲーム内で変更すると自動的に切り替わります。手動で選択した言語は常に優先されます。",
     "visibility": "表示設定",
     "title": "設定",

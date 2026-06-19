@@ -15,6 +15,11 @@
   },
   "settings": {
     "language": "Limbă",
+    "tabGeneral": "General",
+    "tabAlerts": "Alerte",
+    "tabVisibility": "Vizibilitate",
+    "tabMod": "Mod",
+    "savegameLabel": "Salvare",
     "languageHint": "🎮 Auto preia limba jocului și se schimbă automat când o modifici în joc. Limbile selectate manual au întotdeauna prioritate.",
     "visibility": "Vizibilitate",
     "title": "Setări",
