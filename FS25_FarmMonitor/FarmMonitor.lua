@@ -293,6 +293,20 @@ function FarmMonitor:loadMap(name)
     FarmMonitor.paths.config      = outputDir .. "config.xml"
     FarmMonitor.paths.outputDir   = outputDir
     FarmMonitor:loadConfig()
+
+    local function onUnitSettingChanged()
+        FarmMonitor.modInfoExported = false
+    end
+    local unitSettings = {
+        GameSettings.SETTING.USE_MILES,
+        GameSettings.SETTING.USE_FAHRENHEIT,
+        GameSettings.SETTING.USE_ACRE,
+        GameSettings.SETTING.MONEY_UNIT,
+    }
+    for _, setting in ipairs(unitSettings) do
+        g_messageCenter:subscribe(MessageType.SETTING_CHANGED[setting], onUnitSettingChanged, FarmMonitor)
+    end
+
     print("[FarmMonitor] Mod loaded. Output directory: " .. outputDir)
 end
 
@@ -809,18 +823,38 @@ function FarmMonitor:exportModInfo()
         local version = ""
         local mod = g_modManager:getModByName(modName)
         if mod ~= nil then version = mod.version or "" end
+
+        local lang = (g_languageSuffix and #g_languageSuffix > 1) and g_languageSuffix:sub(2) or "en"
+
+        local useMiles      = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.USE_MILES)      or false
+        local useFahrenheit = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.USE_FAHRENHEIT) or false
+        local useAcre       = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.USE_ACRE)       or false
+        local moneyUnit     = g_gameSettings ~= nil and g_gameSettings:getValue(GameSettings.SETTING.MONEY_UNIT)     or 0
+        local moneySymbols  = {"€", "$", "£"}
+        local moneyCodes    = {"EUR", "USD", "GBP"}
+        local moneyIdx      = (moneyUnit or 1)
+
         FarmMonitor:writeJSON(FarmMonitor.paths.modInfo, FarmMonitor.obj(
             "modName",  modName,
             "version",  version,
+            "language", lang,
+            "units", FarmMonitor.obj(
+                "speed",        useMiles and "mph"        or "km/h",
+                "distance",     useMiles and "miles"      or "km",
+                "area",         useAcre  and "acres"      or "ha",
+                "temperature",  useFahrenheit and "°F"   or "°C",
+                "currency",     moneyCodes[moneyIdx]      or "EUR",
+                "currencySymbol", moneySymbols[moneyIdx]  or "€"
+            ),
             "detectedMods", FarmMonitor.obj(
-                "autoDrive",       g_modIsLoaded["FS25_AutoDrive"]                == true,
-                "courseplay",      g_modIsLoaded["FS25_Courseplay"]               == true,
-                "psc",             g_modIsLoaded["FS25_ProductionStorageControl"] == true,
+                "autoDrive",        g_modIsLoaded["FS25_AutoDrive"]                == true,
+                "courseplay",       g_modIsLoaded["FS25_Courseplay"]               == true,
+                "psc",              g_modIsLoaded["FS25_ProductionStorageControl"] == true,
                 "enhancedVehicle",  g_modIsLoaded["FS25_EnhancedVehicle"]          == true,
                 "vehicleInspector", g_modIsLoaded["FS25_VehicleInspector"]         == true
             )
         ))
-        print("[FarmMonitor] modInfo.json written (version=" .. version .. ")")
+        print("[FarmMonitor] modInfo.json written (version=" .. version .. ", lang=" .. lang .. ")")
     end)
     if not ok then
         print("[FarmMonitor] ERROR writing modInfo.json: " .. tostring(err))
@@ -1765,16 +1799,50 @@ function FarmMonitor:collectVehicles()
     if g_currentMission.playerSystem ~= nil then
         for _, player in pairs(g_currentMission.playerSystem.players) do
             if player ~= nil and player.rootNode ~= nil then
-                local x, _, z = getWorldTranslation(player.rootNode)
-                local playerName = (player.networkInformation and player.networkInformation.playerName) or "Player"
+                local x, z, rot
+                local okV, cv = pcall(function() return player:getCurrentVehicle() end)
+                if okV and cv ~= nil and cv.rootNode ~= nil then
+                    -- in vehicle: identical formula to vehicle export
+                    local vx, _, vz = getWorldTranslation(cv.rootNode)
+                    local dx, _, dz = localDirectionToWorld(cv.rootNode, 0, 0, 1)
+                    x, z = vx, vz
+                    rot = -MathUtil.getYRotationFromDirection(dx, dz) + math.pi
+                else
+                    -- on foot: rootNode position, graphicsRootNode for body direction
+                    local wx, _, wz = getWorldTranslation(player.rootNode)
+                    x, z = wx, wz
+                    local graphicsNode = player.graphicsComponent and player.graphicsComponent.graphicsRootNode
+                    if graphicsNode ~= nil then
+                        local dx, _, dz = localDirectionToWorld(graphicsNode, 0, 0, 1)
+                        rot = -MathUtil.getYRotationFromDirection(dx, dz) + math.pi
+                    else
+                        rot = 0
+                    end
+                end
+                local ok, nick = pcall(function() return player:getNickname() end)
+                local playerName = (ok and nick and nick ~= "") and nick or "Player"
+                local farmColor = nil
+                if player.farmId ~= nil and g_farmManager ~= nil then
+                    local farm = g_farmManager:getFarmById(player.farmId)
+                    if farm ~= nil and Farm ~= nil and Farm.COLORS ~= nil and farm.color ~= nil then
+                        local c = Farm.COLORS[farm.color]
+                        if c ~= nil then
+                            farmColor = string.format("#%02x%02x%02x",
+                                math.min(255, math.floor((c[1] or 0) * 255)),
+                                math.min(255, math.floor((c[2] or 0) * 255)),
+                                math.min(255, math.floor((c[3] or 0) * 255)))
+                        end
+                    end
+                end
                 table.insert(result, FarmMonitor.obj(
-                    "id",      "player_" .. tostring(player.rootNode),
-                    "name",    playerName,
-                    "type",    "PLAYER",
-                    "x",       MathUtil.round(x * 10) / 10,
-                    "z",       MathUtil.round(z * 10) / 10,
-                    "rot",     0,
-                    "fillPct", nil
+                    "id",        "player_" .. tostring(player.rootNode),
+                    "name",      playerName,
+                    "type",      "PLAYER",
+                    "farmColor", farmColor,
+                    "x",         MathUtil.round(x * 10) / 10,
+                    "z",         MathUtil.round(z * 10) / 10,
+                    "rot",       MathUtil.round((rot or 0) * 1000) / 1000,
+                    "fillPct",   nil
                 ))
             end
         end
