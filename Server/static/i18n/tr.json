@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Dil",
+    "languageHint": "🎮 Otomatik, oyunun dilini alır ve oyun içinde değiştirdiğinizde otomatik olarak değişir. Manuel seçilen diller her zaman önceliklidir.",
     "visibility": "Görünürlük",
     "title": "Ayarlar",
     "subtitle": "FarmMonitor panel yapılandırması",
@@ -139,8 +140,8 @@
     "noFields": "Kendi tarlası bulunamadı",
     "noMatch": "Hiçbir tarla filtreyle eşleşmiyor",
     "fieldNum": "Tarla {{id}}",
-    "fieldArea": "Tarla {{ha}} ha",
-    "landArea": "Arazi {{ha}} ha",
+    "fieldArea": "Tarla",
+    "landArea": "Arazi",
     "noPlanting": "Ekin yok",
     "soilTitle": "Toprak",
     "badgeHarvest": "Hasada hazır!",

@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "语言",
+    "languageHint": "🎮 自动模式使用游戏语言，在游戏中更改后会自动切换。手动选择的语言始终优先。",
     "visibility": "显示设置",
     "title": "设置",
     "subtitle": "FarmMonitor 仪表板配置",
@@ -139,8 +140,8 @@
     "noFields": "未找到自有田地",
     "noMatch": "没有田地符合筛选条件",
     "fieldNum": "田地 {{id}}",
-    "fieldArea": "田地 {{ha}} 公顷",
-    "landArea": "农地 {{ha}} 公顷",
+    "fieldArea": "田地",
+    "landArea": "农地",
     "noPlanting": "未种植",
     "soilTitle": "土壤",
     "badgeHarvest": "可收割！",

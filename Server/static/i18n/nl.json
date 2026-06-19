@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Taal",
+    "languageHint": "🎮 Auto neemt de taal van het spel over en schakelt automatisch als je deze in het spel wijzigt. Handmatig geselecteerde talen hebben altijd voorrang.",
     "visibility": "Zichtbaarheid",
     "title": "Instellingen",
     "subtitle": "FarmMonitor dashboard configuratie",
@@ -139,8 +140,8 @@
     "noFields": "Geen eigen velden gevonden",
     "noMatch": "Geen veld komt overeen met het filter",
     "fieldNum": "Veld {{id}}",
-    "fieldArea": "Veld {{ha}} ha",
-    "landArea": "Perceel {{ha}} ha",
+    "fieldArea": "Veld",
+    "landArea": "Perceel",
     "noPlanting": "Geen gewas",
     "soilTitle": "Bodem",
     "badgeHarvest": "Oogstklaar!",

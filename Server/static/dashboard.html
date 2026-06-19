@@ -3135,9 +3135,23 @@ function t(key, opts) {
   return i18next.t(key, opts);
 }
 
+function _browserLang() {
+  const n = navigator.language;
+  if (n.startsWith('de')) return 'de'; if (n.startsWith('fr')) return 'fr';
+  if (n.startsWith('es')) return 'es'; if (n.startsWith('pl')) return 'pl';
+  if (n.startsWith('cs')) return 'cs'; if (n.startsWith('ro')) return 'ro';
+  if (n.startsWith('hu')) return 'hu'; if (n.startsWith('nl')) return 'nl';
+  if (n.startsWith('pt')) return 'pt'; if (n.startsWith('tr')) return 'tr';
+  if (n.startsWith('ja')) return 'ja'; if (n.startsWith('zh')) return 'zh';
+  if (n.startsWith('ko')) return 'ko'; return 'en';
+}
+
 function getCurrentLang() {
-  return localStorage.getItem('fm_lang') ||
-    (navigator.language.startsWith('de') ? 'de' : navigator.language.startsWith('fr') ? 'fr' : navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('pl') ? 'pl' : navigator.language.startsWith('cs') ? 'cs' : navigator.language.startsWith('ro') ? 'ro' : navigator.language.startsWith('hu') ? 'hu' : navigator.language.startsWith('nl') ? 'nl' : navigator.language.startsWith('pt') ? 'pt' : navigator.language.startsWith('tr') ? 'tr' : navigator.language.startsWith('ja') ? 'ja' : navigator.language.startsWith('zh') ? 'zh' : navigator.language.startsWith('ko') ? 'ko' : 'en');
+  const stored = localStorage.getItem('fm_lang');
+  if (stored === 'auto' || stored == null) {
+    return localStorage.getItem('fm_game_lang') || _browserLang();
+  }
+  return stored;
 }
 
 async function initI18n() {
@@ -3208,6 +3222,15 @@ let _units = { speed: 'km/h', distance: 'km', area: 'ha', temperature: '°C', cu
 
 function _applyUnits(modInfo) {
   if (modInfo?.units) _units = { ..._units, ...modInfo.units };
+  if (modInfo?.language) {
+    const prev = localStorage.getItem('fm_game_lang');
+    localStorage.setItem('fm_game_lang', modInfo.language);
+    // Reload only in Auto mode when game language actually changed
+    if ((localStorage.getItem('fm_lang') === 'auto' || localStorage.getItem('fm_lang') == null)
+        && prev != null && prev !== modInfo.language) {
+      location.reload();
+    }
+  }
 }
 
 function fmtSpeed(kmh) {
@@ -3231,6 +3254,12 @@ function fmtArea(ha) {
 function fmtAreaNum(ha) {
   if (ha == null) return 0;
   return _units.area === 'acres' ? Math.round(ha * 2.47105 * 100) / 100 : ha;
+}
+
+function fmtLph(lphValue) {
+  if (lphValue == null) return '—';
+  const v = _units.area === 'acres' ? lphValue / 2.47105 : lphValue;
+  return (Math.round(v * 10) / 10).toLocaleString() + ' L/' + _units.area;
 }
 
 // State
@@ -4237,7 +4266,7 @@ function updateSeedResult(select, fieldId, fieldAreaHa) {
   const _sl = getCurrentLang() === 'de' ? 'de-DE' : 'en-US';
   el.innerHTML = `<div class="need-row">
     <span class="need-label">${t('fields.needSeed')}</span>
-    <span class="need-lph">${lph.toLocaleString(_sl, {maximumFractionDigits:1})} L/${_units.area}</span>
+    <span class="need-lph">${fmtLph(lph)}</span>
     <span class="need-total">~${total.toLocaleString(_sl)} L</span>
   </div>`;
 }
@@ -4414,7 +4443,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
     function needRow(label, lph, total) {
       return `<div class="need-row">
         <span class="need-label">${label}</span>
-        <span class="need-lph">${lph.toLocaleString(_needLocale)} L/${_units.area}</span>
+        <span class="need-lph">${fmtLph(lph)}</span>
         <span class="need-total">~${total.toLocaleString(_needLocale)} L</span>
       </div>`;
     }
@@ -4434,7 +4463,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
       )).join('');
     const activeFt = seedableFruits.find(ft => ft.name === activeSeed);
     const savedResultHtml = activeFt
-      ? `<span>${(activeFt.seedUsagePerSqm * 10000).toLocaleString(_needLocale, {maximumFractionDigits:1})} L/${_units.area} &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString(_needLocale)} L</span>`
+      ? `<span>${fmtLph(activeFt.seedUsagePerSqm * 10000)} &nbsp;·&nbsp; ~${Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa).toLocaleString(_needLocale)} L</span>`
       : '';
     const activeSeedResultHtml = activeFt
       ? needRow(t('fields.needSeed'), activeFt.seedUsagePerSqm * 10000, Math.round(activeFt.seedUsagePerSqm * 10000 * fieldAreaHa))
@@ -4466,7 +4495,7 @@ function _fieldCardHtml(f, idx, fruitTypeLookup) {
         <div class="field-card-head">
           <div class="field-id-area">
             <span class="field-num">${t('fields.fieldNum', { id: f.id })}</span>
-            <span class="field-area-label">${t('fields.fieldArea', { ha: fmtArea(f.fieldArea || f.area) })}${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">${t('fields.landArea', { ha: fmtArea(f.area) })}</span>` : ''}</span>
+            <span class="field-area-label">${t('fields.fieldArea')} ${fmtArea(f.fieldArea || f.area)}${f.fieldArea && f.fieldArea !== f.area ? `<br><span style="opacity:.6">${t('fields.landArea')} ${fmtArea(f.area)}</span>` : ''}</span>
           </div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${visFieldBtn(f.farmlandId)}${badges}</div>
         </div>
@@ -5446,51 +5475,57 @@ function renderSettings() {
     </div>`;
 
   const currentLang = getCurrentLang();
+  const storedLang = localStorage.getItem('fm_lang');
+  const gameLang = localStorage.getItem('fm_game_lang');
   const languageBlock = `
     <div class="settings-section-title">${t('settings.language')}</div>
     <div class="placeable-list" style="padding:16px">
-      <div style="display:flex;gap:10px">
+      <p style="margin:0 0 12px;font-size:13px;opacity:.7;line-height:1.5">${t('settings.languageHint')}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button onclick="setLanguage('auto')"
+          class="edit-mode-btn${storedLang === 'auto' || storedLang == null ? ' active' : ''}"
+          style="padding:7px 20px" title="${gameLang ? '🎮 ' + gameLang : ''}">🎮 Auto${gameLang ? ' <span style="opacity:.6;font-size:11px">(' + gameLang + ')</span>' : ''}</button>
         <button onclick="setLanguage('de')"
-          class="edit-mode-btn${currentLang === 'de' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'de' ? ' active' : ''}"
           style="padding:7px 20px">🇩🇪 Deutsch</button>
         <button onclick="setLanguage('en')"
-          class="edit-mode-btn${currentLang === 'en' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'en' ? ' active' : ''}"
           style="padding:7px 20px">🇬🇧 English</button>
         <button onclick="setLanguage('fr')"
-          class="edit-mode-btn${currentLang === 'fr' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'fr' ? ' active' : ''}"
           style="padding:7px 20px">🇫🇷 Français</button>
         <button onclick="setLanguage('es')"
-          class="edit-mode-btn${currentLang === 'es' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'es' ? ' active' : ''}"
           style="padding:7px 20px">🇪🇸 Español</button>
         <button onclick="setLanguage('pl')"
-          class="edit-mode-btn${currentLang === 'pl' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'pl' ? ' active' : ''}"
           style="padding:7px 20px">🇵🇱 Polski</button>
         <button onclick="setLanguage('cs')"
-          class="edit-mode-btn${currentLang === 'cs' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'cs' ? ' active' : ''}"
           style="padding:7px 20px">🇨🇿 Čeština</button>
         <button onclick="setLanguage('ro')"
-          class="edit-mode-btn${currentLang === 'ro' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'ro' ? ' active' : ''}"
           style="padding:7px 20px">🇷🇴 Română</button>
         <button onclick="setLanguage('hu')"
-          class="edit-mode-btn${currentLang === 'hu' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'hu' ? ' active' : ''}"
           style="padding:7px 20px">🇭🇺 Magyar</button>
         <button onclick="setLanguage('nl')"
-          class="edit-mode-btn${currentLang === 'nl' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'nl' ? ' active' : ''}"
           style="padding:7px 20px">🇳🇱 Nederlands</button>
         <button onclick="setLanguage('pt')"
-          class="edit-mode-btn${currentLang === 'pt' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'pt' ? ' active' : ''}"
           style="padding:7px 20px">🇵🇹 Português</button>
         <button onclick="setLanguage('tr')"
-          class="edit-mode-btn${currentLang === 'tr' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'tr' ? ' active' : ''}"
           style="padding:7px 20px">🇹🇷 Türkçe</button>
         <button onclick="setLanguage('ja')"
-          class="edit-mode-btn${currentLang === 'ja' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'ja' ? ' active' : ''}"
           style="padding:7px 20px">🇯🇵 日本語</button>
         <button onclick="setLanguage('zh')"
-          class="edit-mode-btn${currentLang === 'zh' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'zh' ? ' active' : ''}"
           style="padding:7px 20px">🇨🇳 中文</button>
         <button onclick="setLanguage('ko')"
-          class="edit-mode-btn${currentLang === 'ko' ? ' active' : ''}"
+          class="edit-mode-btn${storedLang === 'ko' ? ' active' : ''}"
           style="padding:7px 20px">🇰🇷 한국어</button>
       </div>
     </div>`;

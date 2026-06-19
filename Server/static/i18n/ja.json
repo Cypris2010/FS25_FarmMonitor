@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "言語",
+    "languageHint": "🎮 自動はゲームの言語を使用し、ゲーム内で変更すると自動的に切り替わります。手動で選択した言語は常に優先されます。",
     "visibility": "表示設定",
     "title": "設定",
     "subtitle": "FarmMonitor ダッシュボード設定",
@@ -139,8 +140,8 @@
     "noFields": "自分の畑が見つかりません",
     "noMatch": "フィルターに一致する畑がありません",
     "fieldNum": "畑 {{id}}",
-    "fieldArea": "畑 {{ha}} ha",
-    "landArea": "農地 {{ha}} ha",
+    "fieldArea": "畑",
+    "landArea": "農地",
     "noPlanting": "未作付け",
     "soilTitle": "土壌",
     "badgeHarvest": "収穫可能！",

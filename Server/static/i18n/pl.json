@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Język",
+    "languageHint": "🎮 Auto przyjmuje język gry i zmienia się automatycznie po jego zmianie w grze. Ręcznie wybrane języki mają zawsze pierwszeństwo.",
     "visibility": "Widoczność",
     "title": "Ustawienia",
     "subtitle": "Konfiguracja panelu FarmMonitor",
@@ -139,8 +140,8 @@
     "noFields": "Nie znaleziono własnych pól",
     "noMatch": "Żadne pole nie pasuje do filtru",
     "fieldNum": "Pole {{id}}",
-    "fieldArea": "Pole {{ha}} ha",
-    "landArea": "Grunt {{ha}} ha",
+    "fieldArea": "Pole",
+    "landArea": "Grunt",
     "noPlanting": "Brak uprawy",
     "soilTitle": "Gleba",
     "badgeHarvest": "Gotowe do żniw!",

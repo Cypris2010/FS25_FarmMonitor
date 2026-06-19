@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "언어",
+    "languageHint": "🎮 자동은 게임의 언어를 사용하며 게임에서 변경 시 자동으로 전환됩니다. 수동으로 선택한 언어는 항상 우선합니다.",
     "visibility": "표시 설정",
     "title": "설정",
     "subtitle": "FarmMonitor 대시보드 구성",
@@ -139,8 +140,8 @@
     "noFields": "자체 농지를 찾을 수 없음",
     "noMatch": "필터와 일치하는 농지 없음",
     "fieldNum": "농지 {{id}}",
-    "fieldArea": "농지 {{ha}} ha",
-    "landArea": "토지 {{ha}} ha",
+    "fieldArea": "농지",
+    "landArea": "토지",
     "noPlanting": "미경작",
     "soilTitle": "토양",
     "badgeHarvest": "수확 가능!",

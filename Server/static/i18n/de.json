@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Sprache",
+    "languageHint": "🎮 Auto übernimmt die Sprache des Spiels und wechselt automatisch, wenn du sie im Spiel änderst. Manuell gewählte Sprachen haben immer Vorrang.",
     "visibility": "Sichtbarkeit",
     "title": "Einstellungen",
     "subtitle": "Konfiguration des FarmMonitor-Dashboards",
@@ -139,8 +140,8 @@
     "noFields": "Keine eigenen Felder gefunden",
     "noMatch": "Kein Feld passt zum Filter",
     "fieldNum": "Feld {{id}}",
-    "fieldArea": "Feld {{ha}} ha",
-    "landArea": "Land {{ha}} ha",
+    "fieldArea": "Feld",
+    "landArea": "Land",
     "noPlanting": "Kein Anbau",
     "soilTitle": "Boden",
     "badgeHarvest": "Erntereif!",

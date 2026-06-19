@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Nyelv",
+    "languageHint": "🎮 Az Auto átveszi a játék nyelvét és automatikusan vált, ha megváltoztatod a játékban. A kézzel kiválasztott nyelvek mindig elsőbbséget élveznek.",
     "visibility": "Láthatóság",
     "title": "Beállítások",
     "subtitle": "A FarmMonitor panel konfigurációja",
@@ -139,8 +140,8 @@
     "noFields": "Nem található saját mező",
     "noMatch": "Egyetlen mező sem felel meg a szűrőnek",
     "fieldNum": "{{id}}. mező",
-    "fieldArea": "Mező {{ha}} ha",
-    "landArea": "Telek {{ha}} ha",
+    "fieldArea": "Mező",
+    "landArea": "Telek",
     "noPlanting": "Nincs növény",
     "soilTitle": "Talaj",
     "badgeHarvest": "Betakarításra kész!",

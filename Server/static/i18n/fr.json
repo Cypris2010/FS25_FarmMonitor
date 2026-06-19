@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Langue",
+    "languageHint": "🎮 Auto adopte la langue du jeu et change automatiquement quand vous la modifiez dans le jeu. Les langues sélectionnées manuellement ont toujours la priorité.",
     "visibility": "Visibilité",
     "title": "Paramètres",
     "subtitle": "Configuration du tableau de bord FarmMonitor",
@@ -139,8 +140,8 @@
     "noFields": "Aucun champ possédé trouvé",
     "noMatch": "Aucun champ ne correspond au filtre",
     "fieldNum": "Champ {{id}}",
-    "fieldArea": "Champ {{ha}} ha",
-    "landArea": "Terrain {{ha}} ha",
+    "fieldArea": "Champ",
+    "landArea": "Terrain",
     "noPlanting": "Pas de culture",
     "soilTitle": "Sol",
     "badgeHarvest": "Prêt à récolter !",

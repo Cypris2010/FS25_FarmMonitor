@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Idioma",
+    "languageHint": "🎮 Auto adota o idioma do jogo e muda automaticamente quando o alteras no jogo. Os idiomas selecionados manualmente têm sempre prioridade.",
     "visibility": "Visibilidade",
     "title": "Configurações",
     "subtitle": "Configuração do painel FarmMonitor",
@@ -139,8 +140,8 @@
     "noFields": "Nenhum campo próprio encontrado",
     "noMatch": "Nenhum campo corresponde ao filtro",
     "fieldNum": "Campo {{id}}",
-    "fieldArea": "Campo {{ha}} ha",
-    "landArea": "Terreno {{ha}} ha",
+    "fieldArea": "Campo",
+    "landArea": "Terreno",
     "noPlanting": "Sem cultura",
     "soilTitle": "Solo",
     "badgeHarvest": "Pronto para colheita!",

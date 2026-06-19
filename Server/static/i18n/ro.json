@@ -15,6 +15,7 @@
   },
   "settings": {
     "language": "Limbă",
+    "languageHint": "🎮 Auto preia limba jocului și se schimbă automat când o modifici în joc. Limbile selectate manual au întotdeauna prioritate.",
     "visibility": "Vizibilitate",
     "title": "Setări",
     "subtitle": "Configurarea panoului FarmMonitor",
@@ -139,8 +140,8 @@
     "noFields": "Nu s-au găsit câmpuri proprii",
     "noMatch": "Niciun câmp nu corespunde filtrului",
     "fieldNum": "Câmpul {{id}}",
-    "fieldArea": "Câmp {{ha}} ha",
-    "landArea": "Teren {{ha}} ha",
+    "fieldArea": "Câmp",
+    "landArea": "Teren",
     "noPlanting": "Fără cultură",
     "soilTitle": "Sol",
     "badgeHarvest": "Gata de recoltat!",
