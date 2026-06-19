@@ -510,6 +510,72 @@ func handleModConfig(dataDir string) http.HandlerFunc {
 	}
 }
 
+// --- commands.xml shared types + atomic appender ---------------------------
+
+type xmlCommand struct {
+	XMLName         xml.Name `xml:"command"`
+	ID              string   `xml:"id,attr"`
+	Cmd             string   `xml:"cmd,attr"`
+	UniqueID        string   `xml:"uniqueId,attr"`
+	NetID           string   `xml:"netId,attr"` // NetworkUtil object ID — MP-safe vehicle lookup
+	FillType        string   `xml:"fillType,attr"`
+	Mode            string   `xml:"mode,attr"`
+	Amount          string   `xml:"amount,attr"`
+	X               string   `xml:"x,attr"`
+	Y               string   `xml:"y,attr"`
+	Z               string   `xml:"z,attr"`
+	Marker1         string   `xml:"marker1,attr"`
+	Marker2         string   `xml:"marker2,attr"`
+	ObjectInfoIndex string   `xml:"objectInfoIndex,attr"`
+	Value           string   `xml:"value,attr"`   // for AD speed/loop/setting commands
+	Setting         string   `xml:"setting,attr"` // for autodrive.setting
+	Layers          string   `xml:"layers,attr"`  // for soilScan.setLayers (comma-separated)
+}
+
+type xmlCommands struct {
+	XMLName  xml.Name     `xml:"commands"`
+	Count    int          `xml:"count,attr"`
+	Commands []xmlCommand `xml:"command"`
+}
+
+var commandsMu sync.Mutex
+
+// appendCommand appends a command to commands.xml atomically, preserving any
+// commands Lua hasn't polled yet. Safe for concurrent callers (handleCommand,
+// soil presence union).
+func appendCommand(dataDir string, newCmd xmlCommand) error {
+	commandsMu.Lock()
+	defer commandsMu.Unlock()
+
+	cmdPath := filepath.Join(dataDir, "commands.xml")
+	var allCmds []xmlCommand
+	if existing, err := os.ReadFile(cmdPath); err == nil {
+		var existingXML xmlCommands
+		if err2 := xml.Unmarshal(existing, &existingXML); err2 == nil {
+			allCmds = existingXML.Commands
+		}
+	}
+	allCmds = append(allCmds, newCmd)
+
+	xmlData, err := xml.MarshalIndent(xmlCommands{Count: len(allCmds), Commands: allCmds}, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// Write to a temp file first, then rename atomically — ensures Lua never
+	// reads a partially-written file (os.Rename is atomic on POSIX).
+	payload := append([]byte(xml.Header), xmlData...)
+	tmpPath := cmdPath + ".tmp"
+	if err := os.WriteFile(tmpPath, payload, 0644); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, cmdPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	return nil
+}
+
 func handleCommand(dataDir string) http.HandlerFunc {
 	type jsonCommand struct {
 		ID              string `json:"id"`
@@ -527,32 +593,8 @@ func handleCommand(dataDir string) http.HandlerFunc {
 		ObjectInfoIndex string `json:"objectInfoIndex,omitempty"`
 		Value           string `json:"value,omitempty"`   // for AD speed/loop/setting commands
 		Setting         string `json:"setting,omitempty"` // for autodrive.setting
+		Layers          string `json:"layers,omitempty"`  // for soilScan.setLayers (comma-separated)
 	}
-	type xmlCommand struct {
-		XMLName         xml.Name `xml:"command"`
-		ID              string   `xml:"id,attr"`
-		Cmd             string   `xml:"cmd,attr"`
-		UniqueID        string   `xml:"uniqueId,attr"`
-		NetID           string   `xml:"netId,attr"`     // NetworkUtil object ID — MP-safe vehicle lookup
-		FillType        string   `xml:"fillType,attr"`
-		Mode            string   `xml:"mode,attr"`
-		Amount          string   `xml:"amount,attr"`
-		X               string   `xml:"x,attr"`
-		Y               string   `xml:"y,attr"`
-		Z               string   `xml:"z,attr"`
-		Marker1         string   `xml:"marker1,attr"`
-		Marker2         string   `xml:"marker2,attr"`
-		ObjectInfoIndex string   `xml:"objectInfoIndex,attr"`
-		Value           string   `xml:"value,attr"`   // for AD speed/loop/setting commands
-		Setting         string   `xml:"setting,attr"` // for autodrive.setting
-	}
-	type xmlCommands struct {
-		XMLName  xml.Name     `xml:"commands"`
-		Count    int          `xml:"count,attr"`
-		Commands []xmlCommand `xml:"command"`
-	}
-
-	var mu sync.Mutex
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -576,58 +618,149 @@ func handleCommand(dataDir string) http.HandlerFunc {
 			UniqueID:        cmd.UniqueID,
 			NetID:           cmd.NetID,
 			FillType:        cmd.FillType,
-			Mode:             cmd.Mode,
-			Amount:           cmd.Amount,
-			X:                cmd.X,
-			Y:                cmd.Y,
-			Z:                cmd.Z,
-			Marker1:          cmd.Marker1,
-			Marker2:          cmd.Marker2,
-			ObjectInfoIndex:  cmd.ObjectInfoIndex,
-			Value:            cmd.Value,
-			Setting:          cmd.Setting,
+			Mode:            cmd.Mode,
+			Amount:          cmd.Amount,
+			X:               cmd.X,
+			Y:               cmd.Y,
+			Z:               cmd.Z,
+			Marker1:         cmd.Marker1,
+			Marker2:         cmd.Marker2,
+			ObjectInfoIndex: cmd.ObjectInfoIndex,
+			Value:           cmd.Value,
+			Setting:         cmd.Setting,
+			Layers:          cmd.Layers,
 		}
 
-		mu.Lock()
-		defer mu.Unlock()
-
-		// Read existing commands.xml (if present) and append — prevents overwrite when
-		// multiple commands arrive before Lua has had a chance to poll the file.
-		cmdPath := filepath.Join(dataDir, "commands.xml")
-		var allCmds []xmlCommand
-		if existing, err := os.ReadFile(cmdPath); err == nil {
-			var existingXML xmlCommands
-			if err2 := xml.Unmarshal(existing, &existingXML); err2 == nil {
-				allCmds = existingXML.Commands
-			}
-		}
-		allCmds = append(allCmds, newCmd)
-
-		xmlData, err := xml.MarshalIndent(xmlCommands{
-			Count:    len(allCmds),
-			Commands: allCmds,
-		}, "", "  ")
-		if err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-
-		// Write to a temp file first, then rename atomically — ensures Lua never
-		// reads a partially-written file (os.Rename is atomic on POSIX).
-		payload := append([]byte(xml.Header), xmlData...)
-		tmpPath := cmdPath + ".tmp"
-		if err := os.WriteFile(tmpPath, payload, 0644); err != nil {
-			http.Error(w, "write error", http.StatusInternalServerError)
-			return
-		}
-		if err := os.Rename(tmpPath, cmdPath); err != nil {
-			_ = os.Remove(tmpPath)
+		if err := appendCommand(dataDir, newCmd); err != nil {
 			http.Error(w, "write error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"id": cmd.ID})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Soil-layer presence — aggregates which soil overlays are currently shown
+// across all connected browsers and tells Lua to scan only those (on-demand).
+// ---------------------------------------------------------------------------
+
+var validSoilLayers = map[string]bool{
+	"weed": true, "stone": true, "plow": true, "spray": true,
+	"lime": true, "mulch": true, "roller": true,
+}
+
+const soilPresenceTTL = 45 * time.Second // a client expires after this without a heartbeat
+
+type soilClient struct {
+	layers   map[string]bool
+	lastSeen time.Time
+}
+
+type soilPresence struct {
+	mu        sync.Mutex
+	dataDir   string
+	clients   map[string]*soilClient
+	lastUnion string // sorted comma list last written to Lua; "" = none active
+}
+
+func newSoilPresence(dataDir string) *soilPresence {
+	sp := &soilPresence{dataDir: dataDir, clients: map[string]*soilClient{}}
+	// Background reconcile so the union shrinks when clients stop heartbeating
+	// (left the map view / closed tab) even without new POSTs arriving.
+	go func() {
+		t := time.NewTicker(15 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			sp.reconcile()
+		}
+	}()
+	return sp
+}
+
+// unionLocked prunes stale clients and returns the sorted union of active layers.
+// Caller must hold sp.mu.
+func (sp *soilPresence) unionLocked() string {
+	now := time.Now()
+	set := map[string]bool{}
+	for id, c := range sp.clients {
+		if now.Sub(c.lastSeen) > soilPresenceTTL {
+			delete(sp.clients, id)
+			continue
+		}
+		for l := range c.layers {
+			set[l] = true
+		}
+	}
+	names := make([]string, 0, len(set))
+	for l := range set {
+		names = append(names, l)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ",")
+}
+
+// reconcile recomputes the union; if it changed since the last write, it emits a
+// soilScan.setLayers command for Lua.
+func (sp *soilPresence) reconcile() {
+	sp.mu.Lock()
+	union := sp.unionLocked()
+	changed := union != sp.lastUnion
+	if changed {
+		sp.lastUnion = union
+	}
+	sp.mu.Unlock()
+	if !changed {
+		return
+	}
+	cmd := xmlCommand{
+		ID:     fmt.Sprintf("soil-%d", time.Now().UnixNano()),
+		Cmd:    "soilScan.setLayers",
+		Layers: union,
+	}
+	if err := appendCommand(sp.dataDir, cmd); err != nil {
+		log.Printf("[soil] failed to write setLayers command: %v", err)
+		return
+	}
+	log.Printf("[soil] active layers union → %q", union)
+}
+
+func (sp *soilPresence) handler() http.HandlerFunc {
+	type req struct {
+		ClientID string   `json:"clientId"`
+		Layers   []string `json:"layers"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var body req
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		if body.ClientID == "" {
+			http.Error(w, "missing clientId", http.StatusBadRequest)
+			return
+		}
+		layers := map[string]bool{}
+		for _, l := range body.Layers {
+			if validSoilLayers[l] {
+				layers[l] = true
+			}
+		}
+		sp.mu.Lock()
+		if len(layers) == 0 {
+			delete(sp.clients, body.ClientID) // no layers → drop client immediately
+		} else {
+			sp.clients[body.ClientID] = &soilClient{layers: layers, lastSeen: time.Now()}
+		}
+		sp.mu.Unlock()
+
+		sp.reconcile()
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -1480,6 +1613,8 @@ func main() {
 	mux.HandleFunc("/api/settings", handleSettings())
 	mux.HandleFunc("/api/savegame/{savegameId}", handleSavegame())
 	mux.HandleFunc("/api/command", handleCommand(dataDir))
+	soilPres := newSoilPresence(dataDir)
+	mux.HandleFunc("/api/soil/presence", soilPres.handler())
 	mux.HandleFunc("/api/map/overview", handleMapOverview(mc))
 	mux.HandleFunc("/api/map/heightmap", handleMapHeightmap(dataDir))
 	mux.HandleFunc("/api/map/layer/{name}", handleMapLayer(dataDir))

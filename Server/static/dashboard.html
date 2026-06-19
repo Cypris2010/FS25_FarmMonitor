@@ -5254,6 +5254,10 @@ function showView(name) {
 
   if (appData) rerenderCurrentView();
   if (willTrack) startVehicleTracking();
+
+  // Update soil-scan presence right away on view change (entering map claims our
+  // layers; leaving it releases them so Lua can stop scanning).
+  if (typeof sendSoilPresence === 'function') sendSoilPresence();
 }
 
 function switchSettingsTab(tab) {
@@ -6029,12 +6033,26 @@ function toggleSoilLayer(checkbox) {
   const name = checkbox.dataset.layer;
   if (checkbox.checked) {
     activeSoilLayers.add(name);
-    fetchAndRenderSoilLayer(name);
+    sendSoilPresence();          // tell server immediately → Lua starts scanning this layer
+    pollSoilLayerUntilFresh(name); // fetch now + retry while the scan spins up (~1–2 s)
   } else {
     activeSoilLayers.delete(name);
+    sendSoilPresence();          // server drops it from the union → Lua stops scanning it
     const paths = soilLayerElements[name];
     if (paths) { paths.forEach(p => p.remove()); delete soilLayerElements[name]; }
   }
+}
+
+// After enabling a layer the freshly-scanned layer_*.json may not exist yet (scan
+// needs a cycle to produce it). Fetch now, then retry a few times until data arrives.
+function pollSoilLayerUntilFresh(name) {
+  fetchAndRenderSoilLayer(name);
+  let attempts = 0;
+  const iv = setInterval(() => {
+    attempts++;
+    if (attempts > 3 || !activeSoilLayers.has(name)) { clearInterval(iv); return; }
+    fetchAndRenderSoilLayer(name);
+  }, 2000);
 }
 
 async function fetchAndRenderSoilLayer(name) {
@@ -6218,6 +6236,25 @@ function refreshActiveSoilLayers() {
 
 // Poll soil layers independently every 30s — decoupled from SSE render cycle
 setInterval(() => { if (activeSoilLayers.size > 0) refreshActiveSoilLayers(); }, 30000);
+
+// --- Soil-layer presence -----------------------------------------------------
+// Report which soil overlays this browser shows so the Go server can union them
+// across all clients and have Lua scan only the displayed layers (on-demand).
+const _soilClientId = 'c' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+function sendSoilPresence() {
+  // Only claim layers while the map view is open — leaving the map lets our
+  // entry expire (TTL) so Lua stops scanning if nobody else is watching.
+  const layers = currentView === 'map' ? [...activeSoilLayers] : [];
+  fetch('/api/soil/presence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId: _soilClientId, layers }),
+  }).catch(e => console.warn('soil presence failed:', e));
+}
+
+// Heartbeat — keeps our layers alive in the server-side union (TTL 45s).
+setInterval(sendSoilPresence, 15000);
 
 let _soilScanMode = 'owned';  // lokaler State, gespiegelt vom Mod
 

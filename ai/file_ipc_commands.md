@@ -189,9 +189,35 @@ Der PalletInfoCache muss den tatsächlichen Key aus `fillType.pallets` speichern
 
 ---
 
+## Implementierter Command: soilScan.setLayers (server-generiert)
+
+Sonderfall: Dieser Command wird **nicht vom Dashboard**, sondern **vom Go-Server selbst**
+erzeugt. Der Server aggregiert, welche Bodenlayer in den verbundenen Browsern angezeigt
+werden, und sagt Lua, nur diese zu scannen (On-Demand-Scan).
+
+**Parameter:**
+- `layers` — kommaseparierte Liste aktiver Layer (z.B. `"weed,stone"`), leer = kein Scan
+
+**Presence-Pipeline (statt direktem sendCommand):**
+```
+Browser ──POST /api/soil/presence {clientId, layers}──▶ Go-Server
+   (alle 15 s, nur solange Map-View offen; sofort bei Layer-Toggle/View-Wechsel)
+Go-Server: presence[clientId] = {layers, lastSeen}; prune > TTL 45 s; Union bilden
+   Union geändert? ──▶ appendCommand(soilScan.setLayers, layers="…") in commands.xml
+Lua cmdSoilScanSetLayers: soilActiveLayers setzen → soilState = nil (Scan-Neustart)
+```
+
+**Warum server-seitig:** Mehrere Browser können unterschiedliche Layer aktivieren — nur der
+Server sieht alle Clients und kann die Union bilden. TTL macht es selbstheilend
+(geschlossener Tab läuft aus). Details: `ai/performance_optimizations.md` → „On-Demand Soil-Scan".
+
+Der Go-Server-`command`-Struct hat dafür ein zusätzliches Feld `Layers` (`layers,attr`); das
+atomare Schreiben von commands.xml ist in die wiederverwendbare Funktion `appendCommand()`
+ausgelagert (genutzt von `handleCommand` und der Presence-Reconcile-Logik).
+
 ## Erweiterung um neue Commands
 
 1. Handler-Funktion schreiben: `FarmMonitor:cmdMeinCommand(cmd)`
 2. In `dispatchCommand` registrieren: `["mein.command"] = FarmMonitor.cmdMeinCommand`
-3. Go-Server: `command`-Struct hat generische Felder (`UniqueID`, `FillType`, `Mode`, `Amount`) — für weitere Parameter ggf. erweitern
+3. Go-Server: `command`-Struct hat generische Felder (`UniqueID`, `FillType`, `Mode`, `Amount`) — für weitere Parameter ggf. erweitern (z.B. `Layers` für `soilScan.setLayers`)
 4. Braucht der Command Server-Autorität im MP? → eigenes `FarmMonitorXxxEvent` mit `NetworkUtil.writeNodeObject/readNodeObject` implementieren (Muster: `FarmMonitorSpawnPalletsEvent`)

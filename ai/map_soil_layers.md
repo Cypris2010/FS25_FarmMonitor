@@ -14,8 +14,14 @@ Lua (FS25) → layer_*.json → Go /api/map/layer/{name} → JS _marchingSquares
 - Rasterisiert die Density Maps über die gesamte Spielfläche in ein `res×res` Grid (Standard: 128×128)
 - Pro Zelle: höchster vorhandener Density-Wert wird auf 0–255 normiert (`math.floor(lv / maxVal * 255)`)
 - Weed/Stone: binär 0 oder 255 (irgendein penalisierender Wert vorhanden → 255)
-- Läuft inkrementell über `rowsPerTick` Zeilen pro Spieltick (Round-Robin über alle Layer)
-- Schreibt `layer_lime.json`, `layer_spray.json`, `layer_plow.json`, `layer_mulch.json`, `layer_roller.json`, `layer_weed.json`, `layer_stone.json`
+- Läuft inkrementell über `rowsPerTick` Zeilen pro Spieltick (Round-Robin über die **aktiven** Layer)
+- Schreibt `layer_lime.json`, `layer_spray.json`, `layer_plow.json`, `layer_mulch.json`, `layer_roller.json`, `layer_weed.json`, `layer_stone.json` — **aber nur für gerade angezeigte Layer** (siehe On-Demand-Scan)
+
+### On-Demand-Scan (nur angezeigte Layer)
+- `initSoilState` baut Density-Modifier **nur für `FarmMonitor.soilActiveLayers`**; ist die Menge leer → `return nil` → **kein Scan, 0 CPU**.
+- Welche Layer aktiv sind, bestimmen die offenen Browser: jeder meldet seinen angezeigten Layer-Set per Heartbeat an den Go-Server (`POST /api/soil/presence`, alle 15 s **solange die Map-View offen ist**). Der Server bildet die **Union** über alle Clients (TTL 45 s) und schreibt sie als `<command cmd="soilScan.setLayers" layers="…"/>` in `commands.xml`.
+- Lua-Handler `soilScan.setLayers` aktualisiert `soilActiveLayers` und setzt `soilState = nil` (Scan-Neustart mit neuer Layer-Auswahl).
+- Details & Begründung (Multi-Client, Selbstheilung via TTL): `ai/performance_optimizations.md` → „On-Demand Soil-Scan".
 
 ### JSON-Format
 ```json

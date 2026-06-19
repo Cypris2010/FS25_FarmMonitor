@@ -413,6 +413,25 @@ end
 
 Beim Empfang: `soilScanMode` setzen → Maske neu aufbauen → `soilState = nil` (Scan-Neustart).
 
+### IPC-Befehl `soilScan.setLayers` (On-Demand-Scan)
+
+Bestimmt, **welche** Bodenlayer überhaupt gescannt werden. Wird vom Go-Server aus der
+**Union der angezeigten Layer aller verbundenen Browser** berechnet (Presence + TTL),
+nicht direkt vom Dashboard gesetzt.
+
+```xml
+<command cmd="soilScan.setLayers" layers="weed,stone"/>  <!-- nur diese Layer scannen -->
+<command cmd="soilScan.setLayers" layers=""/>             <!-- kein Layer → kein Scan -->
+```
+
+Beim Empfang (`cmdSoilScanSetLayers`): kommaseparierte Liste parsen, gegen `valid`-Set
+filtern, mit `FarmMonitor.soilActiveLayers` vergleichen → bei Änderung Set setzen und
+`soilState = nil` (Scan-Neustart mit neuer Layer-Auswahl). Leere Menge → `initSoilState`
+gibt `nil` zurück → **kein Scan** (0 CPU).
+
+Pipeline & Begründung (Multi-Client-Union, Heartbeat 15 s / TTL 45 s, Map-View-Scoping):
+`ai/performance_optimizations.md` → „On-Demand Soil-Scan", Mechanik: `ai/map_soil_layers.md`.
+
 ---
 
 ## Wichtige Hinweise

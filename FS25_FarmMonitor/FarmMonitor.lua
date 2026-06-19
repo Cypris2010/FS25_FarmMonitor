@@ -19,6 +19,7 @@ FarmMonitor.weatherInterval   = 30000  -- milliseconds between weather exports
 FarmMonitor.weatherTimer      = 30000  -- start at max so first export fires immediately
 FarmMonitor.soilState         = nil    -- incremental soil export state machine
 FarmMonitor.soilScanMode      = "owned" -- "owned" = nur eigene Felder, "all" = alle Felder
+FarmMonitor.soilActiveLayers  = {}     -- Set {name → true} der gerade angezeigten Layer; leer = kein Scan
 FarmMonitor.soilFieldMask     = nil    -- flaches Boolean-Array [zi*res+xi+1] → true wenn Feld
 FarmMonitor.paths             = {}
 FarmMonitor.modInfoExported       = false
@@ -3164,6 +3165,11 @@ end
 
 function FarmMonitor:initSoilState()
     if not g_currentMission or not g_currentMission.isMissionStarted then return nil end
+    -- On-Demand: kein Layer angezeigt → gar nichts aufbauen (kein Scan, 0 CPU).
+    -- Früh prüfen, damit im Leerlauf nicht jeden Tick die defs-Tabelle (inkl.
+    -- fgs:getMaxValue-Calls) gebaut wird.
+    local active = FarmMonitor.soilActiveLayers or {}
+    if next(active) == nil then return nil end
     local mission = g_currentMission
     local fgs = mission.fieldGroundSystem
     if fgs == nil or FieldDensityMap == nil or DensityCoordType == nil then return nil end
@@ -3186,9 +3192,11 @@ function FarmMonitor:initSoilState()
         { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1,                                          noDataVal = 0   },
     }
 
+    -- Nur Layer bauen, die gerade in einem Browser angezeigt werden (active s.o.)
     -- Build cached modifier/filter per layer (mapId is stable across frames)
     local layers = {}
     for _, def in ipairs(defs) do
+        if active[def.name] then
         local ok, mapId, firstCh, numCh = pcall(def.getMap)
         if ok and mapId ~= nil then
             local mod = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
@@ -3200,6 +3208,7 @@ function FarmMonitor:initSoilState()
                 minVal    = def.minVal or 1,
                 noDataVal = def.noDataVal or 0,
             }
+        end
         end
     end
 
@@ -3675,6 +3684,7 @@ function FarmMonitor:processCommands()
             objectInfoIndex = getXMLString(xmlId, base .. "#objectInfoIndex") or "",
             value           = getXMLString(xmlId, base .. "#value")           or "",
             setting         = getXMLString(xmlId, base .. "#setting")         or "",
+            layers          = getXMLString(xmlId, base .. "#layers")          or "",  -- for soilScan.setLayers (comma-separated)
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -3725,6 +3735,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
         ["autodrive.unloadFillLevel"]     = FarmMonitor.cmdAutoDriveUnloadFillLevel,
         ["soilScan.setMode"]              = FarmMonitor.cmdSoilScanSetMode,
+        ["soilScan.setLayers"]            = FarmMonitor.cmdSoilScanSetLayers,
         ["autodrive.cornerSpeed"]         = FarmMonitor.cmdAutoDriveCornerSpeed,
         ["autodrive.preCallLevel"]        = FarmMonitor.cmdAutoDrivePreCallLevel,
         ["autodrive.chaseSide"]           = FarmMonitor.cmdAutoDriveChaseSide,
@@ -3751,6 +3762,38 @@ function FarmMonitor:cmdSoilScanSetMode(cmd)
     -- Laufenden Scan-Zyklus neu starten damit neue Maske sofort greift
     FarmMonitor.soilState = nil
     print("[FarmMonitor] Soil-Scan Modus gesetzt: " .. newMode)
+end
+
+-- Setzt die Menge der gerade angezeigten Bodenlayer (Union aller Browser, vom Go-Server berechnet).
+-- layers = kommaseparierte Liste (z.B. "weed,stone") oder leer = kein Layer aktiv.
+function FarmMonitor:cmdSoilScanSetLayers(cmd)
+    local valid = {
+        weed = true, stone = true, plow = true, spray = true,
+        lime = true, mulch = true, roller = true,
+    }
+    local newSet = {}
+    local listStr = cmd.layers or ""
+    for name in string.gmatch(listStr, "[^,]+") do
+        name = name:gsub("%s", "")
+        if valid[name] then newSet[name] = true end
+    end
+
+    -- Vergleich mit aktuellem Set — nur bei Änderung neu starten
+    local current = FarmMonitor.soilActiveLayers or {}
+    local changed = false
+    for k in pairs(newSet)  do if not current[k] then changed = true break end end
+    if not changed then
+        for k in pairs(current) do if not newSet[k] then changed = true break end end
+    end
+    if not changed then return end
+
+    FarmMonitor.soilActiveLayers = newSet
+    -- Laufenden Scan-Zyklus neu starten damit neue Layer-Auswahl sofort greift
+    FarmMonitor.soilState = nil
+
+    local names = {}
+    for k in pairs(newSet) do names[#names + 1] = k end
+    print("[FarmMonitor] Soil-Scan Layer gesetzt: " .. (next(newSet) and table.concat(names, ",") or "(keine)"))
 end
 
 function FarmMonitor:cmdSetProductionOutputMode(cmd)
