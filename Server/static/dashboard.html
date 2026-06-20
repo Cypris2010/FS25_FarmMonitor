@@ -6543,7 +6543,8 @@ const LKW_HOOK_MARKUP = `
 // Map a truck's build type (v.truckKind) to its top-down icon. Kinds without a
 // dedicated SVG yet (hooklift, swapBody) fall back to the tractor-unit icon —
 // add their entries here once the icons arrive.
-const TRUCK_ICON_TRACTOR = { vb: LKW_ICON_VIEWBOX,  ratio: LKW_ICON_RATIO,  markup: LKW_ICON_MARKUP };
+// anchor = fifth-wheel (Sattelkupplung) centre, so a coupled semitrailer's kingpin lines up here.
+const TRUCK_ICON_TRACTOR = { vb: LKW_ICON_VIEWBOX,  ratio: LKW_ICON_RATIO,  markup: LKW_ICON_MARKUP, anchor: { x: 45.5, y: 143 } };
 const TRUCK_ICONS = {
   rigid:    { vb: LKW_RIGID_VIEWBOX, ratio: LKW_RIGID_RATIO, markup: LKW_RIGID_MARKUP },
   hooklift: { vb: LKW_HOOK_VIEWBOX,  ratio: LKW_HOOK_RATIO,  markup: LKW_HOOK_MARKUP },
@@ -6589,9 +6590,11 @@ const TRAILER_HOOK_MARKUP = `
 
 // Trailer icon dispatch: swap-body and container by kind, otherwise by coupling
 // (auflieger → semitrailer, else drawbar trailer).
+// anchor (viewBox coords) sets where the icon attaches to its pin; semitrailers
+// anchor on their kingpin so they meet the tractor unit's fifth wheel.
 const TRAILER_ICONS = {
   trailer:        { vb: TRAILER_TRAILER_VIEWBOX, ratio: TRAILER_TRAILER_RATIO, markup: TRAILER_TRAILER_MARKUP },
-  semitrailer:    { vb: TRAILER_SEMI_VIEWBOX,    ratio: TRAILER_SEMI_RATIO,    markup: TRAILER_SEMI_MARKUP },
+  semitrailer:    { vb: TRAILER_SEMI_VIEWBOX,    ratio: TRAILER_SEMI_RATIO,    markup: TRAILER_SEMI_MARKUP, anchor: { x: 45.57, y: 20 } },
   wechselbruecke: { vb: TRAILER_SWAP_VIEWBOX,    ratio: TRAILER_SWAP_RATIO,    markup: TRAILER_SWAP_MARKUP },
   container:      { vb: TRAILER_HOOK_VIEWBOX,    ratio: TRAILER_HOOK_RATIO,    markup: TRAILER_HOOK_MARKUP },
 };
@@ -6662,12 +6665,18 @@ function updateVehicles(vehiclesData, terrainSize) {
                : null;
       if (ic) {
         const W = 19.5, H = +(W * ic.ratio).toFixed(2);   // same width → longer icons are just taller
+        // Anchor the icon at its coupling point (viewBox coords) rather than its
+        // centre, so a tractor unit's fifth wheel and a semitrailer's kingpin meet
+        // on the map. Defaults to centre when no anchor is given.
+        const vbp = ic.vb.split(/\s+/).map(Number);        // [minX, minY, vbW, vbH]
+        const ax  = ic.anchor ? ic.anchor.x / vbp[2] : 0.5;
+        const ay  = ic.anchor ? ic.anchor.y / vbp[3] : 0.5;
         const tsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
         tsvg.setAttribute('viewBox', ic.vb);
         tsvg.setAttribute('width',  W);
         tsvg.setAttribute('height', H);
-        tsvg.setAttribute('x', -W / 2);
-        tsvg.setAttribute('y', -H / 2);
+        tsvg.setAttribute('x', -W * ax);
+        tsvg.setAttribute('y', -H * ay);
         tsvg.setAttribute('overflow', 'visible');
         tsvg.innerHTML = ic.markup;
         inner.appendChild(tsvg);
