@@ -3037,6 +3037,10 @@
             <g id="layer-fields"></g>
             <g id="layer-hotspots"></g>
             <g id="layer-vehicles"></g>
+            <!-- Swap bodies / containers ride on top of their carrier; their pins
+                 live in this layer so they draw above the trucks without per-frame
+                 re-ordering (which would break the movement transition). -->
+            <g id="layer-vehicles-top"></g>
           </svg>
         </div>
       </div>
@@ -6594,7 +6598,7 @@ const TRAILER_HOOK_MARKUP = `
 // anchor on their kingpin so they meet the tractor unit's fifth wheel.
 const TRAILER_ICONS = {
   trailer:        { vb: TRAILER_TRAILER_VIEWBOX, ratio: TRAILER_TRAILER_RATIO, markup: TRAILER_TRAILER_MARKUP },
-  semitrailer:    { vb: TRAILER_SEMI_VIEWBOX,    ratio: TRAILER_SEMI_RATIO,    markup: TRAILER_SEMI_MARKUP, anchor: { x: 45.57, y: 20 } },
+  semitrailer:    { vb: TRAILER_SEMI_VIEWBOX,    ratio: TRAILER_SEMI_RATIO,    markup: TRAILER_SEMI_MARKUP, anchor: { x: 45.57, y: 62.6 } },
   wechselbruecke: { vb: TRAILER_SWAP_VIEWBOX,    ratio: TRAILER_SWAP_RATIO,    markup: TRAILER_SWAP_MARKUP },
   container:      { vb: TRAILER_HOOK_VIEWBOX,    ratio: TRAILER_HOOK_RATIO,    markup: TRAILER_HOOK_MARKUP },
 };
@@ -6616,6 +6620,7 @@ function shortestAngle(prev, next) {
 
 function updateVehicles(vehiclesData, terrainSize) {
   const layer = document.getElementById('layer-vehicles');
+  const topLayer = document.getElementById('layer-vehicles-top');
   const vehicles = vehiclesData?.vehicles || [];
   const seen = new Set();
   const typeColor = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
@@ -6664,19 +6669,24 @@ function updateVehicles(vehiclesData, terrainSize) {
                : v.type === 'TRAILER' ? trailerIconFor(v)
                : null;
       if (ic) {
-        const W = 19.5, H = +(W * ic.ratio).toFixed(2);   // same width → longer icons are just taller
-        // Anchor the icon at its coupling point (viewBox coords) rather than its
-        // centre, so a tractor unit's fifth wheel and a semitrailer's kingpin meet
-        // on the map. Defaults to centre when no anchor is given.
         const vbp = ic.vb.split(/\s+/).map(Number);        // [minX, minY, vbW, vbH]
-        const ax  = ic.anchor ? ic.anchor.x / vbp[2] : 0.5;
-        const ay  = ic.anchor ? ic.anchor.y / vbp[3] : 0.5;
+        const vbW = vbp[2], vbH = vbp[3];
+        const W = 19.5, H = +(W * ic.ratio).toFixed(2);    // same width → longer icons are just taller
+        // Put the icon's coupling anchor at the pin WITHOUT moving the <svg>
+        // viewport (which must stay centred so rotation keeps pivoting on the pin —
+        // an off-centre viewport would rotate around its own centre and drift).
+        // Instead re-window the viewBox so the anchor lands at the viewport centre;
+        // overflow:visible draws the part hanging past the pin. No anchor → centre.
+        const aX = ic.anchor ? ic.anchor.x : vbW / 2;
+        const aY = ic.anchor ? ic.anchor.y : vbH / 2;
+        const minX = (vbp[0] || 0) + aX - vbW / 2;
+        const minY = (vbp[1] || 0) + aY - vbH / 2;
         const tsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-        tsvg.setAttribute('viewBox', ic.vb);
+        tsvg.setAttribute('viewBox', `${minX} ${minY} ${vbW} ${vbH}`);
         tsvg.setAttribute('width',  W);
         tsvg.setAttribute('height', H);
-        tsvg.setAttribute('x', -W * ax);
-        tsvg.setAttribute('y', -H * ay);
+        tsvg.setAttribute('x', -W / 2);
+        tsvg.setAttribute('y', -H / 2);
         tsvg.setAttribute('overflow', 'visible');
         tsvg.innerHTML = ic.markup;
         inner.appendChild(tsvg);
@@ -6736,6 +6746,8 @@ function updateVehicles(vehiclesData, terrainSize) {
       el.style.transform  = `translate3d(${tx}px,${ty}px,0)`;
       if (v.type === 'PLAYER') {
         layer.insertBefore(el, layer.firstChild);
+      } else if (v.type === 'TRAILER' && (v.trailerKind === 'wechselbruecke' || v.trailerKind === 'container')) {
+        topLayer.appendChild(el);   // ride on top of the carrier (separate layer keeps the move transition)
       } else {
         layer.appendChild(el);
       }
@@ -6763,7 +6775,7 @@ function updateVehicles(vehiclesData, terrainSize) {
     }
   }
 
-  layer.querySelectorAll('[id^="vm-"]').forEach(el => {
+  document.querySelectorAll('#layer-vehicles [id^="vm-"], #layer-vehicles-top [id^="vm-"]').forEach(el => {
     if (!seen.has(el.id.slice(3))) el.remove();
   });
 
