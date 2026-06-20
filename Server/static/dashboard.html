@@ -6426,83 +6426,129 @@ function renderHotspotPins(hotspotsData, terrainSize) {
 // Top-down LKW/truck icon — points north/up (front = small y), matching the pin
 // rotation convention. Style block stripped → inline fills (st0=#575756, st1=#dadada,
 // unstyled = black wheels/mirrors).
-const LKW_ICON_VIEWBOX = '0 0 95.12 195.4';
-const LKW_ICON_RATIO   = 195.4 / 95.12;   // height / width
+const LKW_ICON_VIEWBOX = '0 0 91.13 189.56';
+const LKW_ICON_RATIO   = 189.56 / 91.13;   // tractor unit (Sattelzugmaschine)
 const LKW_ICON_MARKUP = `
-  <rect x="10.22" y="39.02" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect x="75.64" y="38.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#575756" x="16.16" y="159.16" width="64.33" height="5.98"/>
-  <rect fill="#575756" x="35.89" y="75.11" width="23.93" height="115.74"/>
-  <path d="M39.73,161.08s-3.37-5.79-4.45-8.85-1.7-3.95-1.08-7.32,1.61-4.58,3.37-5.98,4.04-1.4,4.04-1.4h6.71v6.52s-1.44-.12-2.01,1.19.48,2.85.48,2.85l-3.31,13.3h-3.75"/>
-  <path d="M56.36,161.08s3.37-5.79,4.45-8.85,1.7-3.95,1.08-7.32-1.61-4.58-3.37-5.98-4.04-1.4-4.04-1.4h-6.71v6.52s1.44-.12,2.01,1.19-.48,2.85-.48,2.85l3.31,13.3h3.75"/>
-  <rect x="11.32" y="145.61" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect x="21.51" y="145.61" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect x="64.91" y="145.61" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect x="75.09" y="145.61" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#575756" x="11.83" y="179.02" width="72.04" height="3.44"/>
-  <rect fill="#575756" x="61.83" y="83.5" width="21.82" height="52.43"/>
-  <rect fill="#575756" x="11.88" y="83.5" width="21.99" height="52.43"/>
+  <rect fill="#000100" x="7.75" y="32.26" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="73.17" y="32.09" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#585857" x="13.69" y="152.4" width="64.33" height="5.98"/>
+  <rect fill="#585857" x="33.42" y="68.35" width="23.93" height="107.34"/>
+  <path fill="#000100" d="M37.26,154.32s-3.37-5.79-4.45-8.85-1.7-3.95-1.08-7.32,1.61-4.58,3.37-5.98,4.04-1.4,4.04-1.4h6.71v6.52s-1.44-.12-2.01,1.19.48,2.85.48,2.85l-3.31,13.3h-3.75"/>
+  <path fill="#000100" d="M53.89,154.32s3.37-5.79,4.45-8.85,1.7-3.95,1.08-7.32-1.61-4.58-3.37-5.98-4.04-1.4-4.04-1.4h-6.71s0,6.52,0,6.52c0,0,1.44-.12,2.01,1.19s-.48,2.85-.48,2.85l3.31,13.3h3.75"/>
+  <rect fill="#000100" x="8.85" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="19.04" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="62.44" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="72.62" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#585857" x="9.36" y="172.26" width="72.04" height="3.44"/>
+  <rect fill="#585857" x="59.36" y="76.74" width="21.82" height="52.43"/>
+  <rect fill="#585857" x="9.41" y="76.74" width="21.99" height="52.43"/>
   <g>
-    <rect fill="#575756" x="10.17" y="20.04" width="4.16" height=".87" transform="translate(-8.6 8.87) rotate(-30)"/>
-    <path fill="#575756" d="M4.42,23.43l4.88-2.82c.55-.32,1.24-.13,1.56.42l.28.49c.16.28.06.63-.21.79l-5.87,3.39c-.27.15-.62.07-.78-.21l-.29-.5c-.31-.55-.13-1.24.42-1.56h0Z"/>
+    <rect fill="#585857" x="7.69" y="13.28" width="4.16" height=".87" transform="translate(-5.55 6.72) rotate(-30)"/>
+    <path fill="#585857" d="M2.14,15.11h5.64c.63,0,1.14.51,1.14,1.14v.57c0,.32-.26.58-.58.58H1.56c-.31,0-.57-.25-.57-.57v-.58c0-.63.51-1.14,1.14-1.14Z" transform="translate(-7.46 4.66) rotate(-30)"/>
   </g>
   <g>
-    <rect fill="#575756" x="82.86" y="18.35" width=".87" height="4.16" transform="translate(23.96 82.35) rotate(-60)"/>
-    <path fill="#575756" d="M90.47,25.66l-5.87-3.39c-.28-.16-.37-.52-.21-.79l.28-.49c.31-.55,1.01-.73,1.56-.42l4.88,2.82c.55.31.73,1.01.42,1.56l-.29.5c-.15.27-.5.37-.78.21h0Z"/>
+    <rect fill="#585857" x="78.74" y="13.24" width="4.16" height=".87" transform="translate(143.98 65.92) rotate(-150)"/>
+    <path fill="#585857" d="M82.24,15.07h6.78c.32,0,.58.26.58.58v.57c0,.63-.51,1.14-1.14,1.14h-5.64c-.63,0-1.14-.51-1.14-1.14v-.58c0-.31.25-.57.57-.57Z" transform="translate(151.69 73.07) rotate(-150)"/>
   </g>
-  <rect fill="#dadada" x="13.47" y="11.71" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
-  <rect fill="#dadada" x="11.88" y="66.95" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
-  <polygon fill="#dadada" points="11.88 68.15 13.47 19.05 47.77 19.05 47.77 70.73 11.88 68.15"/>
-  <polygon fill="#dadada" points="83.65 68.15 82.06 19.05 47.77 19.05 47.77 70.73 83.65 68.15"/>
-  <path fill="#dadada" d="M25.64,10.92h44.26c.58,0,1.05.47,1.05,1.05h0c0,.58-.47,1.05-1.05,1.05H25.64c-.58,0-1.05-.47-1.05-1.05h0c0-.58.47-1.05,1.05-1.05Z"/>
-  <path fill="#575756" d="M20.43,12.54h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H15.62c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67h0Z"/>
-  <rect fill="#dadada" x="17.01" y="75.48" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
-  <rect fill="#575756" x="34.55" y="31.19" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
-  <rect fill="#575756" x="16.84" y="127.96" width="61.86" height="3.44"/>
-  <rect fill="#575756" x="16.84" y="87.13" width="61.86" height="3.44"/>`;
+  <rect fill="#dadada" x="11" y="4.95" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
+  <rect fill="#dadada" x="9.41" y="60.19" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
+  <polygon fill="#dadada" points="9.41 61.39 11 12.29 45.3 12.29 45.3 63.97 9.41 61.39"/>
+  <polygon fill="#dadada" points="81.18 61.39 79.59 12.29 45.3 12.29 45.3 63.97 81.18 61.39"/>
+  <rect fill="#dadada" x="22.11" y="4.16" width="46.36" height="2.1" rx="1.05" ry="1.05"/>
+  <path fill="#585857" d="M17.96,5.78h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H13.15c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
+  <rect fill="#dadada" x="14.54" y="68.72" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
+  <rect fill="#585857" x="32.07" y="24.43" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
+  <rect fill="#585857" x="14.37" y="121.2" width="61.86" height="3.44"/>
+  <rect fill="#585857" x="14.37" y="80.37" width="61.86" height="3.44"/>`;
 
-// Rigid truck with fixed load bed (Pritsche/Kipper) — points north/up. Style block
-// stripped → inline fills (cls-1=#dadada, cls-2=#575756, cls-3=#b2b2b2, unstyled=black).
-const LKW_RIGID_VIEWBOX = '0 0 87.84 266.81';
-const LKW_RIGID_RATIO   = 266.81 / 87.84;   // height / width (longer than the tractor unit)
+const LKW_RIGID_VIEWBOX = '0 0 91.13 279.65';
+const LKW_RIGID_RATIO   = 279.65 / 91.13;  // rigid (fester Aufbau)
 const LKW_RIGID_MARKUP = `
   <g>
-    <rect x="3.2" y="28.43" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-    <rect x="74.61" y="28.43" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-    <rect fill="#575756" x="12.32" y="148.24" width="64.33" height="5.98"/>
-    <rect fill="#575756" x="32.04" y="64.2" width="23.93" height="115.74"/>
-    <path d="M35.89,150.16s-3.37-5.79-4.45-8.85-1.7-3.95-1.08-7.32,1.61-4.58,3.37-5.98,4.04-1.4,4.04-1.4h6.71v6.52s-1.44-.12-2.01,1.19.48,2.85.48,2.85l-3.31,13.3h-3.75"/>
-    <path d="M52.51,150.16s3.37-5.79,4.45-8.85,1.7-3.95,1.08-7.32-1.61-4.58-3.37-5.98-4.04-1.4-4.04-1.4h-6.71s0,6.52,0,6.52c0,0,1.44-.12,2.01,1.19s-.48,2.85-.48,2.85l3.31,13.3h3.75"/>
-    <rect fill="#575756" x="7.99" y="168.1" width="72.04" height="3.44"/>
-    <rect fill="#575756" x="57.99" y="72.59" width="21.82" height="52.43"/>
-    <rect fill="#575756" x="8.04" y="72.59" width="21.99" height="52.43"/>
+    <rect fill="#010101" x="4.85" y="32.59" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+    <rect fill="#010101" x="76.26" y="32.59" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+    <rect fill="#585857" x="13.97" y="152.4" width="64.33" height="5.98"/>
+    <rect fill="#585857" x="33.69" y="68.36" width="23.93" height="115.74"/>
+    <path fill="#010101" d="M37.54,154.32s-3.37-5.79-4.45-8.85-1.7-3.95-1.08-7.32,1.61-4.58,3.37-5.98c1.76-1.4,4.04-1.4,4.04-1.4h6.71v6.52s-1.44-.12-2.01,1.19.48,2.85.48,2.85l-3.31,13.3h-3.75"/>
+    <path fill="#010101" d="M54.16,154.32s3.37-5.79,4.45-8.85,1.7-3.95,1.08-7.32-1.61-4.58-3.37-5.98-4.04-1.4-4.04-1.4h-6.71v6.52s1.44-.12,2.01,1.19-.48,2.85-.48,2.85l3.31,13.3h3.75"/>
+    <rect fill="#585857" x="9.64" y="172.26" width="72.04" height="3.44"/>
+    <rect fill="#585857" x="59.64" y="76.75" width="21.82" height="52.43"/>
+    <rect fill="#585857" x="9.69" y="76.75" width="21.99" height="52.43"/>
     <g>
-      <rect fill="#575756" x="6.32" y="9.12" width="4.16" height=".87" transform="translate(-3.65 5.48) rotate(-30)"/>
-      <path fill="#575756" d="M.76,10.95h5.64c.63,0,1.14.51,1.14,1.14v.57c0,.32-.26.58-.58.58H.19c-.31,0-.57-.25-.57-.57v-.58c0-.63.51-1.14,1.14-1.14Z" transform="translate(-5.57 3.41) rotate(-30)"/>
+      <rect fill="#585857" x="7.97" y="13.28" width="4.16" height=".87" transform="translate(-5.51 6.86) rotate(-30)"/>
+      <path fill="#585857" d="M2.21,16.67l4.88-2.82c.55-.32,1.24-.13,1.56.42l.28.49c.16.28.06.63-.21.79l-5.86,3.38c-.27.16-.62.07-.78-.21l-.29-.5c-.32-.55-.13-1.24.42-1.56Z"/>
     </g>
     <g>
-      <rect fill="#575756" x="77.37" y="9.08" width="4.16" height=".87" transform="translate(143.49 57.47) rotate(-150)"/>
-      <path fill="#575756" d="M80.86,10.91h6.78c.32,0,.58.26.58.58v.57c0,.63-.51,1.14-1.14,1.14h-5.64c-.63,0-1.14-.51-1.14-1.14v-.58c0-.31.25-.57.57-.57Z" transform="translate(151.2 64.62) rotate(-150)"/>
+      <rect fill="#585857" x="80.66" y="11.58" width=".87" height="4.16" transform="translate(28.71 77.06) rotate(-60)"/>
+      <path fill="#585857" d="M88.28,18.9l-5.87-3.39c-.28-.16-.37-.52-.21-.79l.28-.49c.32-.55,1.01-.73,1.56-.42l4.88,2.82c.55.31.73,1.01.42,1.56l-.29.5c-.16.27-.5.37-.78.21h0Z"/>
     </g>
-    <rect fill="#dadada" x="9.63" y=".79" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
-    <rect fill="#dadada" x="8.04" y="56.03" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
-    <polygon fill="#dadada" points="8.04 57.23 9.63 8.13 43.92 8.13 43.92 59.81 8.04 57.23"/>
-    <polygon fill="#dadada" points="79.81 57.23 78.22 8.13 43.92 8.13 43.92 59.81 79.81 57.23"/>
-    <rect fill="#dadada" x="20.74" y="0" width="46.36" height="2.1" rx="1.05" ry="1.05"/>
-    <path fill="#575756" d="M16.59,1.62h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H11.77c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
-    <rect fill="#dadada" x="13.17" y="64.56" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
-    <rect fill="#575756" x="30.7" y="20.27" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
-    <rect fill="#575756" x="12.99" y="117.04" width="61.86" height="3.44"/>
-    <rect fill="#575756" x="12.99" y="76.22" width="61.86" height="3.44"/>
+    <rect fill="#dadada" x="11.28" y="4.95" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
+    <rect fill="#dadada" x="9.69" y="60.19" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
+    <polygon fill="#dadada" points="9.69 61.39 11.28 12.29 45.57 12.29 45.57 63.97 9.69 61.39"/>
+    <polygon fill="#dadada" points="81.46 61.39 79.87 12.29 45.57 12.29 45.57 63.97 81.46 61.39"/>
+    <path fill="#dadada" d="M23.44,4.16h44.26c.58,0,1.05.47,1.05,1.05h0c0,.58-.47,1.05-1.05,1.05H23.44c-.58,0-1.05-.47-1.05-1.05h0c0-.58.47-1.05,1.05-1.05Z"/>
+    <path fill="#585857" d="M18.24,5.78h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H13.42c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
+    <rect fill="#dadada" x="14.82" y="68.72" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
+    <rect fill="#585857" x="32.35" y="24.43" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
+    <rect fill="#585857" x="14.64" y="121.2" width="61.86" height="3.44"/>
+    <rect fill="#585857" x="14.64" y="80.38" width="61.86" height="3.44"/>
   </g>
   <g>
-    <rect fill="#575756" x="35.58" y="254.23" width="16.68" height="8.02"/>
-    <rect x="74.65" y="167.2" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-    <rect x="2.95" y="167.2" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-    <rect fill="#dadada" x="-49.81" y="130.2" width="187.47" height="72.04" rx="1.79" ry="1.79" transform="translate(-122.3 210.14) rotate(-90)"/>
-    <rect fill="#575756" x="7.9" y="262.29" width="72.04" height="4.52"/>
-    <rect fill="#b2b2b2" x="-44.14" y="135.47" width="176.12" height="61.51" rx="1.79" ry="1.79" transform="translate(-122.3 210.14) rotate(-90)"/>
+    <rect fill="#585857" x="37.23" y="263.39" width="16.68" height="8.02"/>
+    <rect fill="#010101" x="76.3" y="176.36" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
+    <rect fill="#010101" x="4.6" y="176.36" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
+    <rect fill="#dadada" x="9.55" y="81.64" width="72.04" height="187.47" rx="1.79" ry="1.79"/>
+    <rect fill="#585857" x="9.55" y="271.45" width="72.04" height="4.52"/>
+    <rect fill="#b3b2b2" x="14.82" y="87.32" width="61.51" height="176.12" rx="1.79" ry="1.79"/>
   </g>`;
+
+const LKW_HOOK_VIEWBOX = '0 0 91.13 212.23';
+const LKW_HOOK_RATIO   = 212.23 / 91.13;  // hooklift + swap body (shared)
+const LKW_HOOK_MARKUP = `
+  <rect fill="#000100" x="8.58" y="32.64" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="73.99" y="32.48" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#585857" x="14.52" y="147.78" width="64.33" height="5.98"/>
+  <rect fill="#585857" x="34.25" y="68.74" width="23.93" height="135.83"/>
+  <rect fill="#000100" x="9.68" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="19.86" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="63.27" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="73.45" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#585857" x="10.19" y="204.57" width="72.04" height="3.44"/>
+  <rect fill="#585857" x="60.19" y="77.13" width="21.82" height="52.43"/>
+  <rect fill="#585857" x="10.24" y="77.13" width="21.99" height="52.43"/>
+  <g>
+    <rect fill="#585857" x="8.52" y="13.66" width="4.16" height=".87" transform="translate(-5.63 7.19) rotate(-30)"/>
+    <path fill="#585857" d="M2.97,15.49h5.64c.63,0,1.14.51,1.14,1.14v.57c0,.32-.26.58-.58.58H2.39c-.31,0-.57-.25-.57-.57v-.58c0-.63.51-1.14,1.14-1.14Z" transform="translate(-7.54 5.12) rotate(-30)"/>
+  </g>
+  <g>
+    <rect fill="#585857" x="79.57" y="13.62" width="4.16" height=".87" transform="translate(145.34 67.05) rotate(-150)"/>
+    <path fill="#585857" d="M83.07,15.45h6.78c.32,0,.58.26.58.58v.57c0,.63-.51,1.14-1.14,1.14h-5.64c-.63,0-1.14-.51-1.14-1.14v-.58c0-.31.25-.57.57-.57Z" transform="translate(153.04 74.2) rotate(-150)"/>
+  </g>
+  <rect fill="#dadada" x="11.83" y="5.33" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
+  <rect fill="#dadada" x="10.24" y="60.57" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
+  <polygon fill="#dadada" points="10.24 61.77 11.83 12.67 46.12 12.67 46.12 64.35 10.24 61.77"/>
+  <polygon fill="#dadada" points="82.01 61.77 80.42 12.67 46.12 12.67 46.12 64.35 82.01 61.77"/>
+  <rect fill="#dadada" x="22.94" y="4.54" width="46.36" height="2.1" rx="1.05" ry="1.05"/>
+  <path fill="#585857" d="M18.79,6.16h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H13.98c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
+  <rect fill="#dadada" x="15.37" y="69.1" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
+  <rect fill="#585857" x="32.9" y="24.81" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
+  <rect fill="#585857" x="15.19" y="121.58" width="61.86" height="3.44"/>
+  <rect fill="#585857" x="15.19" y="80.76" width="61.86" height="3.44"/>
+  <rect fill="#585857" x="14.52" y="182.7" width="64.33" height="5.98"/>
+  <rect fill="#000100" x="9.68" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="19.86" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="63.27" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
+  <rect fill="#000100" x="73.45" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>`;
+
+// Map a truck's build type (v.truckKind) to its top-down icon. Kinds without a
+// dedicated SVG yet (hooklift, swapBody) fall back to the tractor-unit icon —
+// add their entries here once the icons arrive.
+const TRUCK_ICON_TRACTOR = { vb: LKW_ICON_VIEWBOX,  ratio: LKW_ICON_RATIO,  markup: LKW_ICON_MARKUP };
+const TRUCK_ICONS = {
+  rigid:    { vb: LKW_RIGID_VIEWBOX, ratio: LKW_RIGID_RATIO, markup: LKW_RIGID_MARKUP },
+  hooklift: { vb: LKW_HOOK_VIEWBOX,  ratio: LKW_HOOK_RATIO,  markup: LKW_HOOK_MARKUP },
+  swapBody: { vb: LKW_HOOK_VIEWBOX,  ratio: LKW_HOOK_RATIO,  markup: LKW_HOOK_MARKUP },
+};
 
 // Returns the next angle expressed as prev ± the shortest delta, so a CSS rotate
 // transition eases the short way around (e.g. 350°→10° becomes 350°→370°, +20°).
@@ -6558,20 +6604,17 @@ function updateVehicles(vehiclesData, terrainSize) {
 
       if (v.type === 'TRUCK') {
         // Replace the dot with the top-down LKW icon (points north, rotates with heading).
-        // Pick the build-type icon: rigid (fixed bed) vs tractor unit (semi-trailer).
-        const rigid  = v.truckKind === 'rigid';
-        const vb     = rigid ? LKW_RIGID_VIEWBOX : LKW_ICON_VIEWBOX;
-        const ratio  = rigid ? LKW_RIGID_RATIO   : LKW_ICON_RATIO;
-        const markup = rigid ? LKW_RIGID_MARKUP  : LKW_ICON_MARKUP;
-        const W = 19.5, H = +(W * ratio).toFixed(2);   // same width → rigid is just longer
+        // Pick the icon by build type (truckKind); unknown/iconless kinds fall back to tractor unit.
+        const ic = TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR;
+        const W = 19.5, H = +(W * ic.ratio).toFixed(2);   // same width → longer icons are just taller
         const tsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-        tsvg.setAttribute('viewBox', vb);
+        tsvg.setAttribute('viewBox', ic.vb);
         tsvg.setAttribute('width',  W);
         tsvg.setAttribute('height', H);
         tsvg.setAttribute('x', -W / 2);
         tsvg.setAttribute('y', -H / 2);
         tsvg.setAttribute('overflow', 'visible');
-        tsvg.innerHTML = markup;
+        tsvg.innerHTML = ic.markup;
         inner.appendChild(tsvg);
       } else {
         const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');

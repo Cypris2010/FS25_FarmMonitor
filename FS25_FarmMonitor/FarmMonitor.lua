@@ -1297,47 +1297,89 @@ function FarmMonitor:collectVehicles()
         return "TRACTOR"
     end
 
-    -- Distinguishes a semi-tractor unit (Sattelzugmaschine, has a fifth-wheel
-    -- "semitrailer" attacher joint) from a rigid truck with its own load bed
-    -- (Pritsche/Kipper, carries cargo itself: dischargeable / tension belts /
-    -- non-fuel cargo fillUnit). Returns "tractorUnit" or "rigid".
+    -- Classifies a truck's build type by its attacher-joint types and load specs:
+    --   "tractorUnit" — Sattelzugmaschine: has a fifth-wheel "semitrailer" joint
+    --   "hooklift"    — Hakenlift/Abrollcontainer: has a "hookLift" joint
+    --   "swapBody"    — Wechselbrücken-LKW: has an "implement" attacher joint (the
+    --                   swap body mounts on the chassis via the implement joint)
+    --   "rigid"       — fester Aufbau (Pritsche/Kipper): dischargeable/trailer/tensionBelts spec
+    --   else → "tractorUnit" (default; e.g. plain drawbar tractors)
+    -- Resolve the relevant joint-type ints + an int→name reverse map once.
+    local semitrailerJointType = nil
+    local hookLiftJointType    = nil
+    local implementJointType   = nil
+    local jointIntToName       = nil
+    if AttacherJoints ~= nil and type(AttacherJoints.jointTypeNameToInt) == "table" then
+        semitrailerJointType = AttacherJoints.jointTypeNameToInt.semitrailer
+        hookLiftJointType    = AttacherJoints.jointTypeNameToInt.hookLift
+        implementJointType   = AttacherJoints.jointTypeNameToInt.implement
+        jointIntToName = {}
+        for name, intv in pairs(AttacherJoints.jointTypeNameToInt) do
+            jointIntToName[intv] = name
+        end
+    end
+
     local function truckBuildKind(v)
-        -- Sattelkupplung?
-        local canSemi = false
         local aj = v.spec_attacherJoints
-        if aj ~= nil and aj.attacherJoints ~= nil and AttacherJoints ~= nil
-            and AttacherJoints.jointTypeIntToName ~= nil then
+        local jointNames = {}
+        local canSemi, canHook, canImpl = false, false, false
+        if aj ~= nil and aj.attacherJoints ~= nil then
             for _, joint in ipairs(aj.attacherJoints) do
-                local jn = AttacherJoints.jointTypeIntToName[joint.jointType]
-                if type(jn) == "string" and jn:lower():find("semitrailer") then
-                    canSemi = true
-                    break
-                end
+                local nm = (jointIntToName and jointIntToName[joint.jointType]) or tostring(joint.jointType)
+                jointNames[#jointNames + 1] = nm
+                if semitrailerJointType ~= nil and joint.jointType == semitrailerJointType then canSemi = true end
+                if hookLiftJointType    ~= nil and joint.jointType == hookLiftJointType    then canHook = true end
+                if implementJointType   ~= nil and joint.jointType == implementJointType   then canImpl = true end
             end
         end
-
-        -- Eigener Ladeaufbau? Nur an zuverlässigen Aufbau-Specs erkennen: kippbar
-        -- (dischargeable), Kipp-/Anhängerfunktion (trailer) oder Zurrgurte (tensionBelts).
-        -- NICHT aus fillUnits ableiten — Sattelzugmaschinen haben Batterie-/AdBlue-/
-        -- Drucklufttanks, die sonst fälschlich wie Ladung aussehen (z.B. Volvo FH Electric).
         local hasBed = (v.spec_dischargeable ~= nil) or (v.spec_trailer ~= nil) or (v.spec_tensionBelts ~= nil)
 
-        -- DEBUG (temporär): welche Signale haben gefeuert? → truckDbg im Export
+        -- DEBUG (temporär)
         local sigs = {}
-        if canSemi                    then sigs[#sigs + 1] = "semi"    end
+        if canSemi                     then sigs[#sigs + 1] = "semi"    end
+        if canHook                     then sigs[#sigs + 1] = "hook"    end
+        if canImpl                     then sigs[#sigs + 1] = "impl"    end
         if v.spec_dischargeable ~= nil then sigs[#sigs + 1] = "disch"   end
         if v.spec_trailer       ~= nil then sigs[#sigs + 1] = "trailer" end
         if v.spec_tensionBelts  ~= nil then sigs[#sigs + 1] = "belts"   end
-        if AttacherJoints == nil or AttacherJoints.jointTypeIntToName == nil then
-            sigs[#sigs + 1] = "noAJapi"
+        sigs[#sigs + 1] = "joints:[" .. table.concat(jointNames, " ") .. "]"
+        -- DEBUG (temporär): alle spec_-Namen dumpen, um ein Wechselbrücken-Merkmal zu finden
+        local specNames = {}
+        for k, _ in pairs(v) do
+            if type(k) == "string" and k:sub(1, 5) == "spec_" then
+                specNames[#specNames + 1] = k:sub(6)
+            end
         end
-        local dbg = (#sigs > 0) and table.concat(sigs, ",") or "-"
+        table.sort(specNames)
+        sigs[#sigs + 1] = "specs:[" .. table.concat(specNames, " ") .. "]"
+        local dbg = table.concat(sigs, ",")
 
         local kind
         if canSemi then kind = "tractorUnit"
+        elseif canHook then kind = "hooklift"
+        elseif canImpl then kind = "swapBody"
         elseif hasBed then kind = "rigid"
-        else kind = "tractorUnit" end   -- default: most vanilla trucks are semi-tractors
+        else kind = "tractorUnit" end
         return kind, dbg
+    end
+
+    -- DEBUG (temporär): Joint-Typen jedes Fahrzeugs — out:[was an ihm andockt] /
+    -- in:[womit es selbst andockt (inputAttacherJoint → Auflieger vs Anhänger)].
+    local function jointDbgFor(v)
+        local function names(list)
+            local t = {}
+            if list ~= nil then
+                for _, j in ipairs(list) do
+                    t[#t + 1] = (jointIntToName and jointIntToName[j.jointType]) or tostring(j.jointType)
+                end
+            end
+            return table.concat(t, " ")
+        end
+        local out = (v.spec_attacherJoints and v.spec_attacherJoints.attacherJoints)
+                    and names(v.spec_attacherJoints.attacherJoints) or ""
+        local inp = (v.spec_attachable and v.spec_attachable.inputAttacherJoints)
+                    and names(v.spec_attachable.inputAttacherJoints) or ""
+        return "out:[" .. out .. "] in:[" .. inp .. "]"
     end
 
     -- Mod availability flags (checked once per collect cycle)
@@ -1865,6 +1907,12 @@ function FarmMonitor:collectVehicles()
                 table.insert(vobj.__order, "truckKind")
                 vobj.truckDbg = tdbg          -- DEBUG (temporär), nach Verifikation entfernen
                 table.insert(vobj.__order, "truckDbg")
+            end
+            -- DEBUG (temporär): Joint-Typen für ALLE Fahrzeuge (in/out)
+            local jd = jointDbgFor(vehicle)
+            if jd ~= "out:[] in:[]" then
+                vobj.jdbg = jd
+                table.insert(vobj.__order, "jdbg")
             end
             table.insert(result, vobj)
         end
