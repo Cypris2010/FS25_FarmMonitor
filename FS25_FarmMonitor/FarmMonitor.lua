@@ -1279,11 +1279,43 @@ function FarmMonitor:collectVehicles()
         return nil
     end
 
+    -- Store-category → coarse vehicle type. Far more reliable than mapHotspotType,
+    -- which mis-types many trailers as HARVESTER and several tools as TRAILER.
+    -- Cargo-carrying trailers (towed, not self-propelled, haul/dump/transport goods):
+    local trailerCategories = {
+        trailers = true, tippers = true, tipper = true,
+        lowloaders = true, lowdumper = true, lowdumpers = true,
+        augerwagons = true, loaderwagons = true,
+        baleloaders = true, baletransport = true,
+        trailerschangingsystem = true, hooklifttrailers = true,
+        slurrytanks = true, watertrailers = true,
+        manuretransport = true, manurespreaders = true,
+        semitrailers = true, woodtrailers = true, woodharvestertrailers = true,
+        animaltransport = true,
+    }
+    -- Towed/mounted working implements (process the field/material, no cargo hauling):
+    local toolCategories = {
+        frontloaders = true, frontloadertools = true, wheelloadertools = true,
+        telehandlertools = true, skidsteertools = true, tractorfrontloaders = true,
+        mowers = true, tedders = true, windrowers = true, mowerconditioners = true,
+        balers = true, balersround = true, balersquare = true, balewrappers = true,
+        cultivators = true, plows = true, powerharrows = true, rollers = true,
+        sowingmachines = true, seeders = true, planters = true, precisionseeders = true,
+        sprayers = true, spreaders = true, fertilizerspreaders = true,
+        weeders = true, stonepickers = true, stonecrushers = true, mulchers = true,
+        subsoilers = true, frontweights = true, weights = true,
+    }
+
     local function vehicleTypeName(v)
-        -- Shop category takes precedence for trucks/cars (mapHotspotType is unreliable here)
+        -- Shop category takes precedence — mapHotspotType is unreliable for trucks,
+        -- cars, trailers and tools alike.
         local cat = storeCategory(v)
-        if cat == "trucks" then return "TRUCK" end
-        if cat == "cars"   then return "CAR"   end
+        if cat ~= nil then
+            if cat == "trucks"        then return "TRUCK"   end
+            if cat == "cars"          then return "CAR"     end
+            if trailerCategories[cat] then return "TRAILER" end
+            if toolCategories[cat]    then return "TOOL"    end
+        end
 
         local t = v.mapHotspotType
         if t == nil then return "VEHICLE" end
@@ -1361,6 +1393,81 @@ function FarmMonitor:collectVehicles()
         elseif hasBed then kind = "rigid"
         else kind = "tractorUnit" end
         return kind, dbg
+    end
+
+    -- Maps store category → functional trailer kind (shown in the detail panel and
+    -- used to pick the map icon). Driven by the shop category, which is the only
+    -- reliable signal (mapHotspotType mis-types trailers as HARVESTER).
+    local trailerKindByCategory = {
+        trailers = "kipper", tippers = "kipper", tipper = "kipper",
+        lowloaders = "tieflader", lowdumper = "tieflader", lowdumpers = "tieflader",
+        augerwagons = "ueberladewagen",
+        loaderwagons = "ladewagen",
+        baleloaders = "ballentransport", baletransport = "ballentransport",
+        trailerschangingsystem = "wechselbruecke", hooklifttrailers = "wechselbruecke",
+        slurrytanks = "guellefass",
+        watertrailers = "wassertank",
+        manuretransport = "mist", manurespreaders = "mist",
+        semitrailers = "auflieger",
+        woodtrailers = "holz", woodharvestertrailers = "holz",
+        animaltransport = "tiertransport",
+    }
+
+    -- Classifies a TRAILER: returns
+    --   kind     — functional type (kipper, ladewagen, ueberladewagen, ballentransport,
+    --              wechselbruecke, guellefass, wassertank, mist, tieflader, holz,
+    --              tiertransport, auflieger, or "anhaenger" as a generic fallback)
+    --   coupling — how it hitches: "auflieger" (fifth-wheel), "deichsel" (drawbar),
+    --              "angebaut" (3-point/implement), "frontlader" (front-loader tool)
+    local function trailerBuildKind(v)
+        local ia = v.spec_attachable and v.spec_attachable.inputAttacherJoints
+        local coupling = "deichsel"
+        local inJointNames = {}
+        if ia ~= nil then
+            for _, j in ipairs(ia) do
+                local nm = (jointIntToName and jointIntToName[j.jointType]) or tostring(j.jointType)
+                inJointNames[#inJointNames + 1] = nm
+                if nm == "semitrailer" then coupling = "auflieger"
+                elseif nm == "implement" and coupling == "deichsel" then coupling = "angebaut"
+                elseif (nm == "frontloader" or nm == "attachableFrontloader") and coupling == "deichsel" then coupling = "frontlader"
+                end
+            end
+        end
+
+        local cat = storeCategory(v)
+        local kind = (cat and trailerKindByCategory[cat]) or nil
+        if kind == nil then
+            -- spec-based fallback for trailers whose category we don't map
+            if v.spec_dischargeable ~= nil or v.spec_fillVolume ~= nil then
+                kind = "kipper"
+            elseif coupling == "auflieger" then
+                kind = "auflieger"
+            else
+                kind = "anhaenger"
+            end
+        end
+
+        -- DEBUG: key specs
+        local specNames = {}
+        for k, _ in pairs(v) do
+            if type(k) == "string" and k:sub(1, 5) == "spec_" then
+                specNames[#specNames + 1] = k:sub(6)
+            end
+        end
+        table.sort(specNames)
+        -- DEBUG: fill types with capacity
+        local fillDescs = {}
+        if v.spec_fillUnit and v.spec_fillUnit.fillUnits then
+            for _, fu in ipairs(v.spec_fillUnit.fillUnits) do
+                if fu.capacity ~= nil and fu.capacity > 0 then
+                    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fu.fillType)
+                    local name = ft and ft.name or tostring(fu.fillType)
+                    fillDescs[#fillDescs + 1] = name .. "(" .. math.floor(fu.capacity) .. ")"
+                end
+            end
+        end
+        local dbg = "cat:" .. (cat or "?") .. " in:[" .. table.concat(inJointNames, " ") .. "] fills:[" .. table.concat(fillDescs, " ") .. "] specs:[" .. table.concat(specNames, " ") .. "]"
+        return kind, coupling, dbg
     end
 
     -- DEBUG (temporär): Joint-Typen jedes Fahrzeugs — out:[was an ihm andockt] /
@@ -1907,6 +2014,17 @@ function FarmMonitor:collectVehicles()
                 table.insert(vobj.__order, "truckKind")
                 vobj.truckDbg = tdbg          -- DEBUG (temporär), nach Verifikation entfernen
                 table.insert(vobj.__order, "truckDbg")
+            end
+            -- Trailer classification: functional kind + coupling → drives detail panel
+            -- and the map icon. Only for real cargo trailers (vType is now category-based).
+            if vType == "TRAILER" then
+                local tk, tcoup, tdbg = trailerBuildKind(vehicle)
+                vobj.trailerKind = tk
+                table.insert(vobj.__order, "trailerKind")
+                vobj.trailerCoupling = tcoup
+                table.insert(vobj.__order, "trailerCoupling")
+                vobj.trailerDbg = tdbg        -- DEBUG (temporär), nach Verifikation entfernen
+                table.insert(vobj.__order, "trailerDbg")
             end
             -- DEBUG (temporär): Joint-Typen für ALLE Fahrzeuge (in/out)
             local jd = jointDbgFor(vehicle)
