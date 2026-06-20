@@ -40,7 +40,36 @@ Lua (FS25) → layer_*.json → Go /api/map/layer/{name} → JS _marchingSquares
 - SVG-Gesamtgröße: `MAP_PX = 1024`
 - Spielfläche: Mitte 50% → x/y jeweils 256–768 (= `MAP_PX * 0.25` bis `MAP_PX * 0.75`)
 - Zellgröße: `cellSize = MAP_PX * 0.5 / res` (bei res=128 → 4px pro Zelle)
-- Grid-Ecke (r, c) → SVG: `x = 256 + c * cellSize`, `y = 256 + r * cellSize`
+- Gitterpunkt (r, c) → SVG: `x = ox + c * cellSize`, `y = oy + r * cellSize`
+  mit `ox = oy = MAP_PX * 0.25 + cellSize/2`
+
+### Halbzellen-Versatz (Alignment-Fix)
+Der Lua-Scan tastet Zelle `(xi,zi)` an der **Ecke** ab und deckt `[Ecke, Ecke+Zelle]` ab
+(`stepSoilExport`: `wx = -half + xi*cellSize`) — der Wert repräsentiert also die Zelle,
+**deren Mitte bei `Ecke + ½ Zelle`** liegt. Marching-Squares setzt den Gitterpunkt aber auf
+`worldToMap(Ecke)`. Ohne Korrektur landet das gesamte Overlay **½ Zelle nach Nordwesten**
+verschoben (≈ `½ · terrainSize/res`; bei 4x-Karte/res=256 ~8 m).
+
+**Fix (zwei gekoppelte Änderungen):**
+1. `ox`/`oy` um `cellSize/2` verschieben → Gitterpunkt auf der Zell**mitte** =
+   `worldToMap(Ecke + ½Zelle)`, deckungsgleich mit Feldpolygonen und Fahrzeug-Pins.
+2. **`noDataVal`-Snap in `interpT` von `t=1` auf `t=0.5`** ändern. Der Snap klemmt die
+   Füllung an die Feldgrenze (kein Auslaufen auf Straßen). Bei zentriertem Gitter liegt
+   die Zellgrenze am **Mittelpunkt** zwischen zwei Gitterpunkten (`t=0.5`); mit dem alten
+   `t=1` würden die Feld**kanten** ½ Zelle nach **Südosten** rutschen.
+
+Wichtig: Beide Änderungen gehören zusammen. Nur der Origin-Shift (ohne Snap-Anpassung)
+zentriert zwar die Flächen/Heatmap-Layer (weed/stone), verschiebt aber die gesnappten
+Kanten der `above:false`-Layer (plow/lime/spray/mulch) ½ Zelle nach Osten.
+Origin-Shift + `t=0.5` zusammen sind für gesnappte Kanten identisch zum ursprünglichen
+Verhalten und zentrieren zusätzlich Innenkonturen und Heatmap-Layer korrekt.
+
+**Debug-Tool:** Button `⊹` in der Bodenlayer-Legende bzw. `window._measureSoilOffset(res)` in der
+Konsole rendert eine synthetische Ein-Zellen-Karte durch den echten Marching-Squares-Transform und
+vergleicht den Schwerpunkt mit `worldToMap(Zellmitte)`. Gibt Versatz in px und Metern aus
+(`ALIGNED ✔` / `MISALIGNED ✗`) und zeichnet Marker (cyan = erwartet, rot = gerendert) auf die Karte.
+Prüft die Konsistenz Soil↔Polygone/Pins — **nicht** die Ausrichtung des Hintergrundbilds
+(`overview.dds`-Annahme „2× terrainSize", separat via Fahrzeug-Pins prüfen).
 
 ### Schwellwert-Logik
 
