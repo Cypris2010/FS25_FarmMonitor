@@ -1427,7 +1427,7 @@ function FarmMonitor:collectVehicles()
         augerwagons = "ueberladewagen",
         loaderwagons = "ladewagen",
         baleloaders = "ballentransport", baletransport = "ballentransport",
-        trailerschangingsystem = "wechselbruecke", hooklifttrailers = "wechselbruecke",
+        trailerschangingsystem = "wechselbruecke", hooklifttrailers = "container",
         slurrytanks = "guellefass",
         watertrailers = "wassertank",
         manuretransport = "mist", manurespreaders = "mist",
@@ -1438,8 +1438,9 @@ function FarmMonitor:collectVehicles()
 
     -- Classifies a TRAILER: returns
     --   kind     — functional type (kipper, ladewagen, ueberladewagen, ballentransport,
-    --              wechselbruecke, guellefass, wassertank, mist, tieflader, holz,
-    --              tiertransport, auflieger, or "anhaenger" as a generic fallback)
+    --              wechselbruecke (swap body), container (hook-lift), guellefass,
+    --              wassertank, mist, tieflader, holz, tiertransport, auflieger, or
+    --              "anhaenger" as a generic fallback)
     --   coupling — how it hitches: "auflieger" (fifth-wheel), "deichsel" (drawbar),
     --              "angebaut" (3-point/implement), "frontlader" (front-loader tool)
     local function trailerBuildKind(v)
