@@ -3292,7 +3292,9 @@ function FarmMonitor:stepSoilExport()
         local writeOk, writeErr = pcall(function()
             local f = io.open(st.outputDir .. "layer_" .. name .. ".json", "w")
             if f == nil then error("cannot open file") end
-            f:write('{"layer":"' .. name .. '","res":' .. res .. ',"data":[')
+            -- savegameId lets the dashboard reject stale overlays after a savegame
+            -- switch (old map's layer_*.json may still be on disk until re-scanned).
+            f:write('{"savegameId":"' .. tostring(FarmMonitor.savegameId or "") .. '","layer":"' .. name .. '","res":' .. res .. ',"data":[')
             f:write(table.concat(vals, ","))
             f:write(']}')
             f:close()

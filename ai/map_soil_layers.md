@@ -25,9 +25,15 @@ Lua (FS25) → layer_*.json → Go /api/map/layer/{name} → JS _marchingSquares
 
 ### JSON-Format
 ```json
-{ "layer": "lime", "res": 128, "data": [0, 255, 85, ...] }
+{ "savegameId": "mapXX_2026-06-20", "layer": "lime", "res": 128, "data": [0, 255, 85, ...] }
 ```
 `data` ist ein flaches Array mit `res×res` Werten (zeilenweise, von oben-links nach unten-rechts).
+
+`savegameId` erlaubt dem Dashboard, **veraltete Overlays nach einem Savegame-Wechsel zu verwerfen**:
+Da On-Demand-Scan die `layer_*.json` nur bei Anzeige neu schreibt, kann nach einem Wechsel auf eine
+andere Map noch eine alte Datei auf der Platte liegen. `renderSoilLayerData` rendert nur, wenn
+`layerData.savegameId === savegameId` (aktueller Spielstand); bei Abweichung wird das Overlay geleert
+und der Render übersprungen, bis der neue Scan die Datei mit passender `savegameId` überschreibt.
 
 ### Go: Endpoint (`server.go`)
 - `GET /api/map/layer/{name}` — liest `layer_{name}.json` direkt aus dem Datenverzeichnis

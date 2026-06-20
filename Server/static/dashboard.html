@@ -6068,6 +6068,15 @@ async function fetchAndRenderSoilLayer(name) {
 let _lastSoilRes = 128;  // last rendered soil resolution — used by _measureSoilOffset()
 
 function renderSoilLayerData(name, layerData) {
+  // Reject overlays from a different savegame/map. After a savegame switch the old
+  // map's layer_*.json can still be on disk (on-demand: only re-scanned when shown),
+  // which would project a stale overlay onto the new map. Clear and bail on mismatch.
+  const curSavegameId = savegameId || (appData && appData.mapMeta && appData.mapMeta.savegameId);
+  if (layerData.savegameId && curSavegameId && layerData.savegameId !== curSavegameId) {
+    const stale = soilLayerElements[name];
+    if (stale) stale.forEach(p => p.setAttribute('d', ''));
+    return;
+  }
   const res    = layerData.res || 128;
   const values = layerData.data;
   if (!values || values.length !== res * res) return;
