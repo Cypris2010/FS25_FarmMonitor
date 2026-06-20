@@ -1290,8 +1290,8 @@ function FarmMonitor:collectVehicles()
         trailerschangingsystem = true, hooklifttrailers = true,
         slurrytanks = true, watertrailers = true,
         manuretransport = true, manurespreaders = true,
-        semitrailers = true, woodtrailers = true, woodharvestertrailers = true,
-        animaltransport = true,
+        semitrailers = true, trailerssemi = true, woodtrailers = true,
+        woodharvestertrailers = true, animaltransport = true,
     }
     -- Towed/mounted working implements (process the field/material, no cargo hauling):
     local toolCategories = {
@@ -1315,6 +1315,29 @@ function FarmMonitor:collectVehicles()
             if cat == "cars"          then return "CAR"     end
             if trailerCategories[cat] then return "TRAILER" end
             if toolCategories[cat]    then return "TOOL"    end
+        end
+
+        -- Universal net for unknown categories (e.g. mod trailers like "trailerssemi"):
+        -- the coupling (inputAttacherJoint) reliably separates cargo trailers from
+        -- mounted implements. Only the special cases handled by the category lists
+        -- above (Wechselbrücke via implement, baler via trailerLow) need overriding.
+        local ia = v.spec_attachable and v.spec_attachable.inputAttacherJoints
+        if ia ~= nil and v.spec_motorized == nil then
+            local n = AttacherJoints and AttacherJoints.jointTypeNameToInt
+            if n ~= nil then
+                for _, j in ipairs(ia) do
+                    local jt = j.jointType
+                    if jt == n.semitrailer or jt == n.trailer or jt == n.trailerLow then
+                        return "TRAILER"
+                    end
+                end
+                for _, j in ipairs(ia) do
+                    local jt = j.jointType
+                    if jt == n.implement or jt == n.frontloader or jt == n.attachableFrontloader then
+                        return "TOOL"
+                    end
+                end
+            end
         end
 
         local t = v.mapHotspotType
@@ -2024,6 +2047,12 @@ function FarmMonitor:collectVehicles()
                 vobj.trailerCoupling = tcoup
                 table.insert(vobj.__order, "trailerCoupling")
                 vobj.trailerDbg = tdbg        -- DEBUG (temporär), nach Verifikation entfernen
+                table.insert(vobj.__order, "trailerDbg")
+            elseif vehicle.spec_attachable ~= nil and vehicle.spec_motorized == nil then
+                -- DEBUG (temporär): non-TRAILER attachables (e.g. trailers mis-typed as
+                -- HARVESTER) → show cat so we can extend trailerCategories.
+                local _, _, tdbg = trailerBuildKind(vehicle)
+                vobj.trailerDbg = tdbg
                 table.insert(vobj.__order, "trailerDbg")
             end
             -- DEBUG (temporär): Joint-Typen für ALLE Fahrzeuge (in/out)
