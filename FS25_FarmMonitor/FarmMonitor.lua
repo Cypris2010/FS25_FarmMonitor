@@ -1265,7 +1265,26 @@ function FarmMonitor:collectVehicles()
         end
     end
 
+    -- Store shop category (lowercased) — reliable for trucks/cars, which the
+    -- mapHotspotType classification misses (FS25 gives them no TRUCK hotspot, so
+    -- they fall through to the TRACTOR default).
+    local function storeCategory(v)
+        if g_storeManager == nil then return nil end
+        local xml = (v.xmlFile and v.xmlFile.filename) or v.configFileName
+        if xml == nil then return nil end
+        local ok, si = pcall(g_storeManager.getItemByXMLFilename, g_storeManager, xml)
+        if ok and si ~= nil and si.categoryName ~= nil then
+            return string.lower(si.categoryName)
+        end
+        return nil
+    end
+
     local function vehicleTypeName(v)
+        -- Shop category takes precedence for trucks/cars (mapHotspotType is unreliable here)
+        local cat = storeCategory(v)
+        if cat == "trucks" then return "TRUCK" end
+        if cat == "cars"   then return "CAR"   end
+
         local t = v.mapHotspotType
         if t == nil then return "VEHICLE" end
         local constName = hotspotTypeNames[t] or ""
@@ -1276,6 +1295,49 @@ function FarmMonitor:collectVehicles()
         if constName:find("TOOL")    then return "TOOL"      end
         if constName:find("TRACTOR") then return "TRACTOR"   end
         return "TRACTOR"
+    end
+
+    -- Distinguishes a semi-tractor unit (Sattelzugmaschine, has a fifth-wheel
+    -- "semitrailer" attacher joint) from a rigid truck with its own load bed
+    -- (Pritsche/Kipper, carries cargo itself: dischargeable / tension belts /
+    -- non-fuel cargo fillUnit). Returns "tractorUnit" or "rigid".
+    local function truckBuildKind(v)
+        -- Sattelkupplung?
+        local canSemi = false
+        local aj = v.spec_attacherJoints
+        if aj ~= nil and aj.attacherJoints ~= nil and AttacherJoints ~= nil
+            and AttacherJoints.jointTypeIntToName ~= nil then
+            for _, joint in ipairs(aj.attacherJoints) do
+                local jn = AttacherJoints.jointTypeIntToName[joint.jointType]
+                if type(jn) == "string" and jn:lower():find("semitrailer") then
+                    canSemi = true
+                    break
+                end
+            end
+        end
+
+        -- Eigener Ladeaufbau? Nur an zuverlässigen Aufbau-Specs erkennen: kippbar
+        -- (dischargeable), Kipp-/Anhängerfunktion (trailer) oder Zurrgurte (tensionBelts).
+        -- NICHT aus fillUnits ableiten — Sattelzugmaschinen haben Batterie-/AdBlue-/
+        -- Drucklufttanks, die sonst fälschlich wie Ladung aussehen (z.B. Volvo FH Electric).
+        local hasBed = (v.spec_dischargeable ~= nil) or (v.spec_trailer ~= nil) or (v.spec_tensionBelts ~= nil)
+
+        -- DEBUG (temporär): welche Signale haben gefeuert? → truckDbg im Export
+        local sigs = {}
+        if canSemi                    then sigs[#sigs + 1] = "semi"    end
+        if v.spec_dischargeable ~= nil then sigs[#sigs + 1] = "disch"   end
+        if v.spec_trailer       ~= nil then sigs[#sigs + 1] = "trailer" end
+        if v.spec_tensionBelts  ~= nil then sigs[#sigs + 1] = "belts"   end
+        if AttacherJoints == nil or AttacherJoints.jointTypeIntToName == nil then
+            sigs[#sigs + 1] = "noAJapi"
+        end
+        local dbg = (#sigs > 0) and table.concat(sigs, ",") or "-"
+
+        local kind
+        if canSemi then kind = "tractorUnit"
+        elseif hasBed then kind = "rigid"
+        else kind = "tractorUnit" end   -- default: most vanilla trucks are semi-tractors
+        return kind, dbg
     end
 
     -- Mod availability flags (checked once per collect cycle)
@@ -1726,11 +1788,12 @@ function FarmMonitor:collectVehicles()
                 end)
             end
 
-            table.insert(result, FarmMonitor.obj(
+            local vType = vehicleTypeName(vehicle)
+            local vobj = FarmMonitor.obj(
                 "id",          tostring(vehicle.rootNode),
                 "netId",       netId,
                 "name",        name,
-                "type",        vehicleTypeName(vehicle),
+                "type",        vType,
                 "x",           MathUtil.round(x * 10) / 10,
                 "z",           MathUtil.round(z * 10) / 10,
                 "rot",         MathUtil.round(rot * 1000) / 1000,
@@ -1793,7 +1856,17 @@ function FarmMonitor:collectVehicles()
                 "cpNumBalesLeft",        cpNumBalesLeft,
                 "cpWaitingForUnload",    cpWaitingForUnload,
                 "cpHarvesterManeuvering", cpHarvesterManeuvering
-            ))
+            )
+            -- Truck build type (only for trucks): "tractorUnit" (Sattelzugmaschine)
+            -- or "rigid" (fester Aufbau) → drives which map icon the dashboard shows.
+            if vType == "TRUCK" then
+                local tk, tdbg = truckBuildKind(vehicle)
+                vobj.truckKind = tk
+                table.insert(vobj.__order, "truckKind")
+                vobj.truckDbg = tdbg          -- DEBUG (temporär), nach Verifikation entfernen
+                table.insert(vobj.__order, "truckDbg")
+            end
+            table.insert(result, vobj)
         end
     end
 
