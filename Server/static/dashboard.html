@@ -6550,6 +6550,58 @@ const TRUCK_ICONS = {
   swapBody: { vb: LKW_HOOK_VIEWBOX,  ratio: LKW_HOOK_RATIO,  markup: LKW_HOOK_MARKUP },
 };
 
+// ── Trailer top-down icons (point north, rotate with heading; cab-less boxes) ──
+const TRAILER_TRAILER_VIEWBOX = '0 0 91.13 225.89';
+const TRAILER_TRAILER_RATIO   = 225.89 / 91.13;  // drawbar trailer (Deichselanhänger)
+const TRAILER_TRAILER_MARKUP = `
+  <rect fill="#585857" x="37.23" y="210.81" width="16.68" height="8.02"/>
+  <rect fill="#010101" x="76.3" y="123.78" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
+  <rect fill="#010101" x="4.6" y="123.78" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
+  <rect fill="#dadada" x="9.55" y="29.06" width="72.04" height="187.47" rx="1.79" ry="1.79"/>
+  <rect fill="#585857" x="9.55" y="218.87" width="72.04" height="4.52"/>
+  <rect fill="#b3b2b2" x="14.82" y="34.74" width="61.51" height="176.12" rx="1.79" ry="1.79"/>
+  <rect fill="#585857" x="41.57" y="4.16" width="8" height="24.67"/>`;
+
+const TRAILER_SEMI_VIEWBOX = '0 0 91.13 250.59';
+const TRAILER_SEMI_RATIO   = 250.59 / 91.13;     // semitrailer (Auflieger)
+const TRAILER_SEMI_MARKUP = `
+  <rect fill="#585857" x="37.4" y="232.59" width="16.68" height="8.02"/>
+  <rect fill="#010101" x="76.47" y="145.56" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
+  <rect fill="#010101" x="4.77" y="145.56" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
+  <rect fill="#dadada" x="9.72" y="4.11" width="72.04" height="234.2" rx="1.79" ry="1.79"/>
+  <rect fill="#585857" x="9.72" y="240.65" width="72.04" height="4.52"/>
+  <rect fill="#b3b2b2" x="14.99" y="9.03" width="61.51" height="223.56" rx="1.79" ry="1.79"/>`;
+
+const TRAILER_SWAP_VIEWBOX = '0 0 91.13 169.15';
+const TRAILER_SWAP_RATIO   = 169.15 / 91.13;     // swap body (Wechselbrücke)
+const TRAILER_SWAP_MARKUP = `
+  <rect fill="#585857" x="3.87" y="23.48" width="83.4" height="12.4"/>
+  <rect fill="#585857" x="3.87" y="136.42" width="83.4" height="12.4"/>
+  <rect fill="#dadada" x="12.06" y="12.09" width="67.02" height="150.82" rx="1.79" ry="1.79"/>
+  <rect fill="#b3b2b2" x="16.96" y="16.88" width="57.22" height="139.93" rx="1.79" ry="1.79"/>`;
+
+const TRAILER_HOOK_VIEWBOX = '0 0 91.13 169.15';
+const TRAILER_HOOK_RATIO   = 169.15 / 91.13;     // hook-lift container (Abrollcontainer)
+const TRAILER_HOOK_MARKUP = `
+  <path fill="#dadada" d="M45.57,4.82c-4.38,0-7.92,3.55-7.92,7.92s3.55,7.92,7.92,7.92,7.92-3.55,7.92-7.92-3.55-7.92-7.92-7.92ZM45.57,17.53c-2.64,0-4.79-2.14-4.79-4.79s2.14-4.79,4.79-4.79,4.79,2.14,4.79,4.79-2.14,4.79-4.79,4.79Z"/>
+  <rect fill="#dadada" x="12.06" y="12.74" width="67.02" height="150.82" rx="1.79" ry="1.79"/>
+  <rect fill="#b3b2b2" x="16.96" y="17.53" width="57.22" height="139.93" rx="1.79" ry="1.79"/>`;
+
+// Trailer icon dispatch: swap-body and container by kind, otherwise by coupling
+// (auflieger → semitrailer, else drawbar trailer).
+const TRAILER_ICONS = {
+  trailer:        { vb: TRAILER_TRAILER_VIEWBOX, ratio: TRAILER_TRAILER_RATIO, markup: TRAILER_TRAILER_MARKUP },
+  semitrailer:    { vb: TRAILER_SEMI_VIEWBOX,    ratio: TRAILER_SEMI_RATIO,    markup: TRAILER_SEMI_MARKUP },
+  wechselbruecke: { vb: TRAILER_SWAP_VIEWBOX,    ratio: TRAILER_SWAP_RATIO,    markup: TRAILER_SWAP_MARKUP },
+  container:      { vb: TRAILER_HOOK_VIEWBOX,    ratio: TRAILER_HOOK_RATIO,    markup: TRAILER_HOOK_MARKUP },
+};
+function trailerIconFor(v) {
+  if (v.trailerKind === 'wechselbruecke') return TRAILER_ICONS.wechselbruecke;
+  if (v.trailerKind === 'container')      return TRAILER_ICONS.container;
+  if (v.trailerCoupling === 'auflieger')  return TRAILER_ICONS.semitrailer;
+  return TRAILER_ICONS.trailer;
+}
+
 // Returns the next angle expressed as prev ± the shortest delta, so a CSS rotate
 // transition eases the short way around (e.g. 350°→10° becomes 350°→370°, +20°).
 function shortestAngle(prev, next) {
@@ -6602,10 +6654,13 @@ function updateVehicles(vehiclesData, terrainSize) {
       inner.style.transform = `scale(${iconS})`;
       rot.appendChild(inner);
 
-      if (v.type === 'TRUCK') {
-        // Replace the dot with the top-down LKW icon (points north, rotates with heading).
-        // Pick the icon by build type (truckKind); unknown/iconless kinds fall back to tractor unit.
-        const ic = TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR;
+      // Top-down icon (points north, rotates with heading) for trucks and trailers;
+      // everything else keeps the simple dot. Trucks pick by truckKind (fallback
+      // tractor unit), trailers by kind/coupling via trailerIconFor().
+      const ic = v.type === 'TRUCK'   ? (TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR)
+               : v.type === 'TRAILER' ? trailerIconFor(v)
+               : null;
+      if (ic) {
         const W = 19.5, H = +(W * ic.ratio).toFixed(2);   // same width → longer icons are just taller
         const tsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
         tsvg.setAttribute('viewBox', ic.vb);
