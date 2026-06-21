@@ -89,19 +89,45 @@ jobs:
             Server/farmmonitor-macos-apple
             FS25_FarmMonitor.zip
 
-      # Upload the published binaries to VirusTotal and append the per-file
-      # analysis links to the release notes. Serves as evidence that the
+      # Upload the published binaries to VirusTotal. Serves as evidence that the
       # Defender "Wacatac.C!ml" detection is a false positive (most engines
       # report clean). The scan finishes asynchronously; the permalink is
       # available immediately. Never fails the release on detections.
+      # NOTE: the action's own update_release_body only fires on `release`
+      # events, not on our tag `push`, so we append the links ourselves below.
       - name: VirusTotal scan
+        id: vt
         continue-on-error: true
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
-          update_release_body: true
           files: |
             ./Server/farmmonitor-windows.exe
             ./Server/farmmonitor-macos-intel
             ./Server/farmmonitor-macos-apple
             ./FS25_FarmMonitor.zip
+
+      # Append the VirusTotal analysis links to the release notes. The vt step
+      # outputs `analysis` as comma-separated `<filepath>=<url>` pairs; we turn
+      # those into a markdown list and re-edit the release body (preserving the
+      # original notes). Best-effort: skipped if the scan produced no output.
+      - name: Append VirusTotal links to release notes
+        if: steps.vt.outputs.analysis != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          BODY: ${{ steps.tag_body.outputs.body }}
+          ANALYSIS: ${{ steps.vt.outputs.analysis }}
+        run: |
+          {
+            printf '%s\n\n\n' "$BODY"
+            printf '## VirusTotal\n\n'
+            printf '_Windows Defender may flag `farmmonitor-windows.exe` as `Wacatac.C!ml` — a known false positive for unsigned Go binaries. Scan reports:_\n\n'
+            IFS=',' read -ra PAIRS <<< "$ANALYSIS"
+            for pair in "${PAIRS[@]}"; do
+              file="${pair%%=*}"; url="${pair#*=}"
+              printf -- '- [`%s`](%s)\n' "$(basename "$file")" "$url"
+            done
+          } > vt_notes.md
+          gh release edit "$TAG" --notes-file vt_notes.md
