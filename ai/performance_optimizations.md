@@ -10,6 +10,18 @@ Analysiert auf Branch `0.4.10`. Stand: 2026-06-03.
 - **Ergebnis:** ~32× weniger GPU-Calls pro Tick, keine sichtbare Qualitätseinbuße (Dashboard rendert Overlays sowieso unscharf)
 - **Dateien:** `FarmMonitor.lua` — `initSoilState()`, Variablen `res` und `rowsPerTick`
 
+### On-Demand Soil-Scan (nur angezeigte Layer)
+- **Problem:** `stepSoilExport` scannte **alle 7 Layer** im Round-Robin durchgehend — auch wenn niemand die Karte ansieht oder nur ein einzelner Layer angezeigt wird. Das Dashboard war zwar schon on-demand (lud nur aktive Layer), aber die teuren `executeGet`-Calls liefen im Spiel trotzdem für alles.
+- **Fix:** Lua scannt nur noch Layer, die in **mindestens einem geöffneten Browser gerade auf der Karte angezeigt** werden. Sieht niemand die Karte → Soil-Scan = 0 CPU.
+- **Mechanismus (Presence + Union):**
+  - Jeder Browser hat eine `clientId` und sendet **solange die Map-View offen ist** alle 15 s einen Heartbeat `POST /api/soil/presence {clientId, layers:[...]}` (zusätzlich sofort bei jedem Layer-Toggle).
+  - Der Go-Server hält `presence[clientId] → {layers, lastSeen}`, prunt Einträge älter als **TTL 45 s** und bildet die **Union** aller aktiven Layer.
+  - Ändert sich die Union, schreibt der Server `<command cmd="soilScan.setLayers" layers="weed,stone"/>` in `commands.xml`.
+  - Lua-Handler `soilScan.setLayers` setzt `FarmMonitor.soilActiveLayers` und startet den Scan neu (`soilState = nil`). `initSoilState` baut Modifier nur noch für aktive Layer; leere Menge → `return nil` (kein Scan).
+- **Warum Server-seitige Union:** Mehrere Browser können unterschiedliche Layer aktivieren — nur der Server sieht alle Clients. TTL macht das selbstheilend (geschlossener/abgestürzter Tab läuft automatisch aus). Map-View-Scoping stoppt den Scan, sobald niemand mehr hinschaut.
+- **Stale-Data:** Nach Layer-Aktivierung pollt das Dashboard kurz nach (3× alle 2 s), bis die frisch gescannte `layer_*.json` vorliegt (Scan-Anlauf ~1–2 s).
+- **Dateien:** `FarmMonitor.lua` (`soilActiveLayers`, `initSoilState`, `cmdSoilScanSetLayers`), `Server/server.go` (`/api/soil/presence`, Union-Pruner), `Server/dashboard.html` (Heartbeat, Nachpoll-Logik)
+
 ---
 
 ## Offen — priorisiert nach Impact
@@ -64,7 +76,7 @@ Analysiert auf Branch `0.4.10`. Stand: 2026-06-03.
 | Fahrzeug-Meta | 10 s | `collectAndSaveVehicleMeta()` | vehicleMeta.json |
 | Felder | 60 s | `collectAndSaveFields()` | fields.json |
 | Wetter | 30 s | `collectAndSaveWeather()` | weather.json |
-| Soil-Layer | kontinuierlich (2 rows/tick) | `stepSoilExport()` | layer_*.json (7 Layer) |
+| Soil-Layer | kontinuierlich (2 rows/tick), **nur aktive Layer** | `stepSoilExport()` | layer_*.json (nur angezeigte Layer) |
 | IPC Commands | 1 s | `processCommands()` | commands.xml → commands_ack.json |
 | AutoDrive Markers | 60 s | `exportAutoDriveMarkers()` | autoDriveMarkers.json |
 

@@ -14,14 +14,26 @@ Lua (FS25) → layer_*.json → Go /api/map/layer/{name} → JS _marchingSquares
 - Rasterisiert die Density Maps über die gesamte Spielfläche in ein `res×res` Grid (Standard: 128×128)
 - Pro Zelle: höchster vorhandener Density-Wert wird auf 0–255 normiert (`math.floor(lv / maxVal * 255)`)
 - Weed/Stone: binär 0 oder 255 (irgendein penalisierender Wert vorhanden → 255)
-- Läuft inkrementell über `rowsPerTick` Zeilen pro Spieltick (Round-Robin über alle Layer)
-- Schreibt `layer_lime.json`, `layer_spray.json`, `layer_plow.json`, `layer_mulch.json`, `layer_roller.json`, `layer_weed.json`, `layer_stone.json`
+- Läuft inkrementell über `rowsPerTick` Zeilen pro Spieltick (Round-Robin über die **aktiven** Layer)
+- Schreibt `layer_lime.json`, `layer_spray.json`, `layer_plow.json`, `layer_mulch.json`, `layer_roller.json`, `layer_weed.json`, `layer_stone.json` — **aber nur für gerade angezeigte Layer** (siehe On-Demand-Scan)
+
+### On-Demand-Scan (nur angezeigte Layer)
+- `initSoilState` baut Density-Modifier **nur für `FarmMonitor.soilActiveLayers`**; ist die Menge leer → `return nil` → **kein Scan, 0 CPU**.
+- Welche Layer aktiv sind, bestimmen die offenen Browser: jeder meldet seinen angezeigten Layer-Set per Heartbeat an den Go-Server (`POST /api/soil/presence`, alle 15 s **solange die Map-View offen ist**). Der Server bildet die **Union** über alle Clients (TTL 45 s) und schreibt sie als `<command cmd="soilScan.setLayers" layers="…"/>` in `commands.xml`.
+- Lua-Handler `soilScan.setLayers` aktualisiert `soilActiveLayers` und setzt `soilState = nil` (Scan-Neustart mit neuer Layer-Auswahl).
+- Details & Begründung (Multi-Client, Selbstheilung via TTL): `ai/performance_optimizations.md` → „On-Demand Soil-Scan".
 
 ### JSON-Format
 ```json
-{ "layer": "lime", "res": 128, "data": [0, 255, 85, ...] }
+{ "savegameId": "mapXX_2026-06-20", "layer": "lime", "res": 128, "data": [0, 255, 85, ...] }
 ```
 `data` ist ein flaches Array mit `res×res` Werten (zeilenweise, von oben-links nach unten-rechts).
+
+`savegameId` erlaubt dem Dashboard, **veraltete Overlays nach einem Savegame-Wechsel zu verwerfen**:
+Da On-Demand-Scan die `layer_*.json` nur bei Anzeige neu schreibt, kann nach einem Wechsel auf eine
+andere Map noch eine alte Datei auf der Platte liegen. `renderSoilLayerData` rendert nur, wenn
+`layerData.savegameId === savegameId` (aktueller Spielstand); bei Abweichung wird das Overlay geleert
+und der Render übersprungen, bis der neue Scan die Datei mit passender `savegameId` überschreibt.
 
 ### Go: Endpoint (`server.go`)
 - `GET /api/map/layer/{name}` — liest `layer_{name}.json` direkt aus dem Datenverzeichnis
@@ -34,7 +46,36 @@ Lua (FS25) → layer_*.json → Go /api/map/layer/{name} → JS _marchingSquares
 - SVG-Gesamtgröße: `MAP_PX = 1024`
 - Spielfläche: Mitte 50% → x/y jeweils 256–768 (= `MAP_PX * 0.25` bis `MAP_PX * 0.75`)
 - Zellgröße: `cellSize = MAP_PX * 0.5 / res` (bei res=128 → 4px pro Zelle)
-- Grid-Ecke (r, c) → SVG: `x = 256 + c * cellSize`, `y = 256 + r * cellSize`
+- Gitterpunkt (r, c) → SVG: `x = ox + c * cellSize`, `y = oy + r * cellSize`
+  mit `ox = oy = MAP_PX * 0.25 + cellSize/2`
+
+### Halbzellen-Versatz (Alignment-Fix)
+Der Lua-Scan tastet Zelle `(xi,zi)` an der **Ecke** ab und deckt `[Ecke, Ecke+Zelle]` ab
+(`stepSoilExport`: `wx = -half + xi*cellSize`) — der Wert repräsentiert also die Zelle,
+**deren Mitte bei `Ecke + ½ Zelle`** liegt. Marching-Squares setzt den Gitterpunkt aber auf
+`worldToMap(Ecke)`. Ohne Korrektur landet das gesamte Overlay **½ Zelle nach Nordwesten**
+verschoben (≈ `½ · terrainSize/res`; bei 4x-Karte/res=256 ~8 m).
+
+**Fix (zwei gekoppelte Änderungen):**
+1. `ox`/`oy` um `cellSize/2` verschieben → Gitterpunkt auf der Zell**mitte** =
+   `worldToMap(Ecke + ½Zelle)`, deckungsgleich mit Feldpolygonen und Fahrzeug-Pins.
+2. **`noDataVal`-Snap in `interpT` von `t=1` auf `t=0.5`** ändern. Der Snap klemmt die
+   Füllung an die Feldgrenze (kein Auslaufen auf Straßen). Bei zentriertem Gitter liegt
+   die Zellgrenze am **Mittelpunkt** zwischen zwei Gitterpunkten (`t=0.5`); mit dem alten
+   `t=1` würden die Feld**kanten** ½ Zelle nach **Südosten** rutschen.
+
+Wichtig: Beide Änderungen gehören zusammen. Nur der Origin-Shift (ohne Snap-Anpassung)
+zentriert zwar die Flächen/Heatmap-Layer (weed/stone), verschiebt aber die gesnappten
+Kanten der `above:false`-Layer (plow/lime/spray/mulch) ½ Zelle nach Osten.
+Origin-Shift + `t=0.5` zusammen sind für gesnappte Kanten identisch zum ursprünglichen
+Verhalten und zentrieren zusätzlich Innenkonturen und Heatmap-Layer korrekt.
+
+**Debug-Tool:** Button `⊹` in der Bodenlayer-Legende bzw. `window._measureSoilOffset(res)` in der
+Konsole rendert eine synthetische Ein-Zellen-Karte durch den echten Marching-Squares-Transform und
+vergleicht den Schwerpunkt mit `worldToMap(Zellmitte)`. Gibt Versatz in px und Metern aus
+(`ALIGNED ✔` / `MISALIGNED ✗`) und zeichnet Marker (cyan = erwartet, rot = gerendert) auf die Karte.
+Prüft die Konsistenz Soil↔Polygone/Pins — **nicht** die Ausrichtung des Hintergrundbilds
+(`overview.dds`-Annahme „2× terrainSize", separat via Fahrzeug-Pins prüfen).
 
 ### Schwellwert-Logik
 

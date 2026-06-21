@@ -45,15 +45,21 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Build binaries
         run: |
           cd Server
           TAG="${{ github.ref_name }}"
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-X main.serverVersion=${TAG}" -o farmmonitor-windows.exe .
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags "-X main.serverVersion=${TAG}" -o farmmonitor-macos-intel .
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags "-X main.serverVersion=${TAG}" -o farmmonitor-macos-apple .
+          # -trimpath strips local build paths; -s -w drop the symbol table and
+          # DWARF debug info for a smaller binary. Together they reduce the
+          # surface that Windows Defender's ML heuristic flags as a false
+          # positive (Wacatac.C!ml on unsigned Go binaries). Panic stack traces
+          # stay readable — they rely on the runtime's pclntab, not on -s/-w.
+          LDFLAGS="-s -w -X main.serverVersion=${TAG}"
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "${LDFLAGS}" -o farmmonitor-windows.exe .
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "${LDFLAGS}" -o farmmonitor-macos-intel .
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "${LDFLAGS}" -o farmmonitor-macos-apple .
 
       - name: Package mod files
         run: zip -j FS25_FarmMonitor.zip FS25_FarmMonitor/*
@@ -61,13 +67,14 @@ jobs:
       - name: Extract tag annotation
         id: tag_body
         run: |
-          # Only annotated tags have a type of "tag"; lightweight tags have type "commit"
-          TAG_TYPE=$(git cat-file -t "${{ github.ref_name }}")
-          if [ "$TAG_TYPE" = "tag" ]; then
-            BODY=$(git tag -l --format='%(contents)' "${{ github.ref_name }}")
-          else
-            BODY=""
-          fi
+          TAG="${{ github.ref_name }}"
+          # actions/checkout doesn't reliably fetch the annotated *tag object*
+          # (only the peeled commit), so force-fetch it before reading. Without
+          # this the annotation came back empty. %(contents) yields the tag
+          # message for annotated tags and is empty for lightweight ones, so no
+          # cat-file type check is needed.
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
+          BODY=$(git tag -l --format='%(contents)' "$TAG")
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -82,3 +89,46 @@ jobs:
             Server/farmmonitor-macos-intel
             Server/farmmonitor-macos-apple
             FS25_FarmMonitor.zip
+
+      # Upload the published binaries to VirusTotal. Serves as evidence that the
+      # Defender "Wacatac.C!ml" detection is a false positive (most engines
+      # report clean). The scan finishes asynchronously; the permalink is
+      # available immediately. Never fails the release on detections.
+      # NOTE: the action's own update_release_body only fires on `release`
+      # events, not on our tag `push`, so we append the links ourselves below.
+      - name: VirusTotal scan
+        id: vt
+        continue-on-error: true
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: |
+            ./Server/farmmonitor-windows.exe
+            ./Server/farmmonitor-macos-intel
+            ./Server/farmmonitor-macos-apple
+            ./FS25_FarmMonitor.zip
+
+      # Append the VirusTotal analysis links to the release notes. The vt step
+      # outputs `analysis` as comma-separated `<filepath>=<url>` pairs; we turn
+      # those into a markdown list and re-edit the release body (preserving the
+      # original notes). Best-effort: skipped if the scan produced no output.
+      - name: Append VirusTotal links to release notes
+        if: steps.vt.outputs.analysis != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          BODY: ${{ steps.tag_body.outputs.body }}
+          ANALYSIS: ${{ steps.vt.outputs.analysis }}
+        run: |
+          {
+            printf '%s\n\n\n' "$BODY"
+            printf '## VirusTotal\n\n'
+            printf '_Windows Defender may flag `farmmonitor-windows.exe` as `Wacatac.C!ml` — a known false positive for unsigned Go binaries. Scan reports:_\n\n'
+            IFS=',' read -ra PAIRS <<< "$ANALYSIS"
+            for pair in "${PAIRS[@]}"; do
+              file="${pair%%=*}"; url="${pair#*=}"
+              printf -- '- [`%s`](%s)\n' "$(basename "$file")" "$url"
+            done
+          } > vt_notes.md
+          gh release edit "$TAG" --notes-file vt_notes.md

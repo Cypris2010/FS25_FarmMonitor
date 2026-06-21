@@ -19,6 +19,7 @@ FarmMonitor.weatherInterval   = 30000  -- milliseconds between weather exports
 FarmMonitor.weatherTimer      = 30000  -- start at max so first export fires immediately
 FarmMonitor.soilState         = nil    -- incremental soil export state machine
 FarmMonitor.soilScanMode      = "owned" -- "owned" = nur eigene Felder, "all" = alle Felder
+FarmMonitor.soilActiveLayers  = {}     -- Set {name → true} der gerade angezeigten Layer; leer = kein Scan
 FarmMonitor.soilFieldMask     = nil    -- flaches Boolean-Array [zi*res+xi+1] → true wenn Feld
 FarmMonitor.paths             = {}
 FarmMonitor.modInfoExported       = false
@@ -1264,7 +1265,81 @@ function FarmMonitor:collectVehicles()
         end
     end
 
+    -- Store shop category (lowercased) — reliable for trucks/cars, which the
+    -- mapHotspotType classification misses (FS25 gives them no TRUCK hotspot, so
+    -- they fall through to the TRACTOR default).
+    local function storeCategory(v)
+        if g_storeManager == nil then return nil end
+        local xml = (v.xmlFile and v.xmlFile.filename) or v.configFileName
+        if xml == nil then return nil end
+        local ok, si = pcall(g_storeManager.getItemByXMLFilename, g_storeManager, xml)
+        if ok and si ~= nil and si.categoryName ~= nil then
+            return string.lower(si.categoryName)
+        end
+        return nil
+    end
+
+    -- Store-category → coarse vehicle type. Far more reliable than mapHotspotType,
+    -- which mis-types many trailers as HARVESTER and several tools as TRAILER.
+    -- Cargo-carrying trailers (towed, not self-propelled, haul/dump/transport goods):
+    local trailerCategories = {
+        trailers = true, tippers = true, tipper = true,
+        lowloaders = true, lowdumper = true, lowdumpers = true,
+        augerwagons = true, loaderwagons = true,
+        baleloaders = true, baletransport = true,
+        trailerschangingsystem = true, hooklifttrailers = true,
+        slurrytanks = true, watertrailers = true,
+        manuretransport = true, manurespreaders = true,
+        semitrailers = true, trailerssemi = true, woodtrailers = true,
+        woodharvestertrailers = true, animaltransport = true,
+    }
+    -- Towed/mounted working implements (process the field/material, no cargo hauling):
+    local toolCategories = {
+        frontloaders = true, frontloadertools = true, wheelloadertools = true,
+        telehandlertools = true, skidsteertools = true, tractorfrontloaders = true,
+        mowers = true, tedders = true, windrowers = true, mowerconditioners = true,
+        balers = true, balersround = true, balersquare = true, balewrappers = true,
+        cultivators = true, plows = true, powerharrows = true, rollers = true,
+        sowingmachines = true, seeders = true, planters = true, precisionseeders = true,
+        sprayers = true, spreaders = true, fertilizerspreaders = true,
+        weeders = true, stonepickers = true, stonecrushers = true, mulchers = true,
+        subsoilers = true, frontweights = true, weights = true,
+    }
+
     local function vehicleTypeName(v)
+        -- Shop category takes precedence — mapHotspotType is unreliable for trucks,
+        -- cars, trailers and tools alike.
+        local cat = storeCategory(v)
+        if cat ~= nil then
+            if cat == "trucks"        then return "TRUCK"   end
+            if cat == "cars"          then return "CAR"     end
+            if trailerCategories[cat] then return "TRAILER" end
+            if toolCategories[cat]    then return "TOOL"    end
+        end
+
+        -- Universal net for unknown categories (e.g. mod trailers like "trailerssemi"):
+        -- the coupling (inputAttacherJoint) reliably separates cargo trailers from
+        -- mounted implements. Only the special cases handled by the category lists
+        -- above (Wechselbrücke via implement, baler via trailerLow) need overriding.
+        local ia = v.spec_attachable and v.spec_attachable.inputAttacherJoints
+        if ia ~= nil and v.spec_motorized == nil then
+            local n = AttacherJoints and AttacherJoints.jointTypeNameToInt
+            if n ~= nil then
+                for _, j in ipairs(ia) do
+                    local jt = j.jointType
+                    if jt == n.semitrailer or jt == n.trailer or jt == n.trailerLow then
+                        return "TRAILER"
+                    end
+                end
+                for _, j in ipairs(ia) do
+                    local jt = j.jointType
+                    if jt == n.implement or jt == n.frontloader or jt == n.attachableFrontloader then
+                        return "TOOL"
+                    end
+                end
+            end
+        end
+
         local t = v.mapHotspotType
         if t == nil then return "VEHICLE" end
         local constName = hotspotTypeNames[t] or ""
@@ -1275,6 +1350,167 @@ function FarmMonitor:collectVehicles()
         if constName:find("TOOL")    then return "TOOL"      end
         if constName:find("TRACTOR") then return "TRACTOR"   end
         return "TRACTOR"
+    end
+
+    -- Classifies a truck's build type by its attacher-joint types and load specs:
+    --   "tractorUnit" — Sattelzugmaschine: has a fifth-wheel "semitrailer" joint
+    --   "hooklift"    — Hakenlift/Abrollcontainer: has a "hookLift" joint
+    --   "swapBody"    — Wechselbrücken-LKW: has an "implement" attacher joint (the
+    --                   swap body mounts on the chassis via the implement joint)
+    --   "rigid"       — fester Aufbau (Pritsche/Kipper): dischargeable/trailer/tensionBelts spec
+    --   else → "tractorUnit" (default; e.g. plain drawbar tractors)
+    -- Resolve the relevant joint-type ints + an int→name reverse map once.
+    local semitrailerJointType = nil
+    local hookLiftJointType    = nil
+    local implementJointType   = nil
+    local jointIntToName       = nil
+    if AttacherJoints ~= nil and type(AttacherJoints.jointTypeNameToInt) == "table" then
+        semitrailerJointType = AttacherJoints.jointTypeNameToInt.semitrailer
+        hookLiftJointType    = AttacherJoints.jointTypeNameToInt.hookLift
+        implementJointType   = AttacherJoints.jointTypeNameToInt.implement
+        jointIntToName = {}
+        for name, intv in pairs(AttacherJoints.jointTypeNameToInt) do
+            jointIntToName[intv] = name
+        end
+    end
+
+    local function truckBuildKind(v)
+        local aj = v.spec_attacherJoints
+        local jointNames = {}
+        local canSemi, canHook, canImpl = false, false, false
+        if aj ~= nil and aj.attacherJoints ~= nil then
+            for _, joint in ipairs(aj.attacherJoints) do
+                local nm = (jointIntToName and jointIntToName[joint.jointType]) or tostring(joint.jointType)
+                jointNames[#jointNames + 1] = nm
+                if semitrailerJointType ~= nil and joint.jointType == semitrailerJointType then canSemi = true end
+                if hookLiftJointType    ~= nil and joint.jointType == hookLiftJointType    then canHook = true end
+                if implementJointType   ~= nil and joint.jointType == implementJointType   then canImpl = true end
+            end
+        end
+        local hasBed = (v.spec_dischargeable ~= nil) or (v.spec_trailer ~= nil) or (v.spec_tensionBelts ~= nil)
+
+        -- DEBUG (temporär)
+        local sigs = {}
+        if canSemi                     then sigs[#sigs + 1] = "semi"    end
+        if canHook                     then sigs[#sigs + 1] = "hook"    end
+        if canImpl                     then sigs[#sigs + 1] = "impl"    end
+        if v.spec_dischargeable ~= nil then sigs[#sigs + 1] = "disch"   end
+        if v.spec_trailer       ~= nil then sigs[#sigs + 1] = "trailer" end
+        if v.spec_tensionBelts  ~= nil then sigs[#sigs + 1] = "belts"   end
+        sigs[#sigs + 1] = "joints:[" .. table.concat(jointNames, " ") .. "]"
+        -- DEBUG (temporär): alle spec_-Namen dumpen, um ein Wechselbrücken-Merkmal zu finden
+        local specNames = {}
+        for k, _ in pairs(v) do
+            if type(k) == "string" and k:sub(1, 5) == "spec_" then
+                specNames[#specNames + 1] = k:sub(6)
+            end
+        end
+        table.sort(specNames)
+        sigs[#sigs + 1] = "specs:[" .. table.concat(specNames, " ") .. "]"
+        local dbg = table.concat(sigs, ",")
+
+        local kind
+        if canSemi then kind = "tractorUnit"
+        elseif canHook then kind = "hooklift"
+        elseif canImpl then kind = "swapBody"
+        elseif hasBed then kind = "rigid"
+        else kind = "tractorUnit" end
+        return kind, dbg
+    end
+
+    -- Maps store category → functional trailer kind (shown in the detail panel and
+    -- used to pick the map icon). Driven by the shop category, which is the only
+    -- reliable signal (mapHotspotType mis-types trailers as HARVESTER).
+    local trailerKindByCategory = {
+        trailers = "kipper", tippers = "kipper", tipper = "kipper",
+        lowloaders = "tieflader", lowdumper = "tieflader", lowdumpers = "tieflader",
+        augerwagons = "ueberladewagen",
+        loaderwagons = "ladewagen",
+        baleloaders = "ballentransport", baletransport = "ballentransport",
+        trailerschangingsystem = "wechselbruecke", hooklifttrailers = "container",
+        slurrytanks = "guellefass",
+        watertrailers = "wassertank",
+        manuretransport = "mist", manurespreaders = "mist",
+        semitrailers = "auflieger",
+        woodtrailers = "holz", woodharvestertrailers = "holz",
+        animaltransport = "tiertransport",
+    }
+
+    -- Classifies a TRAILER: returns
+    --   kind     — functional type (kipper, ladewagen, ueberladewagen, ballentransport,
+    --              wechselbruecke (swap body), container (hook-lift), guellefass,
+    --              wassertank, mist, tieflader, holz, tiertransport, auflieger, or
+    --              "anhaenger" as a generic fallback)
+    --   coupling — how it hitches: "auflieger" (fifth-wheel), "deichsel" (drawbar),
+    --              "angebaut" (3-point/implement), "frontlader" (front-loader tool)
+    local function trailerBuildKind(v)
+        local ia = v.spec_attachable and v.spec_attachable.inputAttacherJoints
+        local coupling = "deichsel"
+        local inJointNames = {}
+        if ia ~= nil then
+            for _, j in ipairs(ia) do
+                local nm = (jointIntToName and jointIntToName[j.jointType]) or tostring(j.jointType)
+                inJointNames[#inJointNames + 1] = nm
+                if nm == "semitrailer" then coupling = "auflieger"
+                elseif nm == "implement" and coupling == "deichsel" then coupling = "angebaut"
+                elseif (nm == "frontloader" or nm == "attachableFrontloader") and coupling == "deichsel" then coupling = "frontlader"
+                end
+            end
+        end
+
+        local cat = storeCategory(v)
+        local kind = (cat and trailerKindByCategory[cat]) or nil
+        if kind == nil then
+            -- spec-based fallback for trailers whose category we don't map
+            if v.spec_dischargeable ~= nil or v.spec_fillVolume ~= nil then
+                kind = "kipper"
+            elseif coupling == "auflieger" then
+                kind = "auflieger"
+            else
+                kind = "anhaenger"
+            end
+        end
+
+        -- DEBUG: key specs
+        local specNames = {}
+        for k, _ in pairs(v) do
+            if type(k) == "string" and k:sub(1, 5) == "spec_" then
+                specNames[#specNames + 1] = k:sub(6)
+            end
+        end
+        table.sort(specNames)
+        -- DEBUG: fill types with capacity
+        local fillDescs = {}
+        if v.spec_fillUnit and v.spec_fillUnit.fillUnits then
+            for _, fu in ipairs(v.spec_fillUnit.fillUnits) do
+                if fu.capacity ~= nil and fu.capacity > 0 then
+                    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fu.fillType)
+                    local name = ft and ft.name or tostring(fu.fillType)
+                    fillDescs[#fillDescs + 1] = name .. "(" .. math.floor(fu.capacity) .. ")"
+                end
+            end
+        end
+        local dbg = "cat:" .. (cat or "?") .. " in:[" .. table.concat(inJointNames, " ") .. "] fills:[" .. table.concat(fillDescs, " ") .. "] specs:[" .. table.concat(specNames, " ") .. "]"
+        return kind, coupling, dbg
+    end
+
+    -- DEBUG (temporär): Joint-Typen jedes Fahrzeugs — out:[was an ihm andockt] /
+    -- in:[womit es selbst andockt (inputAttacherJoint → Auflieger vs Anhänger)].
+    local function jointDbgFor(v)
+        local function names(list)
+            local t = {}
+            if list ~= nil then
+                for _, j in ipairs(list) do
+                    t[#t + 1] = (jointIntToName and jointIntToName[j.jointType]) or tostring(j.jointType)
+                end
+            end
+            return table.concat(t, " ")
+        end
+        local out = (v.spec_attacherJoints and v.spec_attacherJoints.attacherJoints)
+                    and names(v.spec_attacherJoints.attacherJoints) or ""
+        local inp = (v.spec_attachable and v.spec_attachable.inputAttacherJoints)
+                    and names(v.spec_attachable.inputAttacherJoints) or ""
+        return "out:[" .. out .. "] in:[" .. inp .. "]"
     end
 
     -- Mod availability flags (checked once per collect cycle)
@@ -1725,11 +1961,12 @@ function FarmMonitor:collectVehicles()
                 end)
             end
 
-            table.insert(result, FarmMonitor.obj(
+            local vType = vehicleTypeName(vehicle)
+            local vobj = FarmMonitor.obj(
                 "id",          tostring(vehicle.rootNode),
                 "netId",       netId,
                 "name",        name,
-                "type",        vehicleTypeName(vehicle),
+                "type",        vType,
                 "x",           MathUtil.round(x * 10) / 10,
                 "z",           MathUtil.round(z * 10) / 10,
                 "rot",         MathUtil.round(rot * 1000) / 1000,
@@ -1792,7 +2029,40 @@ function FarmMonitor:collectVehicles()
                 "cpNumBalesLeft",        cpNumBalesLeft,
                 "cpWaitingForUnload",    cpWaitingForUnload,
                 "cpHarvesterManeuvering", cpHarvesterManeuvering
-            ))
+            )
+            -- Truck build type (only for trucks): "tractorUnit" (Sattelzugmaschine)
+            -- or "rigid" (fester Aufbau) → drives which map icon the dashboard shows.
+            if vType == "TRUCK" then
+                local tk, tdbg = truckBuildKind(vehicle)
+                vobj.truckKind = tk
+                table.insert(vobj.__order, "truckKind")
+                vobj.truckDbg = tdbg          -- DEBUG (temporär), nach Verifikation entfernen
+                table.insert(vobj.__order, "truckDbg")
+            end
+            -- Trailer classification: functional kind + coupling → drives detail panel
+            -- and the map icon. Only for real cargo trailers (vType is now category-based).
+            if vType == "TRAILER" then
+                local tk, tcoup, tdbg = trailerBuildKind(vehicle)
+                vobj.trailerKind = tk
+                table.insert(vobj.__order, "trailerKind")
+                vobj.trailerCoupling = tcoup
+                table.insert(vobj.__order, "trailerCoupling")
+                vobj.trailerDbg = tdbg        -- DEBUG (temporär), nach Verifikation entfernen
+                table.insert(vobj.__order, "trailerDbg")
+            elseif vehicle.spec_attachable ~= nil and vehicle.spec_motorized == nil then
+                -- DEBUG (temporär): non-TRAILER attachables (e.g. trailers mis-typed as
+                -- HARVESTER) → show cat so we can extend trailerCategories.
+                local _, _, tdbg = trailerBuildKind(vehicle)
+                vobj.trailerDbg = tdbg
+                table.insert(vobj.__order, "trailerDbg")
+            end
+            -- DEBUG (temporär): Joint-Typen für ALLE Fahrzeuge (in/out)
+            local jd = jointDbgFor(vehicle)
+            if jd ~= "out:[] in:[]" then
+                vobj.jdbg = jd
+                table.insert(vobj.__order, "jdbg")
+            end
+            table.insert(result, vobj)
         end
     end
 
@@ -3164,6 +3434,11 @@ end
 
 function FarmMonitor:initSoilState()
     if not g_currentMission or not g_currentMission.isMissionStarted then return nil end
+    -- On-Demand: kein Layer angezeigt → gar nichts aufbauen (kein Scan, 0 CPU).
+    -- Früh prüfen, damit im Leerlauf nicht jeden Tick die defs-Tabelle (inkl.
+    -- fgs:getMaxValue-Calls) gebaut wird.
+    local active = FarmMonitor.soilActiveLayers or {}
+    if next(active) == nil then return nil end
     local mission = g_currentMission
     local fgs = mission.fieldGroundSystem
     if fgs == nil or FieldDensityMap == nil or DensityCoordType == nil then return nil end
@@ -3186,9 +3461,11 @@ function FarmMonitor:initSoilState()
         { name = "roller", getMap = function() return fgs:getDensityMapData(FieldDensityMap.ROLLER_LEVEL) end,         minVal = 1,                                          noDataVal = 0   },
     }
 
+    -- Nur Layer bauen, die gerade in einem Browser angezeigt werden (active s.o.)
     -- Build cached modifier/filter per layer (mapId is stable across frames)
     local layers = {}
     for _, def in ipairs(defs) do
+        if active[def.name] then
         local ok, mapId, firstCh, numCh = pcall(def.getMap)
         if ok and mapId ~= nil then
             local mod = DensityMapModifier.new(mapId, firstCh, numCh, g_terrainNode)
@@ -3200,6 +3477,7 @@ function FarmMonitor:initSoilState()
                 minVal    = def.minVal or 1,
                 noDataVal = def.noDataVal or 0,
             }
+        end
         end
     end
 
@@ -3283,7 +3561,9 @@ function FarmMonitor:stepSoilExport()
         local writeOk, writeErr = pcall(function()
             local f = io.open(st.outputDir .. "layer_" .. name .. ".json", "w")
             if f == nil then error("cannot open file") end
-            f:write('{"layer":"' .. name .. '","res":' .. res .. ',"data":[')
+            -- savegameId lets the dashboard reject stale overlays after a savegame
+            -- switch (old map's layer_*.json may still be on disk until re-scanned).
+            f:write('{"savegameId":"' .. tostring(FarmMonitor.savegameId or "") .. '","layer":"' .. name .. '","res":' .. res .. ',"data":[')
             f:write(table.concat(vals, ","))
             f:write(']}')
             f:close()
@@ -3675,6 +3955,7 @@ function FarmMonitor:processCommands()
             objectInfoIndex = getXMLString(xmlId, base .. "#objectInfoIndex") or "",
             value           = getXMLString(xmlId, base .. "#value")           or "",
             setting         = getXMLString(xmlId, base .. "#setting")         or "",
+            layers          = getXMLString(xmlId, base .. "#layers")          or "",  -- for soilScan.setLayers (comma-separated)
         }
         if cmd.cmd ~= "" then
             local ok, err = pcall(FarmMonitor.dispatchCommand, FarmMonitor, cmd)
@@ -3725,6 +4006,7 @@ function FarmMonitor:dispatchCommand(cmd)
         ["autodrive.followDistance"]      = FarmMonitor.cmdAutoDriveFollowDistance,
         ["autodrive.unloadFillLevel"]     = FarmMonitor.cmdAutoDriveUnloadFillLevel,
         ["soilScan.setMode"]              = FarmMonitor.cmdSoilScanSetMode,
+        ["soilScan.setLayers"]            = FarmMonitor.cmdSoilScanSetLayers,
         ["autodrive.cornerSpeed"]         = FarmMonitor.cmdAutoDriveCornerSpeed,
         ["autodrive.preCallLevel"]        = FarmMonitor.cmdAutoDrivePreCallLevel,
         ["autodrive.chaseSide"]           = FarmMonitor.cmdAutoDriveChaseSide,
@@ -3751,6 +4033,38 @@ function FarmMonitor:cmdSoilScanSetMode(cmd)
     -- Laufenden Scan-Zyklus neu starten damit neue Maske sofort greift
     FarmMonitor.soilState = nil
     print("[FarmMonitor] Soil-Scan Modus gesetzt: " .. newMode)
+end
+
+-- Setzt die Menge der gerade angezeigten Bodenlayer (Union aller Browser, vom Go-Server berechnet).
+-- layers = kommaseparierte Liste (z.B. "weed,stone") oder leer = kein Layer aktiv.
+function FarmMonitor:cmdSoilScanSetLayers(cmd)
+    local valid = {
+        weed = true, stone = true, plow = true, spray = true,
+        lime = true, mulch = true, roller = true,
+    }
+    local newSet = {}
+    local listStr = cmd.layers or ""
+    for name in string.gmatch(listStr, "[^,]+") do
+        name = name:gsub("%s", "")
+        if valid[name] then newSet[name] = true end
+    end
+
+    -- Vergleich mit aktuellem Set — nur bei Änderung neu starten
+    local current = FarmMonitor.soilActiveLayers or {}
+    local changed = false
+    for k in pairs(newSet)  do if not current[k] then changed = true break end end
+    if not changed then
+        for k in pairs(current) do if not newSet[k] then changed = true break end end
+    end
+    if not changed then return end
+
+    FarmMonitor.soilActiveLayers = newSet
+    -- Laufenden Scan-Zyklus neu starten damit neue Layer-Auswahl sofort greift
+    FarmMonitor.soilState = nil
+
+    local names = {}
+    for k in pairs(newSet) do names[#names + 1] = k end
+    print("[FarmMonitor] Soil-Scan Layer gesetzt: " .. (next(newSet) and table.concat(names, ",") or "(keine)"))
 end
 
 function FarmMonitor:cmdSetProductionOutputMode(cmd)

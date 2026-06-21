@@ -1719,9 +1719,13 @@
     transition: transform 2s linear;
     will-change: transform;
   }
-  .vehicle-rot-scale {
-    pointer-events: all;
+  .vehicle-rot {
+    transition: transform 2s linear;   /* ease heading change, in sync with the 2s position glide */
     will-change: transform;
+  }
+  .vehicle-scale {
+    pointer-events: all;
+    will-change: transform;            /* zoom updates this instantly (no transition) */
   }
   #layer-fields polygon { pointer-events: all; }
   #layer-hotspots .hotspot-pin { pointer-events: all; }
@@ -3033,6 +3037,10 @@
             <g id="layer-fields"></g>
             <g id="layer-hotspots"></g>
             <g id="layer-vehicles"></g>
+            <!-- Swap bodies / containers ride on top of their carrier; their pins
+                 live in this layer so they draw above the trucks without per-frame
+                 re-ordering (which would break the movement transition). -->
+            <g id="layer-vehicles-top"></g>
           </svg>
         </div>
       </div>
@@ -3060,6 +3068,7 @@
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:0 2px">
           <span style="font-size:11px;color:#9ca3af;flex:1" data-i18n-text="map.scanLabel">Scan:</span>
           <button id="soil-scan-mode-btn" onclick="_toggleSoilScanMode()" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#d1d5db;cursor:pointer" data-i18n-title="map.toggleScanMode" title="Umschalten: nur eigene Felder / alle Felder"><span data-i18n-text="map.scanOwn">eigene Felder</span></button>
+          <button id="soil-debug-btn" onclick="_measureSoilOffset()" title="Debug: Soil-Overlay-Versatz messen (Ergebnis in der Browser-Konsole + Marker auf der Karte)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #374151;background:#1f2937;color:#6b7280;cursor:pointer">⊹</button>
         </div>
         <div id="soil-layer-legend" style="display:contents"></div>
       </div>
@@ -5254,6 +5263,10 @@ function showView(name) {
 
   if (appData) rerenderCurrentView();
   if (willTrack) startVehicleTracking();
+
+  // Update soil-scan presence right away on view change (entering map claims our
+  // layers; leaving it releases them so Lua can stop scanning).
+  if (typeof sendSoilPresence === 'function') sendSoilPresence();
 }
 
 function switchSettingsTab(tab) {
@@ -5744,8 +5757,8 @@ function applyMapTransform() {
   document.getElementById('map-inner').style.transform =
     `translate(${mapPanX}px,${mapPanY}px) scale(${mapZoom})`;
   const iconS = (1 / mapZoom).toFixed(4);
-  document.querySelectorAll('.vehicle-rot-scale').forEach(el => {
-    el.style.transform = `rotate(${el.dataset.deg}deg) scale(${iconS})`;
+  document.querySelectorAll('.vehicle-scale').forEach(el => {
+    el.style.transform = `scale(${iconS})`;   // rotation lives on .vehicle-rot, untouched by zoom
   });
   document.querySelectorAll('.player-label-g').forEach(el => {
     el.style.transform = `scale(${iconS})`;
@@ -6029,12 +6042,26 @@ function toggleSoilLayer(checkbox) {
   const name = checkbox.dataset.layer;
   if (checkbox.checked) {
     activeSoilLayers.add(name);
-    fetchAndRenderSoilLayer(name);
+    sendSoilPresence();          // tell server immediately → Lua starts scanning this layer
+    pollSoilLayerUntilFresh(name); // fetch now + retry while the scan spins up (~1–2 s)
   } else {
     activeSoilLayers.delete(name);
+    sendSoilPresence();          // server drops it from the union → Lua stops scanning it
     const paths = soilLayerElements[name];
     if (paths) { paths.forEach(p => p.remove()); delete soilLayerElements[name]; }
   }
+}
+
+// After enabling a layer the freshly-scanned layer_*.json may not exist yet (scan
+// needs a cycle to produce it). Fetch now, then retry a few times until data arrives.
+function pollSoilLayerUntilFresh(name) {
+  fetchAndRenderSoilLayer(name);
+  let attempts = 0;
+  const iv = setInterval(() => {
+    attempts++;
+    if (attempts > 3 || !activeSoilLayers.has(name)) { clearInterval(iv); return; }
+    fetchAndRenderSoilLayer(name);
+  }, 2000);
 }
 
 async function fetchAndRenderSoilLayer(name) {
@@ -6046,16 +6073,32 @@ async function fetchAndRenderSoilLayer(name) {
   } catch(e) { console.warn('soil layer fetch failed:', name, e); }
 }
 
+let _lastSoilRes = 128;  // last rendered soil resolution — used by _measureSoilOffset()
+
 function renderSoilLayerData(name, layerData) {
+  // Reject overlays from a different savegame/map. After a savegame switch the old
+  // map's layer_*.json can still be on disk (on-demand: only re-scanned when shown),
+  // which would project a stale overlay onto the new map. Clear and bail on mismatch.
+  const curSavegameId = savegameId || (appData && appData.mapMeta && appData.mapMeta.savegameId);
+  if (layerData.savegameId && curSavegameId && layerData.savegameId !== curSavegameId) {
+    const stale = soilLayerElements[name];
+    if (stale) stale.forEach(p => p.setAttribute('d', ''));
+    return;
+  }
   const res    = layerData.res || 128;
   const values = layerData.data;
   if (!values || values.length !== res * res) return;
+  _lastSoilRes = res;
 
   const bands    = SOIL_LAYER_BANDS[name];
   const color    = SOIL_LAYER_COLORS[name] || '#ffffff';
   const cellSize = MAP_PX * 0.5 / res;
-  const ox       = MAP_PX * 0.25;
-  const oy       = MAP_PX * 0.25;
+  // Grid value (xi,zi) is sampled in Lua over the cell [corner, corner+cell] (its
+  // content sits at corner+½cell). Place the marching-squares lattice on the cell
+  // CENTRE so it matches worldToMap(corner+½cell) — otherwise the overlay lands ½
+  // cell to the north-west of every field. (Half-cell offset fix.)
+  const ox       = MAP_PX * 0.25 + cellSize / 2;
+  const oy       = MAP_PX * 0.25 + cellSize / 2;
   const svgLayer = document.getElementById('layer-soil');
   if (!svgLayer || !bands) return;
 
@@ -6097,12 +6140,15 @@ function _marchingSquares(data, res, threshold, above, cellSize, ox, oy, noDataV
   }
   function inside(r, c) { const v = val(r, c); return above ? v > threshold : v < threshold; }
 
-  // Snap to exact cell boundary (t=1) when one neighbor is the non-field sentinel
-  // (noDataVal). Without snapping, linear interpolation bleeds the fill into
-  // adjacent non-field cells (roads, industrial areas).
+  // Snap to the exact cell boundary when one neighbor is the non-field sentinel
+  // (noDataVal) — prevents fill from bleeding into adjacent non-field cells
+  // (roads, industrial areas). With the centre-anchored lattice (ox/oy include
+  // +cellSize/2) the cell boundary lies at the midpoint between two lattice
+  // points, i.e. t=0.5. (Was t=1 for the old corner-anchored lattice; using 1
+  // here would push field edges half a cell to the south-east.)
   function interpT(v0, v1) {
     if (noDataVal !== undefined && (v0 === noDataVal) !== (v1 === noDataVal))
-      return 1;
+      return 0.5;
     return (v0 === v1) ? 0.5 : Math.max(0, Math.min(1, (threshold - v0) / (v1 - v0)));
   }
   function hEdge(r, c) {
@@ -6219,6 +6265,76 @@ function refreshActiveSoilLayers() {
 // Poll soil layers independently every 30s — decoupled from SSE render cycle
 setInterval(() => { if (activeSoilLayers.size > 0) refreshActiveSoilLayers(); }, 30000);
 
+// --- Soil-layer presence -----------------------------------------------------
+// Report which soil overlays this browser shows so the Go server can union them
+// across all clients and have Lua scan only the displayed layers (on-demand).
+const _soilClientId = 'c' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+function sendSoilPresence() {
+  // Only claim layers while the map view is open — leaving the map lets our
+  // entry expire (TTL) so Lua stops scanning if nobody else is watching.
+  const layers = currentView === 'map' ? [...activeSoilLayers] : [];
+  fetch('/api/soil/presence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId: _soilClientId, layers }),
+  }).catch(e => console.warn('soil presence failed:', e));
+}
+
+// Heartbeat — keeps our layers alive in the server-side union (TTL 45s).
+setInterval(sendSoilPresence, 15000);
+
+// Debug: measures soil-overlay alignment. Renders a synthetic single-cell grid
+// through the REAL marching-squares transform and compares its centroid to
+// worldToMap() of that cell's world centre — the same projection field polygons
+// and vehicle pins use. A non-zero offset = the overlay is shifted by that amount.
+// Draws red (rendered) + cyan (expected) markers on the map; logs px and metres.
+// Also exposed as window._measureSoilOffset(res) for console use.
+function _measureSoilOffset(res) {
+  res = res || _lastSoilRes || 128;
+  const T  = (appData && appData.mapMeta && appData.mapMeta.terrainSize) || 2048;
+  const cellSize = MAP_PX * 0.5 / res;
+  const ox = MAP_PX * 0.25 + cellSize / 2;   // must match renderSoilLayerData()
+  const oy = MAP_PX * 0.25 + cellSize / 2;
+  const r0 = Math.floor(res / 2), c0 = Math.floor(res / 2);
+  const data = new Uint8Array(res * res);    // 0 = outside (above:true sentinel)
+  data[r0 * res + c0] = 255;                  // exactly one active cell
+  const loops = _marchingSquares(data, res, 127, true, cellSize, ox, oy, undefined);
+  let sx = 0, sy = 0, n = 0;
+  loops.forEach(L => L.forEach(p => { sx += p.x; sy += p.y; n++; }));
+  if (!n) { console.warn('[soil-debug] no contour produced'); return; }
+  const cen    = { x: sx / n, y: sy / n };
+  const should = worldToMap(-T / 2 + (c0 + 0.5) * (T / res), -T / 2 + (r0 + 0.5) * (T / res), T);
+  const toM    = px => px / (MAP_PX * 0.5) * T;
+  const dpx = { dx: +(cen.x - should.x).toFixed(2), dy: +(cen.y - should.y).toFixed(2) };
+  const dm  = { dx: +toM(cen.x - should.x).toFixed(2), dy: +toM(cen.y - should.y).toFixed(2) };
+  const aligned = Math.abs(dpx.dx) < 0.05 && Math.abs(dpx.dy) < 0.05;
+  console.log(`[soil-debug] res=${res} terrain=${T}m | rendered`, cen, '| expected', should,
+              '| offset px', dpx, '| offset m', dm, aligned ? '→ ALIGNED ✔' : '→ MISALIGNED ✗');
+
+  // Visual markers (auto-clear after 8s) — zoom in to see the ~1–2px difference.
+  const layer = document.getElementById('layer-soil');
+  if (layer) {
+    const old = document.getElementById('soil-debug-markers');
+    if (old) old.remove();
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.id = 'soil-debug-markers';
+    g.style.pointerEvents = 'none';
+    const mark = (p, col) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', '1.4');
+      c.setAttribute('fill', 'none'); c.setAttribute('stroke', col); c.setAttribute('stroke-width', '0.4');
+      g.appendChild(c);
+    };
+    mark(should, '#22d3ee');  // expected (worldToMap)
+    mark(cen, '#ef4444');     // rendered (soil transform)
+    layer.appendChild(g);
+    setTimeout(() => { const e = document.getElementById('soil-debug-markers'); if (e) e.remove(); }, 8000);
+  }
+  return { offsetPx: dpx, offsetM: dm, aligned };
+}
+window._measureSoilOffset = _measureSoilOffset;
+
 let _soilScanMode = 'owned';  // lokaler State, gespiegelt vom Mod
 
 function _toggleSoilScanMode() {
@@ -6311,8 +6427,88 @@ function renderHotspotPins(hotspotsData, terrainSize) {
   });
 }
 
+// Top-down LKW/truck icon — points north/up (front = small y), matching the pin
+// rotation convention. Style block stripped → inline fills (st0=#575756, st1=#dadada,
+// unstyled = black wheels/mirrors).
+// ── Top-down vehicle icons, loaded from static/icons/*.svg at boot ──
+// Each icon is an authored .svg file; loadVehicleIcons() derives its viewBox
+// and aspect ratio from the file and uses the file's inner markup verbatim.
+// To swap an icon: replace the .svg and rebuild — no markup literals to edit.
+// `anchor` (in viewBox coords) is semantic metadata that isn't in the file:
+// trucks anchor on their fifth wheel, semitrailers on their kingpin, so a
+// coupled pair lines up. Omit anchor → the icon centres on its pin.
+const VEHICLE_ICON_MANIFEST = {
+  truckTractor:     { file: 'icons/truck_tractor.svg',     anchor: { x: 45.5,  y: 143  } },
+  truckRigid:       { file: 'icons/truck_rigid.svg' },
+  truckHooklift:    { file: 'icons/truck_hooklift.svg' },
+  trailerDrawbar:   { file: 'icons/trailer.svg' },
+  trailerSemi:      { file: 'icons/semitrailer.svg',       anchor: { x: 45.57, y: 62.6 } },
+  trailerSwapbody:  { file: 'icons/trailer_swapbody.svg' },
+  trailerContainer: { file: 'icons/trailer_container.svg' },
+};
+
+// Registries consumed by updateVehicles() and trailerIconFor(). Empty until
+// loadVehicleIcons() resolves; the render path falls back to the dot marker
+// for any kind whose icon hasn't loaded yet.
+let TRUCK_ICON_TRACTOR = null;
+let TRUCK_ICONS  = {};
+let TRAILER_ICONS = {};
+
+async function loadVehicleIcons() {
+  const loaded = {};
+  await Promise.all(Object.entries(VEHICLE_ICON_MANIFEST).map(async ([key, cfg]) => {
+    try {
+      const res = await fetch(cfg.file);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const doc = new DOMParser().parseFromString(await res.text(), 'image/svg+xml');
+      const svg = doc.querySelector('svg');
+      if (!svg) throw new Error('no <svg> root');
+      const vb = svg.getAttribute('viewBox');
+      const p  = vb.split(/\s+/).map(Number);          // [minX, minY, w, h]
+      loaded[key] = { vb, ratio: p[3] / p[2], markup: svg.innerHTML, anchor: cfg.anchor };
+    } catch (e) {
+      console.warn('vehicle icon load failed:', cfg.file, e);
+    }
+  }));
+
+  TRUCK_ICON_TRACTOR = loaded.truckTractor || null;
+  TRUCK_ICONS = {
+    rigid:    loaded.truckRigid,
+    hooklift: loaded.truckHooklift,
+    swapBody: loaded.truckHooklift,   // swap-body trucks share the hooklift icon
+  };
+  TRAILER_ICONS = {
+    trailer:        loaded.trailerDrawbar,
+    semitrailer:    loaded.trailerSemi,
+    wechselbruecke: loaded.trailerSwapbody,
+    container:      loaded.trailerContainer,
+  };
+
+  // Drop any non-player pins built during the pre-load window (they used the
+  // dot fallback) so the next SSE tick rebuilds them with their real icons.
+  document.querySelectorAll('#layer-vehicles [id^="vm-"], #layer-vehicles-top [id^="vm-"]')
+    .forEach(el => { if (!el.querySelector('.player-label-g')) el.remove(); });
+}
+
+function trailerIconFor(v) {
+  if (v.trailerKind === 'wechselbruecke') return TRAILER_ICONS.wechselbruecke;
+  if (v.trailerKind === 'container')      return TRAILER_ICONS.container;
+  if (v.trailerCoupling === 'auflieger')  return TRAILER_ICONS.semitrailer;
+  return TRAILER_ICONS.trailer;
+}
+
+// Returns the next angle expressed as prev ± the shortest delta, so a CSS rotate
+// transition eases the short way around (e.g. 350°→10° becomes 350°→370°, +20°).
+function shortestAngle(prev, next) {
+  let d = (next - prev) % 360;
+  if (d > 180) d -= 360;
+  else if (d < -180) d += 360;
+  return prev + d;
+}
+
 function updateVehicles(vehiclesData, terrainSize) {
   const layer = document.getElementById('layer-vehicles');
+  const topLayer = document.getElementById('layer-vehicles-top');
   const vehicles = vehiclesData?.vehicles || [];
   const seen = new Set();
   const typeColor = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
@@ -6341,31 +6537,68 @@ function updateVehicles(vehiclesData, terrainSize) {
         addTapListener(el, () => openMapDetail('vehicle', v.id));
       }
 
-      // Inner: rotate + scale (no transition — zoom updates this instantly)
+      // Rotation group (eases heading via CSS transition) wraps the scale group
+      // (instant zoom). Splitting them lets the heading glide while zoom stays snappy.
+      const rot = document.createElementNS('http://www.w3.org/2000/svg','g');
+      rot.classList.add('vehicle-rot');
+      rot.dataset.deg = deg;               // unwrapped applied angle (see shortestAngle)
+      rot.style.transition = 'none';        // avoid a spin from 0° on spawn
+      rot.style.transform = `rotate(${deg}deg)`;
+
       const inner = document.createElementNS('http://www.w3.org/2000/svg','g');
-      inner.classList.add('vehicle-rot-scale');
-      inner.dataset.deg = deg;
-      inner.style.transform = `rotate(${deg}deg) scale(${iconS})`;
+      inner.classList.add('vehicle-scale');
+      inner.style.transform = `scale(${iconS})`;
+      rot.appendChild(inner);
 
-      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      circle.setAttribute('r', r);
-      circle.setAttribute('fill', color);
-      circle.setAttribute('stroke', '#000');
-      circle.setAttribute('stroke-width', '1');
-      inner.appendChild(circle);
+      // Top-down icon (points north, rotates with heading) for trucks and trailers;
+      // everything else keeps the simple dot. Trucks pick by truckKind (fallback
+      // tractor unit), trailers by kind/coupling via trailerIconFor().
+      const ic = v.type === 'TRUCK'   ? (TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR)
+               : v.type === 'TRAILER' ? trailerIconFor(v)
+               : null;
+      if (ic) {
+        const vbp = ic.vb.split(/\s+/).map(Number);        // [minX, minY, vbW, vbH]
+        const vbW = vbp[2], vbH = vbp[3];
+        const W = 19.5, H = +(W * ic.ratio).toFixed(2);    // same width → longer icons are just taller
+        // Put the icon's coupling anchor at the pin WITHOUT moving the <svg>
+        // viewport (which must stay centred so rotation keeps pivoting on the pin —
+        // an off-centre viewport would rotate around its own centre and drift).
+        // Instead re-window the viewBox so the anchor lands at the viewport centre;
+        // overflow:visible draws the part hanging past the pin. No anchor → centre.
+        const aX = ic.anchor ? ic.anchor.x : vbW / 2;
+        const aY = ic.anchor ? ic.anchor.y : vbH / 2;
+        const minX = (vbp[0] || 0) + aX - vbW / 2;
+        const minY = (vbp[1] || 0) + aY - vbH / 2;
+        const tsvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+        tsvg.setAttribute('viewBox', `${minX} ${minY} ${vbW} ${vbH}`);
+        tsvg.setAttribute('width',  W);
+        tsvg.setAttribute('height', H);
+        tsvg.setAttribute('x', -W / 2);
+        tsvg.setAttribute('y', -H / 2);
+        tsvg.setAttribute('overflow', 'visible');
+        tsvg.innerHTML = ic.markup;
+        inner.appendChild(tsvg);
+      } else {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        circle.setAttribute('r', r);
+        circle.setAttribute('fill', color);
+        circle.setAttribute('stroke', '#000');
+        circle.setAttribute('stroke-width', '1');
+        inner.appendChild(circle);
 
-      if (v.type !== 'TOOL' && v.type !== 'TRAILER') {
-        const arrow = document.createElementNS('http://www.w3.org/2000/svg','polygon');
-        arrow.setAttribute('points', `0,${-(r+6)} -3,${-(r)} 3,${-(r)}`);
-        arrow.setAttribute('fill', color);
-        arrow.setAttribute('stroke','#000');
-        arrow.setAttribute('stroke-width','0.5');
-        inner.appendChild(arrow);
+        if (v.type !== 'TOOL' && v.type !== 'TRAILER') {
+          const arrow = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+          arrow.setAttribute('points', `0,${-(r+6)} -3,${-(r)} 3,${-(r)}`);
+          arrow.setAttribute('fill', color);
+          arrow.setAttribute('stroke','#000');
+          arrow.setAttribute('stroke-width','0.5');
+          inner.appendChild(arrow);
+        }
       }
 
       const title = document.createElementNS('http://www.w3.org/2000/svg','title');
       inner.appendChild(title);
-      el.appendChild(inner);
+      el.appendChild(rot);
 
       if (v.type === 'PLAYER') {
         const lg = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -6401,17 +6634,23 @@ function updateVehicles(vehiclesData, terrainSize) {
       el.style.transform  = `translate3d(${tx}px,${ty}px,0)`;
       if (v.type === 'PLAYER') {
         layer.insertBefore(el, layer.firstChild);
+      } else if (v.type === 'TRAILER' && (v.trailerKind === 'wechselbruecke' || v.trailerKind === 'container')) {
+        topLayer.appendChild(el);   // ride on top of the carrier (separate layer keeps the move transition)
       } else {
         layer.appendChild(el);
       }
-      requestAnimationFrame(() => { el.style.transition = 'transform 2s linear'; });
+      requestAnimationFrame(() => { el.style.transition = 'transform 2s linear'; rot.style.transition = ''; });
     } else {
       el.style.transform = `translate3d(${tx}px,${ty}px,0)`;
-      const inner = el.querySelector('.vehicle-rot-scale');
-      if (inner) {
-        inner.dataset.deg = deg;
-        inner.style.transform = `rotate(${deg}deg) scale(${(1/mapZoom).toFixed(4)})`;
+      const rot = el.querySelector('.vehicle-rot');
+      if (rot) {
+        // Take the shortest rotational path so e.g. 350°→10° eases +20° instead of −340°
+        const applied = shortestAngle(parseFloat(rot.dataset.deg) || 0, parseFloat(deg));
+        rot.dataset.deg = applied;
+        rot.style.transform = `rotate(${applied}deg)`;
       }
+      const sc = el.querySelector('.vehicle-scale');
+      if (sc) sc.style.transform = `scale(${(1/mapZoom).toFixed(4)})`;
       const lg = el.querySelector('.player-label-g');
       if (lg) lg.style.transform = `scale(${(1/mapZoom).toFixed(4)})`;
     }
@@ -6424,7 +6663,7 @@ function updateVehicles(vehiclesData, terrainSize) {
     }
   }
 
-  layer.querySelectorAll('[id^="vm-"]').forEach(el => {
+  document.querySelectorAll('#layer-vehicles [id^="vm-"], #layer-vehicles-top [id^="vm-"]').forEach(el => {
     if (!seen.has(el.id.slice(3))) el.remove();
   });
 
@@ -8889,6 +9128,7 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
   applyI18nLabels();
   showView('home');
   loadGlobalSettings();
+  loadVehicleIcons();   // async; map pins fall back to dots until icons resolve
   loadData();
   connect();
   const cb = document.getElementById('toggle-player-labels');
