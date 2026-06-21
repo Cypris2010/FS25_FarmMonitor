@@ -597,6 +597,7 @@ The full technical breakdown of both command paths (singleplayer, listen-server,
 
 | Library | License | Used for |
 |---|---|---|
+| [i18next](https://www.i18next.com) | [MIT](https://github.com/i18next/i18next/blob/master/LICENSE) © i18next authors | Dashboard internationalization (DE/EN) |
 | [Tabler Icons](https://tabler.io/icons) | [MIT](https://github.com/tabler/tabler-icons/blob/main/LICENSE) © 2020-2026 Paweł Kuna | Icons in the dashboard UI |
 | [game-icons.net](https://game-icons.net) — "Thrust Bend" by [Delapouite](https://delapouite.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Vehicle type icon |
 | [game-icons.net](https://game-icons.net) — "Gas Pump" by [Delapouite](https://delapouite.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Fuel icon |
@@ -607,3 +608,12 @@ The full technical breakdown of both command paths (singleplayer, listen-server,
 | [polylabel](https://github.com/mapbox/polylabel) by Mapbox | [ISC](https://github.com/mapbox/polylabel/blob/master/LICENSE) © 2016 Mapbox | Pole of inaccessibility for field number placement on map |
 
 Full license texts are listed in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
+
+## License
+
+FarmMonitor is released under the [MIT License](LICENSE) © 2026 Fabian Bott.
+
+You may use, modify, and redistribute it freely, including in your own projects,
+as long as the copyright notice and license text are preserved. The software is
+provided "as is", without warranty of any kind. Bundled third-party assets keep
+their own licenses (see [Third-party libraries](#third-party-libraries) above).
