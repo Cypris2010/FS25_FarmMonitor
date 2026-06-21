@@ -3,7 +3,7 @@
     <iconFilename>icon_FarmMonitor.png</iconFilename>
     <author>FarmMonitor</author>
     <contributors>Uses public API of FS25_ProductionStorageControl by braeven (no PSC code included)</contributors>
-    <version>0.4.16.41</version>
+    <version>0.4.16.42</version>
     <title>
         <en>Farm Monitor</en>
     </title>
