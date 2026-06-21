@@ -6430,178 +6430,66 @@ function renderHotspotPins(hotspotsData, terrainSize) {
 // Top-down LKW/truck icon — points north/up (front = small y), matching the pin
 // rotation convention. Style block stripped → inline fills (st0=#575756, st1=#dadada,
 // unstyled = black wheels/mirrors).
-const LKW_ICON_VIEWBOX = '0 0 91.13 189.56';
-const LKW_ICON_RATIO   = 189.56 / 91.13;   // tractor unit (Sattelzugmaschine)
-const LKW_ICON_MARKUP = `
-  <rect fill="#000100" x="7.75" y="32.26" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="73.17" y="32.09" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#585857" x="13.69" y="152.4" width="64.33" height="5.98"/>
-  <rect fill="#585857" x="33.42" y="68.35" width="23.93" height="107.34"/>
-  <path fill="#000100" d="M37.26,154.32s-3.37-5.79-4.45-8.85-1.7-3.95-1.08-7.32,1.61-4.58,3.37-5.98,4.04-1.4,4.04-1.4h6.71v6.52s-1.44-.12-2.01,1.19.48,2.85.48,2.85l-3.31,13.3h-3.75"/>
-  <path fill="#000100" d="M53.89,154.32s3.37-5.79,4.45-8.85,1.7-3.95,1.08-7.32-1.61-4.58-3.37-5.98-4.04-1.4-4.04-1.4h-6.71s0,6.52,0,6.52c0,0,1.44-.12,2.01,1.19s-.48,2.85-.48,2.85l3.31,13.3h3.75"/>
-  <rect fill="#000100" x="8.85" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="19.04" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="62.44" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="72.62" y="138.85" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#585857" x="9.36" y="172.26" width="72.04" height="3.44"/>
-  <rect fill="#585857" x="59.36" y="76.74" width="21.82" height="52.43"/>
-  <rect fill="#585857" x="9.41" y="76.74" width="21.99" height="52.43"/>
-  <g>
-    <rect fill="#585857" x="7.69" y="13.28" width="4.16" height=".87" transform="translate(-5.55 6.72) rotate(-30)"/>
-    <path fill="#585857" d="M2.14,15.11h5.64c.63,0,1.14.51,1.14,1.14v.57c0,.32-.26.58-.58.58H1.56c-.31,0-.57-.25-.57-.57v-.58c0-.63.51-1.14,1.14-1.14Z" transform="translate(-7.46 4.66) rotate(-30)"/>
-  </g>
-  <g>
-    <rect fill="#585857" x="78.74" y="13.24" width="4.16" height=".87" transform="translate(143.98 65.92) rotate(-150)"/>
-    <path fill="#585857" d="M82.24,15.07h6.78c.32,0,.58.26.58.58v.57c0,.63-.51,1.14-1.14,1.14h-5.64c-.63,0-1.14-.51-1.14-1.14v-.58c0-.31.25-.57.57-.57Z" transform="translate(151.69 73.07) rotate(-150)"/>
-  </g>
-  <rect fill="#dadada" x="11" y="4.95" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
-  <rect fill="#dadada" x="9.41" y="60.19" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
-  <polygon fill="#dadada" points="9.41 61.39 11 12.29 45.3 12.29 45.3 63.97 9.41 61.39"/>
-  <polygon fill="#dadada" points="81.18 61.39 79.59 12.29 45.3 12.29 45.3 63.97 81.18 61.39"/>
-  <rect fill="#dadada" x="22.11" y="4.16" width="46.36" height="2.1" rx="1.05" ry="1.05"/>
-  <path fill="#585857" d="M17.96,5.78h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H13.15c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
-  <rect fill="#dadada" x="14.54" y="68.72" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
-  <rect fill="#585857" x="32.07" y="24.43" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
-  <rect fill="#585857" x="14.37" y="121.2" width="61.86" height="3.44"/>
-  <rect fill="#585857" x="14.37" y="80.37" width="61.86" height="3.44"/>`;
-
-const LKW_RIGID_VIEWBOX = '0 0 91.13 279.65';
-const LKW_RIGID_RATIO   = 279.65 / 91.13;  // rigid (fester Aufbau)
-const LKW_RIGID_MARKUP = `
-  <g>
-    <rect fill="#010101" x="4.85" y="32.59" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-    <rect fill="#010101" x="76.26" y="32.59" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-    <rect fill="#585857" x="13.97" y="152.4" width="64.33" height="5.98"/>
-    <rect fill="#585857" x="33.69" y="68.36" width="23.93" height="115.74"/>
-    <path fill="#010101" d="M37.54,154.32s-3.37-5.79-4.45-8.85-1.7-3.95-1.08-7.32,1.61-4.58,3.37-5.98c1.76-1.4,4.04-1.4,4.04-1.4h6.71v6.52s-1.44-.12-2.01,1.19.48,2.85.48,2.85l-3.31,13.3h-3.75"/>
-    <path fill="#010101" d="M54.16,154.32s3.37-5.79,4.45-8.85,1.7-3.95,1.08-7.32-1.61-4.58-3.37-5.98-4.04-1.4-4.04-1.4h-6.71v6.52s1.44-.12,2.01,1.19-.48,2.85-.48,2.85l3.31,13.3h3.75"/>
-    <rect fill="#585857" x="9.64" y="172.26" width="72.04" height="3.44"/>
-    <rect fill="#585857" x="59.64" y="76.75" width="21.82" height="52.43"/>
-    <rect fill="#585857" x="9.69" y="76.75" width="21.99" height="52.43"/>
-    <g>
-      <rect fill="#585857" x="7.97" y="13.28" width="4.16" height=".87" transform="translate(-5.51 6.86) rotate(-30)"/>
-      <path fill="#585857" d="M2.21,16.67l4.88-2.82c.55-.32,1.24-.13,1.56.42l.28.49c.16.28.06.63-.21.79l-5.86,3.38c-.27.16-.62.07-.78-.21l-.29-.5c-.32-.55-.13-1.24.42-1.56Z"/>
-    </g>
-    <g>
-      <rect fill="#585857" x="80.66" y="11.58" width=".87" height="4.16" transform="translate(28.71 77.06) rotate(-60)"/>
-      <path fill="#585857" d="M88.28,18.9l-5.87-3.39c-.28-.16-.37-.52-.21-.79l.28-.49c.32-.55,1.01-.73,1.56-.42l4.88,2.82c.55.31.73,1.01.42,1.56l-.29.5c-.16.27-.5.37-.78.21h0Z"/>
-    </g>
-    <rect fill="#dadada" x="11.28" y="4.95" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
-    <rect fill="#dadada" x="9.69" y="60.19" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
-    <polygon fill="#dadada" points="9.69 61.39 11.28 12.29 45.57 12.29 45.57 63.97 9.69 61.39"/>
-    <polygon fill="#dadada" points="81.46 61.39 79.87 12.29 45.57 12.29 45.57 63.97 81.46 61.39"/>
-    <path fill="#dadada" d="M23.44,4.16h44.26c.58,0,1.05.47,1.05,1.05h0c0,.58-.47,1.05-1.05,1.05H23.44c-.58,0-1.05-.47-1.05-1.05h0c0-.58.47-1.05,1.05-1.05Z"/>
-    <path fill="#585857" d="M18.24,5.78h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H13.42c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
-    <rect fill="#dadada" x="14.82" y="68.72" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
-    <rect fill="#585857" x="32.35" y="24.43" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
-    <rect fill="#585857" x="14.64" y="121.2" width="61.86" height="3.44"/>
-    <rect fill="#585857" x="14.64" y="80.38" width="61.86" height="3.44"/>
-  </g>
-  <g>
-    <rect fill="#585857" x="37.23" y="263.39" width="16.68" height="8.02"/>
-    <rect fill="#010101" x="76.3" y="176.36" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-    <rect fill="#010101" x="4.6" y="176.36" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-    <rect fill="#dadada" x="9.55" y="81.64" width="72.04" height="187.47" rx="1.79" ry="1.79"/>
-    <rect fill="#585857" x="9.55" y="271.45" width="72.04" height="4.52"/>
-    <rect fill="#b3b2b2" x="14.82" y="87.32" width="61.51" height="176.12" rx="1.79" ry="1.79"/>
-  </g>`;
-
-const LKW_HOOK_VIEWBOX = '0 0 91.13 212.23';
-const LKW_HOOK_RATIO   = 212.23 / 91.13;  // hooklift + swap body (shared)
-const LKW_HOOK_MARKUP = `
-  <rect fill="#000100" x="8.58" y="32.64" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="73.99" y="32.48" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#585857" x="14.52" y="147.78" width="64.33" height="5.98"/>
-  <rect fill="#585857" x="34.25" y="68.74" width="23.93" height="135.83"/>
-  <rect fill="#000100" x="9.68" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="19.86" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="63.27" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="73.45" y="134.23" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#585857" x="10.19" y="204.57" width="72.04" height="3.44"/>
-  <rect fill="#585857" x="60.19" y="77.13" width="21.82" height="52.43"/>
-  <rect fill="#585857" x="10.24" y="77.13" width="21.99" height="52.43"/>
-  <g>
-    <rect fill="#585857" x="8.52" y="13.66" width="4.16" height=".87" transform="translate(-5.63 7.19) rotate(-30)"/>
-    <path fill="#585857" d="M2.97,15.49h5.64c.63,0,1.14.51,1.14,1.14v.57c0,.32-.26.58-.58.58H2.39c-.31,0-.57-.25-.57-.57v-.58c0-.63.51-1.14,1.14-1.14Z" transform="translate(-7.54 5.12) rotate(-30)"/>
-  </g>
-  <g>
-    <rect fill="#585857" x="79.57" y="13.62" width="4.16" height=".87" transform="translate(145.34 67.05) rotate(-150)"/>
-    <path fill="#585857" d="M83.07,15.45h6.78c.32,0,.58.26.58.58v.57c0,.63-.51,1.14-1.14,1.14h-5.64c-.63,0-1.14-.51-1.14-1.14v-.58c0-.31.25-.57.57-.57Z" transform="translate(153.04 74.2) rotate(-150)"/>
-  </g>
-  <rect fill="#dadada" x="11.83" y="5.33" width="68.76" height="40.53" rx="7.34" ry="7.34"/>
-  <rect fill="#dadada" x="10.24" y="60.57" width="71.77" height="11.04" rx="1.62" ry="1.62"/>
-  <polygon fill="#dadada" points="10.24 61.77 11.83 12.67 46.12 12.67 46.12 64.35 10.24 61.77"/>
-  <polygon fill="#dadada" points="82.01 61.77 80.42 12.67 46.12 12.67 46.12 64.35 82.01 61.77"/>
-  <rect fill="#dadada" x="22.94" y="4.54" width="46.36" height="2.1" rx="1.05" ry="1.05"/>
-  <path fill="#585857" d="M18.79,6.16h54.84c3.13,0,5.67,2.54,5.67,5.67h0c0,.47-.38.85-.85.85H13.98c-.47,0-.85-.38-.85-.85h0c0-3.13,2.54-5.67,5.67-5.67Z"/>
-  <rect fill="#dadada" x="15.37" y="69.1" width="61.68" height="4.34" rx="1.05" ry="1.05"/>
-  <rect fill="#585857" x="32.9" y="24.81" width="26.44" height="15.66" rx="2.43" ry="2.43"/>
-  <rect fill="#585857" x="15.19" y="121.58" width="61.86" height="3.44"/>
-  <rect fill="#585857" x="15.19" y="80.76" width="61.86" height="3.44"/>
-  <rect fill="#585857" x="14.52" y="182.7" width="64.33" height="5.98"/>
-  <rect fill="#000100" x="9.68" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="19.86" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="63.27" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>
-  <rect fill="#000100" x="73.45" y="169.15" width="9.67" height="31.57" rx="3.25" ry="3.25"/>`;
-
-// Map a truck's build type (v.truckKind) to its top-down icon. Kinds without a
-// dedicated SVG yet (hooklift, swapBody) fall back to the tractor-unit icon —
-// add their entries here once the icons arrive.
-// anchor = fifth-wheel (Sattelkupplung) centre, so a coupled semitrailer's kingpin lines up here.
-const TRUCK_ICON_TRACTOR = { vb: LKW_ICON_VIEWBOX,  ratio: LKW_ICON_RATIO,  markup: LKW_ICON_MARKUP, anchor: { x: 45.5, y: 143 } };
-const TRUCK_ICONS = {
-  rigid:    { vb: LKW_RIGID_VIEWBOX, ratio: LKW_RIGID_RATIO, markup: LKW_RIGID_MARKUP },
-  hooklift: { vb: LKW_HOOK_VIEWBOX,  ratio: LKW_HOOK_RATIO,  markup: LKW_HOOK_MARKUP },
-  swapBody: { vb: LKW_HOOK_VIEWBOX,  ratio: LKW_HOOK_RATIO,  markup: LKW_HOOK_MARKUP },
+// ── Top-down vehicle icons, loaded from static/icons/*.svg at boot ──
+// Each icon is an authored .svg file; loadVehicleIcons() derives its viewBox
+// and aspect ratio from the file and uses the file's inner markup verbatim.
+// To swap an icon: replace the .svg and rebuild — no markup literals to edit.
+// `anchor` (in viewBox coords) is semantic metadata that isn't in the file:
+// trucks anchor on their fifth wheel, semitrailers on their kingpin, so a
+// coupled pair lines up. Omit anchor → the icon centres on its pin.
+const VEHICLE_ICON_MANIFEST = {
+  truckTractor:     { file: 'icons/truck_tractor.svg',     anchor: { x: 45.5,  y: 143  } },
+  truckRigid:       { file: 'icons/truck_rigid.svg' },
+  truckHooklift:    { file: 'icons/truck_hooklift.svg' },
+  trailerDrawbar:   { file: 'icons/trailer.svg' },
+  trailerSemi:      { file: 'icons/semitrailer.svg',       anchor: { x: 45.57, y: 62.6 } },
+  trailerSwapbody:  { file: 'icons/trailer_swapbody.svg' },
+  trailerContainer: { file: 'icons/trailer_container.svg' },
 };
 
-// ── Trailer top-down icons (point north, rotate with heading; cab-less boxes) ──
-const TRAILER_TRAILER_VIEWBOX = '0 0 91.13 225.89';
-const TRAILER_TRAILER_RATIO   = 225.89 / 91.13;  // drawbar trailer (Deichselanhänger)
-const TRAILER_TRAILER_MARKUP = `
-  <rect fill="#585857" x="37.23" y="210.81" width="16.68" height="8.02"/>
-  <rect fill="#010101" x="76.3" y="123.78" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-  <rect fill="#010101" x="4.6" y="123.78" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-  <rect fill="#dadada" x="9.55" y="29.06" width="72.04" height="187.47" rx="1.79" ry="1.79"/>
-  <rect fill="#585857" x="9.55" y="218.87" width="72.04" height="4.52"/>
-  <rect fill="#b3b2b2" x="14.82" y="34.74" width="61.51" height="176.12" rx="1.79" ry="1.79"/>
-  <rect fill="#585857" x="41.57" y="4.16" width="8" height="24.67"/>`;
+// Registries consumed by updateVehicles() and trailerIconFor(). Empty until
+// loadVehicleIcons() resolves; the render path falls back to the dot marker
+// for any kind whose icon hasn't loaded yet.
+let TRUCK_ICON_TRACTOR = null;
+let TRUCK_ICONS  = {};
+let TRAILER_ICONS = {};
 
-const TRAILER_SEMI_VIEWBOX = '0 0 91.13 250.59';
-const TRAILER_SEMI_RATIO   = 250.59 / 91.13;     // semitrailer (Auflieger)
-const TRAILER_SEMI_MARKUP = `
-  <rect fill="#585857" x="37.4" y="232.59" width="16.68" height="8.02"/>
-  <rect fill="#010101" x="76.47" y="145.56" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-  <rect fill="#010101" x="4.77" y="145.56" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-  <rect fill="#dadada" x="9.72" y="4.11" width="72.04" height="234.2" rx="1.79" ry="1.79"/>
-  <rect fill="#585857" x="9.72" y="240.65" width="72.04" height="4.52"/>
-  <rect fill="#b3b2b2" x="14.99" y="9.03" width="61.51" height="223.56" rx="1.79" ry="1.79"/>`;
+async function loadVehicleIcons() {
+  const loaded = {};
+  await Promise.all(Object.entries(VEHICLE_ICON_MANIFEST).map(async ([key, cfg]) => {
+    try {
+      const res = await fetch(cfg.file);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const doc = new DOMParser().parseFromString(await res.text(), 'image/svg+xml');
+      const svg = doc.querySelector('svg');
+      if (!svg) throw new Error('no <svg> root');
+      const vb = svg.getAttribute('viewBox');
+      const p  = vb.split(/\s+/).map(Number);          // [minX, minY, w, h]
+      loaded[key] = { vb, ratio: p[3] / p[2], markup: svg.innerHTML, anchor: cfg.anchor };
+    } catch (e) {
+      console.warn('vehicle icon load failed:', cfg.file, e);
+    }
+  }));
 
-const TRAILER_SWAP_VIEWBOX = '0 0 91.13 169.15';
-const TRAILER_SWAP_RATIO   = 169.15 / 91.13;     // swap body (Wechselbrücke)
-const TRAILER_SWAP_MARKUP = `
-  <rect fill="#585857" x="3.87" y="23.48" width="83.4" height="12.4"/>
-  <rect fill="#585857" x="3.87" y="136.42" width="83.4" height="12.4"/>
-  <rect fill="#dadada" x="12.06" y="12.09" width="67.02" height="150.82" rx="1.79" ry="1.79"/>
-  <rect fill="#b3b2b2" x="16.96" y="16.88" width="57.22" height="139.93" rx="1.79" ry="1.79"/>`;
+  TRUCK_ICON_TRACTOR = loaded.truckTractor || null;
+  TRUCK_ICONS = {
+    rigid:    loaded.truckRigid,
+    hooklift: loaded.truckHooklift,
+    swapBody: loaded.truckHooklift,   // swap-body trucks share the hooklift icon
+  };
+  TRAILER_ICONS = {
+    trailer:        loaded.trailerDrawbar,
+    semitrailer:    loaded.trailerSemi,
+    wechselbruecke: loaded.trailerSwapbody,
+    container:      loaded.trailerContainer,
+  };
 
-const TRAILER_HOOK_VIEWBOX = '0 0 91.13 169.15';
-const TRAILER_HOOK_RATIO   = 169.15 / 91.13;     // hook-lift container (Abrollcontainer)
-const TRAILER_HOOK_MARKUP = `
-  <path fill="#dadada" d="M45.57,4.82c-4.38,0-7.92,3.55-7.92,7.92s3.55,7.92,7.92,7.92,7.92-3.55,7.92-7.92-3.55-7.92-7.92-7.92ZM45.57,17.53c-2.64,0-4.79-2.14-4.79-4.79s2.14-4.79,4.79-4.79,4.79,2.14,4.79,4.79-2.14,4.79-4.79,4.79Z"/>
-  <rect fill="#dadada" x="12.06" y="12.74" width="67.02" height="150.82" rx="1.79" ry="1.79"/>
-  <rect fill="#b3b2b2" x="16.96" y="17.53" width="57.22" height="139.93" rx="1.79" ry="1.79"/>`;
+  // Drop any non-player pins built during the pre-load window (they used the
+  // dot fallback) so the next SSE tick rebuilds them with their real icons.
+  document.querySelectorAll('#layer-vehicles [id^="vm-"], #layer-vehicles-top [id^="vm-"]')
+    .forEach(el => { if (!el.querySelector('.player-label-g')) el.remove(); });
+}
 
-// Trailer icon dispatch: swap-body and container by kind, otherwise by coupling
-// (auflieger → semitrailer, else drawbar trailer).
-// anchor (viewBox coords) sets where the icon attaches to its pin; semitrailers
-// anchor on their kingpin so they meet the tractor unit's fifth wheel.
-const TRAILER_ICONS = {
-  trailer:        { vb: TRAILER_TRAILER_VIEWBOX, ratio: TRAILER_TRAILER_RATIO, markup: TRAILER_TRAILER_MARKUP },
-  semitrailer:    { vb: TRAILER_SEMI_VIEWBOX,    ratio: TRAILER_SEMI_RATIO,    markup: TRAILER_SEMI_MARKUP, anchor: { x: 45.57, y: 62.6 } },
-  wechselbruecke: { vb: TRAILER_SWAP_VIEWBOX,    ratio: TRAILER_SWAP_RATIO,    markup: TRAILER_SWAP_MARKUP },
-  container:      { vb: TRAILER_HOOK_VIEWBOX,    ratio: TRAILER_HOOK_RATIO,    markup: TRAILER_HOOK_MARKUP },
-};
 function trailerIconFor(v) {
   if (v.trailerKind === 'wechselbruecke') return TRAILER_ICONS.wechselbruecke;
   if (v.trailerKind === 'container')      return TRAILER_ICONS.container;
@@ -9240,6 +9128,7 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
   applyI18nLabels();
   showView('home');
   loadGlobalSettings();
+  loadVehicleIcons();   // async; map pins fall back to dots until icons resolve
   loadData();
   connect();
   const cb = document.getElementById('toggle-player-labels');

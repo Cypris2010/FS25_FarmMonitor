@@ -1606,6 +1606,7 @@ func main() {
 	mux.HandleFunc("/", handleDashboard)
 	mux.Handle("/lib/", http.FileServer(http.FS(staticFS)))
 	mux.Handle("/i18n/", http.FileServer(http.FS(staticFS)))
+	mux.Handle("/icons/", http.FileServer(http.FS(staticFS)))
 	mux.HandleFunc("/api/data", handleData(dataDir))
 	mux.HandleFunc("/api/events", handleEvents(b))
 	mux.HandleFunc("/api/vehicles", handleVehicles(dataDir))
