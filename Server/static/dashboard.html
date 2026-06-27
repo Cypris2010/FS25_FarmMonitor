@@ -6521,8 +6521,13 @@ function updateVehicles(vehiclesData, terrainSize) {
   const seen = new Set();
   const typeColor  = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
                        TOOL:'#6b7280', TRUCK:'#92400e', PLAYER:'#3b82f6', VEHICLE:'#22c55e' };
-  // Real-world vehicle footprint in metres — used to scale icons proportionally to map size
+  // Dot-marker footprint in metres (HARVESTER/TOOL/VEHICLE and icon-load fallbacks).
   const REAL_SIZE_M = { TRACTOR:5, HARVESTER:8, TRAILER:10, TOOL:4, TRUCK:8, PLAYER:2, VEHICLE:5 };
+  // All authored icons share the same viewBox width (91.13), so every icon vehicle
+  // (tractor/truck/trailer) renders at ONE common width — their relative size comes
+  // purely from the drawing's aspect ratio (longer vehicles = taller viewBox), never
+  // from a per-type factor. A tractor is only narrower than a truck if drawn so.
+  const ICON_WIDTH_M = 8;
   const svgPxPerM  = 512 / terrainSize;   // e.g. 0.25 px/m on a 2048 m map
 
   for (const v of vehicles) {
@@ -6539,7 +6544,17 @@ function updateVehicles(vehiclesData, terrainSize) {
       // rework) — a 2 m human has no meaningful map footprint. realPx=0 makes the
       // scale logic fall back to 1/mapZoom (screen-constant) in both code paths.
       const isPlayer   = v.type === 'PLAYER';
-      const realSvgPx  = isPlayer ? 26 : (REAL_SIZE_M[v.type] || 5) * svgPxPerM;
+      // Top-down icon (points north, rotates with heading) for tractors, trucks
+      // and trailers; everything else keeps the simple dot. Trucks pick by
+      // truckKind (fallback tractor unit), trailers by kind/coupling.
+      const ic = v.type === 'TRACTOR' ? TRACTOR_ICON
+               : v.type === 'TRUCK'   ? (TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR)
+               : v.type === 'TRAILER' ? trailerIconFor(v)
+               : null;
+      // Icon vehicles all share ICON_WIDTH_M; dot vehicles use their footprint.
+      const realSvgPx  = isPlayer ? 26
+                       : ic       ? ICON_WIDTH_M * svgPxPerM
+                       : (REAL_SIZE_M[v.type] || 5) * svgPxPerM;
       const trackPx    = isPlayer ? 0  : realSvgPx;   // 0 → screen-constant
       const initScale  = isPlayer ? (1 / mapZoom)
                                   : Math.max(1, MIN_VEHICLE_PX / (realSvgPx * mapZoom));
@@ -6567,13 +6582,6 @@ function updateVehicles(vehiclesData, terrainSize) {
       inner.style.transform = `scale(${initScale.toFixed(4)})`;
       rot.appendChild(inner);
 
-      // Top-down icon (points north, rotates with heading) for tractors, trucks
-      // and trailers; everything else keeps the simple dot. Trucks pick by
-      // truckKind (fallback tractor unit), trailers by kind/coupling.
-      const ic = v.type === 'TRACTOR' ? TRACTOR_ICON
-               : v.type === 'TRUCK'   ? (TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR)
-               : v.type === 'TRAILER' ? trailerIconFor(v)
-               : null;
       if (ic) {
         const vbp = ic.vb.split(/\s+/).map(Number);        // [minX, minY, vbW, vbH]
         const vbW = vbp[2], vbH = vbp[3];

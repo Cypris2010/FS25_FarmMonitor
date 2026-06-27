@@ -83,13 +83,26 @@ am Sattelpunkt (`truckTractor: {x:45.5, y:143}`), Sattelauflieger am Königszapf
 **Ohne `anchor` zentriert das Icon auf dem Pin** — korrekt für Traktoren
 (keine durchgehende Kupplungslinie zum Pin).
 
-## Größe (Real-Size-Schema)
+## Größe
 
-Icon-Breite `W = realSvgPx = REAL_SIZE_M[type] * (512 / terrainSize)`, Höhe
-`= W * ratio` (ratio aus viewBox). `MIN_VEHICLE_PX = 8` ist der Mindest-
-Bildschirmdurchmesser. `REAL_SIZE_M`: `TRACTOR:5, TRUCK:8, TRAILER:10` (getunte
-visuelle Größen, nicht exakte Meter). Der `PLAYER` ist davon ausgenommen
-(fester 13px-Radius, bildschirm-konstant).
+**Alle Icon-Fahrzeuge (TRACTOR/TRUCK/TRAILER) teilen sich EINE gemeinsame
+Breite** `ICON_WIDTH_M` (Default 8). Da alle SVGs dieselbe viewBox-Breite
+(91.13) haben, kommt das Größenverhältnis untereinander **allein aus dem
+Seitenverhältnis der Zeichnung** — längere Fahrzeuge haben eine höhere viewBox.
+Ein Traktor ist also nur dann schmaler als ein LKW, wenn er so gezeichnet ist;
+**kein Per-Typ-Breitenfaktor.**
+
+```js
+W = ICON_WIDTH_M * (512 / terrainSize)   // gleiche Breite für jedes Icon
+H = W * ratio                            // ratio = viewBoxH / viewBoxW
+```
+
+`MIN_VEHICLE_PX = 8` ist der Mindest-Bildschirmdurchmesser (Floor beim
+Rauszoomen). Beim Reinzoomen wachsen die Icons maßstäblich mit der Karte.
+
+`REAL_SIZE_M` gilt nur noch für **Punkt-Marker** (HARVESTER/TOOL/VEHICLE) und
+als Fallback-Footprint, falls ein Icon nicht lädt. Der `PLAYER` ist von beidem
+ausgenommen (fester 13px-Radius, bildschirm-konstant via `realPx=0`).
 
 ## Konvention der SVG-Dateien
 
