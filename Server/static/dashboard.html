@@ -5739,6 +5739,7 @@ async function saveServerSettings() {
 // ═══════════════════════════════════════════════════════════
 
 const MAP_PX = 1024;
+const MIN_VEHICLE_PX = 8;  // minimum screen-pixel diameter for vehicle icons
 let mapZoom = 1, mapPanX = 0, mapPanY = 0;
 let mapInitialized = false;
 let _fieldPolySig = null;
@@ -5758,7 +5759,11 @@ function applyMapTransform() {
     `translate(${mapPanX}px,${mapPanY}px) scale(${mapZoom})`;
   const iconS = (1 / mapZoom).toFixed(4);
   document.querySelectorAll('.vehicle-scale').forEach(el => {
-    el.style.transform = `scale(${iconS})`;   // rotation lives on .vehicle-rot, untouched by zoom
+    const realPx = parseFloat(el.dataset.realPx);
+    const s = realPx > 0
+      ? Math.max(1, MIN_VEHICLE_PX / (realPx * mapZoom))
+      : 1 / mapZoom;
+    el.style.transform = `scale(${s.toFixed(4)})`;
   });
   document.querySelectorAll('.player-label-g').forEach(el => {
     el.style.transform = `scale(${iconS})`;
@@ -6438,6 +6443,7 @@ function renderHotspotPins(hotspotsData, terrainSize) {
 // trucks anchor on their fifth wheel, semitrailers on their kingpin, so a
 // coupled pair lines up. Omit anchor → the icon centres on its pin.
 const VEHICLE_ICON_MANIFEST = {
+  tractor:          { file: 'icons/tractor.svg' },          // farm tractor (no coupling → centres on pin)
   truckTractor:     { file: 'icons/truck_tractor.svg',     anchor: { x: 45.5,  y: 143  } },
   truckRigid:       { file: 'icons/truck_rigid.svg' },
   truckHooklift:    { file: 'icons/truck_hooklift.svg' },
@@ -6453,6 +6459,7 @@ const VEHICLE_ICON_MANIFEST = {
 let TRUCK_ICON_TRACTOR = null;
 let TRUCK_ICONS  = {};
 let TRAILER_ICONS = {};
+let TRACTOR_ICON = null;
 
 async function loadVehicleIcons() {
   const loaded = {};
@@ -6471,6 +6478,7 @@ async function loadVehicleIcons() {
     }
   }));
 
+  TRACTOR_ICON = loaded.tractor || null;
   TRUCK_ICON_TRACTOR = loaded.truckTractor || null;
   TRUCK_ICONS = {
     rigid:    loaded.truckRigid,
@@ -6511,9 +6519,16 @@ function updateVehicles(vehiclesData, terrainSize) {
   const topLayer = document.getElementById('layer-vehicles-top');
   const vehicles = vehiclesData?.vehicles || [];
   const seen = new Set();
-  const typeColor = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
-                      TOOL:'#6b7280', TRUCK:'#92400e', PLAYER:'#3b82f6', VEHICLE:'#22c55e' };
-  const typeSize  = { TRACTOR:8, HARVESTER:10, TRAILER:6, TOOL:4, TRUCK:8, PLAYER:13, VEHICLE:7 };
+  const typeColor  = { TRACTOR:'#22c55e', HARVESTER:'#f97316', TRAILER:'#9ca3af',
+                       TOOL:'#6b7280', TRUCK:'#92400e', PLAYER:'#3b82f6', VEHICLE:'#22c55e' };
+  // Dot-marker footprint in metres (HARVESTER/TOOL/VEHICLE and icon-load fallbacks).
+  const REAL_SIZE_M = { TRACTOR:5, HARVESTER:8, TRAILER:10, TOOL:4, TRUCK:8, PLAYER:2, VEHICLE:5 };
+  // All authored icons share the same viewBox width (91.13), so every icon vehicle
+  // (tractor/truck/trailer) renders at ONE common width — their relative size comes
+  // purely from the drawing's aspect ratio (longer vehicles = taller viewBox), never
+  // from a per-type factor. A tractor is only narrower than a truck if drawn so.
+  const ICON_WIDTH_M = 8;
+  const svgPxPerM  = 512 / terrainSize;   // e.g. 0.25 px/m on a 2048 m map
 
   for (const v of vehicles) {
     seen.add(String(v.id));
@@ -6524,9 +6539,25 @@ function updateVehicles(vehiclesData, terrainSize) {
 
     let el = document.getElementById('vm-' + v.id);
     if (!el) {
-      const color  = (v.type === 'PLAYER' && v.farmColor) ? v.farmColor : (typeColor[v.type] || '#22c55e');
-      const r      = typeSize[v.type]  || 5;
-      const iconS  = (1 / mapZoom).toFixed(4);
+      const color      = (v.type === 'PLAYER' && v.farmColor) ? v.farmColor : (typeColor[v.type] || '#22c55e');
+      // The player marker stays a fixed on-screen size (like before the real-size
+      // rework) — a 2 m human has no meaningful map footprint. realPx=0 makes the
+      // scale logic fall back to 1/mapZoom (screen-constant) in both code paths.
+      const isPlayer   = v.type === 'PLAYER';
+      // Top-down icon (points north, rotates with heading) for tractors, trucks
+      // and trailers; everything else keeps the simple dot. Trucks pick by
+      // truckKind (fallback tractor unit), trailers by kind/coupling.
+      const ic = v.type === 'TRACTOR' ? TRACTOR_ICON
+               : v.type === 'TRUCK'   ? (TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR)
+               : v.type === 'TRAILER' ? trailerIconFor(v)
+               : null;
+      // Icon vehicles all share ICON_WIDTH_M; dot vehicles use their footprint.
+      const realSvgPx  = isPlayer ? 26
+                       : ic       ? ICON_WIDTH_M * svgPxPerM
+                       : (REAL_SIZE_M[v.type] || 5) * svgPxPerM;
+      const trackPx    = isPlayer ? 0  : realSvgPx;   // 0 → screen-constant
+      const initScale  = isPlayer ? (1 / mapZoom)
+                                  : Math.max(1, MIN_VEHICLE_PX / (realSvgPx * mapZoom));
 
       // Outer: translate only, smooth movement transition
       el = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -6547,19 +6578,14 @@ function updateVehicles(vehiclesData, terrainSize) {
 
       const inner = document.createElementNS('http://www.w3.org/2000/svg','g');
       inner.classList.add('vehicle-scale');
-      inner.style.transform = `scale(${iconS})`;
+      inner.dataset.realPx = trackPx.toFixed(4);
+      inner.style.transform = `scale(${initScale.toFixed(4)})`;
       rot.appendChild(inner);
 
-      // Top-down icon (points north, rotates with heading) for trucks and trailers;
-      // everything else keeps the simple dot. Trucks pick by truckKind (fallback
-      // tractor unit), trailers by kind/coupling via trailerIconFor().
-      const ic = v.type === 'TRUCK'   ? (TRUCK_ICONS[v.truckKind] || TRUCK_ICON_TRACTOR)
-               : v.type === 'TRAILER' ? trailerIconFor(v)
-               : null;
       if (ic) {
         const vbp = ic.vb.split(/\s+/).map(Number);        // [minX, minY, vbW, vbH]
         const vbW = vbp[2], vbH = vbp[3];
-        const W = 19.5, H = +(W * ic.ratio).toFixed(2);    // same width → longer icons are just taller
+        const W = realSvgPx, H = +(W * ic.ratio).toFixed(2);    // same width → longer icons are just taller
         // Put the icon's coupling anchor at the pin WITHOUT moving the <svg>
         // viewport (which must stay centred so rotation keeps pivoting on the pin —
         // an off-centre viewport would rotate around its own centre and drift).
@@ -6580,18 +6606,25 @@ function updateVehicles(vehiclesData, terrainSize) {
         inner.appendChild(tsvg);
       } else {
         const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-        circle.setAttribute('r', r);
+        const rr0 = realSvgPx / 2;
+        circle.setAttribute('r', rr0.toFixed(2));
         circle.setAttribute('fill', color);
         circle.setAttribute('stroke', '#000');
-        circle.setAttribute('stroke-width', '1');
+        // Stroke proportional to radius so tiny real-size icons keep a thin
+        // outline instead of a black blob; the player uses a fixed 1px outline.
+        circle.setAttribute('stroke-width', isPlayer ? '1' : Math.max(0.1, rr0 * 0.2).toFixed(3));
         inner.appendChild(circle);
 
         if (v.type !== 'TOOL' && v.type !== 'TRAILER') {
           const arrow = document.createElementNS('http://www.w3.org/2000/svg','polygon');
-          arrow.setAttribute('points', `0,${-(r+6)} -3,${-(r)} 3,${-(r)}`);
+          const rr = realSvgPx / 2;
+          // Player keeps the original compact arrow; real-size icons scale theirs.
+          arrow.setAttribute('points', isPlayer
+            ? `0,${-(rr + 6)} -3,${-rr} 3,${-rr}`
+            : `0,${-(rr * 3).toFixed(2)} ${(-rr * 0.7).toFixed(2)},${(-rr).toFixed(2)} ${(rr * 0.7).toFixed(2)},${(-rr).toFixed(2)}`);
           arrow.setAttribute('fill', color);
           arrow.setAttribute('stroke','#000');
-          arrow.setAttribute('stroke-width','0.5');
+          arrow.setAttribute('stroke-width', isPlayer ? '0.5' : Math.max(0.08, rr * 0.15).toFixed(3));
           inner.appendChild(arrow);
         }
       }
@@ -6603,7 +6636,7 @@ function updateVehicles(vehiclesData, terrainSize) {
       if (v.type === 'PLAYER') {
         const lg = document.createElementNS('http://www.w3.org/2000/svg','g');
         lg.classList.add('player-label-g');
-        lg.style.transform = `scale(${iconS})`;
+        lg.style.transform = `scale(${(1 / mapZoom).toFixed(4)})`;
         lg.style.pointerEvents = 'none';
         const _plCb = document.getElementById('toggle-player-labels');
         if (_plCb && !_plCb.checked) lg.style.display = 'none';
@@ -6613,7 +6646,7 @@ function updateVehicles(vehiclesData, terrainSize) {
         bg.setAttribute('fill-opacity', '0.55');
         const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
         txt.setAttribute('text-anchor','middle');
-        txt.setAttribute('y', -(r + 12));
+        txt.setAttribute('y', -(realSvgPx / 2 + 12));
         txt.setAttribute('fill','#fff');
         txt.setAttribute('font-size','16');
         txt.textContent = v.name || 'Player';
@@ -6650,7 +6683,11 @@ function updateVehicles(vehiclesData, terrainSize) {
         rot.style.transform = `rotate(${applied}deg)`;
       }
       const sc = el.querySelector('.vehicle-scale');
-      if (sc) sc.style.transform = `scale(${(1/mapZoom).toFixed(4)})`;
+      if (sc) {
+        const realPx = parseFloat(sc.dataset.realPx);
+        const s = realPx > 0 ? Math.max(1, MIN_VEHICLE_PX / (realPx * mapZoom)) : 1 / mapZoom;
+        sc.style.transform = `scale(${s.toFixed(4)})`;
+      }
       const lg = el.querySelector('.player-label-g');
       if (lg) lg.style.transform = `scale(${(1/mapZoom).toFixed(4)})`;
     }

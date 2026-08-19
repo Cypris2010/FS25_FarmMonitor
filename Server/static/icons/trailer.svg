@@ -1,8 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 91.13 225.89">
   <rect fill="#585857" x="37.23" y="210.81" width="16.68" height="8.02"/>
   <rect fill="#010101" x="76.3" y="123.78" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
   <rect fill="#010101" x="4.6" y="123.78" width="9.9" height="71.74" rx="3.25" ry="3.25"/>
-  <rect fill="#dadada" x="9.55" y="29.06" width="72.04" height="187.47" rx="1.79" ry="1.79"/>
+  <rect fill="#f7f6f6" x="9.55" y="29.06" width="72.04" height="187.47" rx="1.79" ry="1.79"/>
   <rect fill="#585857" x="9.55" y="218.87" width="72.04" height="4.52"/>
   <rect fill="#b3b2b2" x="14.82" y="34.74" width="61.51" height="176.12" rx="1.79" ry="1.79"/>
   <rect fill="#585857" x="41.57" y="4.16" width="8" height="24.67"/>
