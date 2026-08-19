@@ -1525,7 +1525,13 @@ func defaultDataDir() string {
 	case "darwin":
 		return filepath.Join(home, "Library", "Application Support", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
 	case "windows":
-		return filepath.Join(home, "Documents", "My Games", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
+		docs := windowsDocumentsDir()
+		if docs == "" {
+			// Fallback for the rare case the Known Folder API call fails;
+			// this guess breaks if Documents was redirected off the home drive.
+			docs = filepath.Join(home, "Documents")
+		}
+		return filepath.Join(docs, "My Games", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
 	default:
 		return filepath.Join(home, ".local", "share", "FarmingSimulator2025", "modSettings", "FS25_FarmMonitor")
 	}
